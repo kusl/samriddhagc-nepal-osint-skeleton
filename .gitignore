@@ -37,7 +37,7 @@ frontend/.vite/
 *.tsbuildinfo
 
 # Data & large files
-data/
+/data/
 *.sqlite3
 *.db
 bipad_nepal_disasters.json
@@ -45,8 +45,12 @@ analysis_output/
 investigation_output/
 narada.db
 
-# External libraries (cloned repos)
-backend-v5/pwtt_lib/
+# External libraries / vendored runtime subsets
+backend-v5/pwtt_lib/docs/
+backend-v5/pwtt_lib/figs/
+backend-v5/pwtt_lib/.git/
+backend-v5/pwtt_lib/*.ipynb
+backend-v5/pwtt_lib/.DS_Store
 
 # RL model artifacts (CPU-inference .pt files)
 backend/data/models/
@@ -72,8 +76,6 @@ postgres_data/
 neo4j_data/
 redis_data/
 backend-v5/.models/
-backend-v5/app/services/analyst_agent/
-
 # Celery
 celerybeat-schedule
 
