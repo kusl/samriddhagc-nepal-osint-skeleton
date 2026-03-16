@@ -66,6 +66,7 @@ The route split is implemented centrally in `backend-v5/app/api/v1/router.py`.
 ## Repo Layout
 
 - `backend-v5`: FastAPI app, worker, migrations, config, geospatial services, scripts
+- `agents`: top-level wrappers for local agent and maintenance entrypoints, delegating to `backend-v5`
 - `frontend`: Vite + React UI for dashboard, analyst center, graph, map, investigations, trade, damage assessment
 - `infrastructure`: deployment and ops assets
 - `docker-compose.prod.yml`: production-oriented compose stack

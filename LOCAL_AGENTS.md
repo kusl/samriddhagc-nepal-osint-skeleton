@@ -12,7 +12,7 @@ The VPS would use the Anthropic SDK which costs API credits per call.
 ```
 Your Mac (Claude Max CLI = free)          VPS (API only, no Claude)
 ┌─────────────────────────┐               ┌──────────────────────┐
-│ run_local_api.py        │  HTTPS+JWT    │ FastAPI backend      │
+│ agents/run_local_api.py │  HTTPS+JWT    │ FastAPI backend      │
 │  ├─ analyst job         │──────────────>│  ├─ GET /stories/export
 │  │   └─ claude CLI      │               │  ├─ GET /twitter/export
 │  │       (Sonnet, free) │               │  ├─ POST /briefs/ingest
@@ -20,7 +20,7 @@ Your Mac (Claude Max CLI = free)          VPS (API only, no Claude)
 │      └─ claude CLI      │               │                      │
 │          (Sonnet, free) │               │ Scheduler (VPS):     │
 │                         │               │  ├─ Nitter scraper   │
-│ run_agents.sh (cron)    │               │  ├─ Story ingestion  │
+│ agents/run_agents.sh    │               │  ├─ Story ingestion  │
 │  └─ runs every 12 hrs   │               │  ├─ Weather/river    │
 └─────────────────────────┘               │  └─ Elections        │
                                           │  (NO analyst/province│
@@ -50,9 +50,9 @@ Add these lines:
 
 ```cron
 # Nepal OSINT — Local agents (Claude Max = free, Nitter = VPS blocked)
-0 */12 * * * /Users/samriddhagc/Desktop/Projects/nepal_osint_v5/backend-v5/run_agents.sh analyst >> /tmp/osint_agents.log 2>&1
-30 */12 * * * /Users/samriddhagc/Desktop/Projects/nepal_osint_v5/backend-v5/run_agents.sh province >> /tmp/osint_agents.log 2>&1
-*/30 * * * * /Users/samriddhagc/Desktop/Projects/nepal_osint_v5/backend-v5/run_agents.sh nitter >> /tmp/osint_agents.log 2>&1
+0 */12 * * * /Users/samriddhagc/Desktop/Projects/nepal_osint_v5/agents/run_agents.sh analyst >> /tmp/osint_agents.log 2>&1
+30 */12 * * * /Users/samriddhagc/Desktop/Projects/nepal_osint_v5/agents/run_agents.sh province >> /tmp/osint_agents.log 2>&1
+*/30 * * * * /Users/samriddhagc/Desktop/Projects/nepal_osint_v5/agents/run_agents.sh nitter >> /tmp/osint_agents.log 2>&1
 ```
 
 ### 2. Verify cron is allowed
@@ -65,8 +65,8 @@ Add `/usr/sbin/cron` (or Terminal.app)
 
 ```bash
 # Manual test
-OSINT_PASSWORD=your-osint-password venv/bin/python run_local_api.py analyst --hours 6
-OSINT_PASSWORD=your-osint-password venv/bin/python run_local_api.py province --hours 6
+OSINT_PASSWORD=your-osint-password venv/bin/python agents/run_local_api.py analyst --hours 6
+OSINT_PASSWORD=your-osint-password venv/bin/python agents/run_local_api.py province --hours 6
 
 # Check cron logs
 tail -f /tmp/osint_agents.log
@@ -75,16 +75,16 @@ tail -f /tmp/osint_agents.log
 ## Manual runs
 
 ```bash
-cd ~/Desktop/Projects/nepal_osint_v5/backend-v5
+cd ~/Desktop/Projects/nepal_osint_v5
 
 # Analyst brief (situation report)
-OSINT_PASSWORD=your-osint-password venv/bin/python run_local_api.py analyst --hours 6
+OSINT_PASSWORD=your-osint-password venv/bin/python agents/run_local_api.py analyst --hours 6
 
 # Province anomaly (7-province threat assessment)
-OSINT_PASSWORD=your-osint-password venv/bin/python run_local_api.py province --hours 6
+OSINT_PASSWORD=your-osint-password venv/bin/python agents/run_local_api.py province --hours 6
 
 # Both at once
-./run_agents.sh all
+./agents/run_agents.sh all
 ```
 
 ## VPS scheduler (these are DISABLED — run locally instead)
@@ -102,8 +102,10 @@ The VPS still runs everything else (RSS ingestion, weather, river, elections, ma
 
 | File | Purpose |
 |------|---------|
-| `run_local_api.py` | Pure API agent runner (analyst + province jobs) |
-| `run_agents.sh` | Cron wrapper script |
+| `agents/run_local_api.py` | Top-level wrapper for the API agent runner |
+| `agents/run_agents.sh` | Top-level cron wrapper |
+| `backend-v5/run_local_api.py` | Canonical API agent implementation |
+| `backend-v5/run_agents.sh` | Canonical cron implementation |
 | `LOCAL_AGENTS.md` | This file |
 | `app/tasks/scheduler.py` | VPS scheduler (analyst/province DISABLED) |
 | `app/api/v1/briefs.py` | POST /briefs/ingest endpoint |
@@ -114,7 +116,7 @@ The VPS still runs everything else (RSS ingestion, weather, river, elections, ma
 ## Troubleshooting
 
 **"Claude Code cannot be launched inside another Claude Code session"**
-→ Already handled: `run_local_api.py` filters `CLAUDECODE` env var from subprocess
+→ Already handled: `backend-v5/run_local_api.py` filters `CLAUDECODE` env var from subprocess
 
 **Cron not running**
 → Check `crontab -l` to verify entries exist
