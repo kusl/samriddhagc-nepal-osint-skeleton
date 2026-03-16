@@ -81,7 +81,7 @@ export async function getTweets(params: {
   nepal_relevance?: string;
   category?: string;
   relevant_only?: boolean;
-  source?: 'accounts' | 'hashtags';
+  source?: 'accounts' | 'hashtags' | 'reddit';
   author?: string;
   hashtag?: string;
   severity?: 'critical' | 'high' | 'medium' | 'low';

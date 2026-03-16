@@ -257,7 +257,7 @@ export function SocialWidget() {
     limit: 500,
     hours: activeHours,
     ...(effectiveCategory !== 'all' ? { category: effectiveCategory } : {}),
-    ...(activeSource !== 'all' ? { source: activeSource as string } : {}),
+    ...(activeSource !== 'all' ? { source: activeSource } : {}),
     ...(nepalOnly ? { relevant_only: true } : {}),
     ...(groundReports ? { ground_reports: true } : {}),
   };
