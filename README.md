@@ -6,10 +6,10 @@ Clean, professional FastAPI backend for the Nepal OSINT platform with real-time 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        Frontend (Vite + React)                   │
-│                         localhost:5173                           │
+│                        Frontend (Vite + React)                  │
+│                         localhost:5173                          │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
+│                                                                 │
 │  ┌──────────────────────┐     ┌──────────────────────────────┐  │
 │  │   StoriesWidget      │     │     NewsFeedWidget           │  │
 │  │   (Aggregated)       │     │     (Real-time)              │  │
@@ -19,36 +19,36 @@ Clean, professional FastAPI backend for the Nepal OSINT platform with real-time 
 │  │  - Multi-source      │     │  - Nepal-only filtering      │  │
 │  │  - 72h window        │     │  - Heartbeat every 30s       │  │
 │  └──────────────────────┘     └──────────────────────────────┘  │
-│                                                                  │
+│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                    Backend (FastAPI)                             │
-│                      localhost:8001                              │
+│                    Backend (FastAPI)                            │
+│                      localhost:8001                             │
 ├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
+│                                                                 │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
 │  │   API v1    │  │  WebSocket  │  │   Background Tasks      │  │
 │  │  /api/v1/*  │  │   /ws/*     │  │   (APScheduler)         │  │
 │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-│         │                │                    │                  │
-│         ▼                ▼                    ▼                  │
+│         │                │                    │                 │
+│         ▼                ▼                    ▼                 │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │                    Services Layer                          │  │
+│  │                    Services Layer                         │  │
 │  │  • RelevanceService  (Nepal classification + categories)  │  │
 │  │  • SeverityService   (critical/high/medium/low grading)   │  │
 │  │  • ClusteringService (Union-Find story clustering)        │  │
 │  │  • IngestionService  (RSS fetching + broadcasting)        │  │
 │  └───────────────────────────────────────────────────────────┘  │
-│                              │                                   │
-│                              ▼                                   │
+│                              │                                  │
+│                              ▼                                  │
 │  ┌───────────────────────────────────────────────────────────┐  │
-│  │                    Data Layer                              │  │
-│  │  • StoryRepository       • StoryClusterRepository          │  │
+│  │                    Data Layer                             │  │
+│  │  • StoryRepository       • StoryClusterRepository         │  │
 │  └───────────────────────────────────────────────────────────┘  │
-│                              │                                   │
-└──────────────────────────────┼───────────────────────────────────┘
+│                              │                                  │
+└──────────────────────────────┼──────────────────────────────────┘
                                │
            ┌───────────────────┴───────────────────┐
            │                                       │
