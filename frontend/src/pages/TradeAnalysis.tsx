@@ -38,6 +38,8 @@ import {
   type TradeWorkbenchSummary,
   type TradeWorkbenchTopItem,
 } from '../api/connectedAnalyst';
+import { useNepalClock } from '../hooks/useNepalClock';
+import { formatNepalTime, NEPAL_TIME_LABEL } from '../utils/nepalTime';
 
 interface HsChartRow {
   hsCode: string;
@@ -107,6 +109,7 @@ function exportRowsToCsv(rows: TradeWorkbenchDrillRow[]): void {
 }
 
 export default function TradeAnalysis() {
+  const { now } = useNepalClock();
   const [fiscalYear, setFiscalYear] = useState('');
   const [direction, setDirection] = useState('');
   const [hsCode, setHsCode] = useState('');
@@ -437,7 +440,7 @@ export default function TradeAnalysis() {
           <div className="flex items-center gap-4">
             <span>{rows.length} drill rows</span>
             <span>{anomalies.length} anomalies</span>
-            <span>{new Date().toLocaleTimeString('en-US', { hour12: false })} NPT</span>
+            <span>{formatNepalTime(now)} {NEPAL_TIME_LABEL}</span>
           </div>
         </div>
       )}
