@@ -9,6 +9,8 @@ import { useUserPreferencesStore } from '../../store/slices/userPreferencesSlice
 import { useNotificationStore } from '../../stores/notificationStore';
 import apiClient from '../../api/client';
 import { subscribeViewerCount, getViewerCountSnapshot, getViewerCountServerSnapshot } from '../../api/websocket';
+import { useNepalClock } from '../../hooks/useNepalClock';
+import { formatNepalShortDate, formatNepalTime, NEPAL_TIME_LABEL } from '../../utils/nepalTime';
 import { NotificationBell } from '../common/NotificationBell';
 
 const PRESET_TABS = [
@@ -27,20 +29,17 @@ const ViewerBadge = memo(function ViewerBadge() {
 });
 
 const Clock = memo(function Clock() {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const hh = time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  const date = time.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase();
+  const { now, isServerSynced } = useNepalClock();
 
   return (
-    <div className="hidden sm:flex items-center gap-2" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
-      <span style={{ color: 'var(--text-muted)' }}>{date}</span>
-      <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{hh}</span>
+    <div
+      className="hidden sm:flex items-center gap-2"
+      style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}
+      title={isServerSynced ? 'Server-synced Nepal time' : 'Awaiting server time sync; temporarily using local clock'}
+    >
+      <span style={{ color: 'var(--text-muted)' }}>{formatNepalShortDate(now)}</span>
+      <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{formatNepalTime(now)}</span>
+      <span style={{ color: 'var(--text-disabled)', letterSpacing: '0.08em' }}>{NEPAL_TIME_LABEL}</span>
     </div>
   );
 });

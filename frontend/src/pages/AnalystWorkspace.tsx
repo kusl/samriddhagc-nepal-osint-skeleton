@@ -7,11 +7,14 @@ import { QueuePanel } from '../components/workspace/QueuePanel'
 import { MainCanvas } from '../components/workspace/MainCanvas'
 import { ContextPanel } from '../components/workspace/ContextPanel'
 import { CommandBar } from '../components/workspace/CommandBar'
+import { useNepalClock } from '../hooks/useNepalClock'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { formatNepalTime, NEPAL_TIME_LABEL } from '../utils/nepalTime'
 import '../styles/professional-dashboard.css'
 
 function StatusBar() {
   const { bulkMode, selectedItems, toggleShortcutsHelp } = useWorkspaceStore()
+  const { now } = useNepalClock()
 
   return (
     <div className="h-full flex items-center px-4 gap-4 text-[10px] font-mono text-bp-text-muted">
@@ -34,7 +37,7 @@ function StatusBar() {
       {/* Time */}
       <div className="flex items-center gap-2">
         <Clock size={12} />
-        <span>{new Date().toLocaleTimeString('en-US', { hour12: false })} NPT</span>
+        <span>{formatNepalTime(now)} {NEPAL_TIME_LABEL}</span>
       </div>
 
       {/* Bulk selection indicator */}

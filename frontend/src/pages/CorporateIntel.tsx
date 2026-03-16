@@ -37,8 +37,10 @@ import { AnalyticsDashboard } from '../components/corporate/AnalyticsDashboard'
 import { AnomalyDashboard } from '../components/corporate/AnomalyDashboard'
 import { CaseManager } from '../components/corporate/CaseManager'
 import { CompanyProfilePanel } from '../components/corporate/CompanyProfilePanel'
+import { useNepalClock } from '../hooks/useNepalClock'
 import { AnalystShell } from '../components/layout/AnalystShell'
 import { DataValueGrid } from '../components/ui/narada-ui'
+import { formatNepalTime, NEPAL_TIME_LABEL } from '../utils/nepalTime'
 import {
   getCorporateStats,
   searchCompanies,
@@ -395,6 +397,7 @@ function PhoneLinksSection({
 // ── Main Workstation ────────────────────────────────────────
 
 export default function CorporateIntel() {
+  const { now } = useNepalClock()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
 
   // Drawer state
@@ -611,7 +614,7 @@ export default function CorporateIntel() {
             </div>
             <div className="flex items-center gap-4">
               <span>Shortcuts: press ? for help</span>
-              <span>{new Date().toLocaleTimeString('en-US', { hour12: false })} NPT</span>
+              <span>{formatNepalTime(now)} {NEPAL_TIME_LABEL}</span>
             </div>
           </div>
         )}

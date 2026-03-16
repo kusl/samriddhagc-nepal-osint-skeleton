@@ -42,6 +42,8 @@ import { OverviewTab } from '../components/damage-assessment/tabs/OverviewTab';
 import { SpatialTab } from '../components/damage-assessment/tabs/SpatialTab';
 import { PwttEvidenceTab } from '../components/damage-assessment/tabs/PwttEvidenceTab';
 import { QuickHotspotChecker } from '../components/damage-assessment/QuickHotspotChecker';
+import { useNepalClock } from '../hooks/useNepalClock';
+import { formatNepalTime, NEPAL_TIME_LABEL } from '../utils/nepalTime';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard, description: 'Key metrics and findings' },
@@ -344,6 +346,7 @@ function statusIntent(status: string): Intent {
 }
 
 export default function DamageAssessment() {
+  const { now } = useNepalClock();
   const queryClient = useQueryClient();
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabId>('overview');
@@ -604,7 +607,7 @@ export default function DamageAssessment() {
               {selectedRunId && <span>Run: {selectedRunId.slice(0, 8)}</span>}
             </div>
             <div className="flex items-center gap-4">
-              <span>{new Date().toLocaleTimeString('en-US', { hour12: false })} NPT</span>
+              <span>{formatNepalTime(now)} {NEPAL_TIME_LABEL}</span>
             </div>
           </div>
         )}
