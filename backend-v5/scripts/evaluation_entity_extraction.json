@@ -1,0 +1,385 @@
+{
+  "timestamp": "2026-02-01T21:35:44.185145",
+  "database_counts": {
+    "candidates": 6884,
+    "mps": 541,
+    "constituencies": 495,
+    "political_entities": 20
+  },
+  "extractor_stats": {
+    "initialized": true,
+    "init_time": "2026-02-01T21:35:44.118992",
+    "pattern_count": 7739,
+    "pattern_stats": {
+      "total": 7739,
+      "by_type": {
+        "ORGANIZATION": 158,
+        "PERSON": 7094,
+        "LOCATION": 487
+      },
+      "by_source": {
+        "kb": 40,
+        "common": 101,
+        "kb_alias": 49,
+        "mp": 1000,
+        "candidate": 6020,
+        "constituency": 363,
+        "district": 74,
+        "province": 2,
+        "party": 89,
+        "party_abbrev": 1
+      }
+    }
+  },
+  "metrics": {
+    "total_stories": 200,
+    "total_entities": 177,
+    "stories_with_entities": 96,
+    "stories_with_entities_pct": 48.0,
+    "avg_entities_per_story": 0.885,
+    "avg_extraction_time_ms": 0.071905,
+    "by_type": {
+      "LOCATION": 93,
+      "ORGANIZATION": 52,
+      "PERSON": 32
+    },
+    "by_source": {
+      "common": 151,
+      "kb": 14,
+      "district": 2,
+      "kb_alias": 5,
+      "party": 3,
+      "constituency": 1,
+      "candidate": 1
+    }
+  },
+  "comparison": {
+    "db_only": 25,
+    "rule_only": 31,
+    "both": 23
+  },
+  "top_entities": {
+    "kathmandu": 41,
+    "election_commission": 18,
+    "rc_poudel": 13,
+    "house_of_representatives": 11,
+    "japan": 11,
+    "sudurpashchim_province": 6,
+    "pakistan": 5,
+    "india": 5,
+    "thapa_generic": 5,
+    "gandaki_province": 4,
+    "karnali_province": 4,
+    "cpn_uml": 4,
+    "uml": 3,
+    "karki": 3,
+    "province_generic": 3,
+    "koshi_province": 3,
+    "gagan_thapa": 3,
+    "rsp": 2,
+    "damak": 2,
+    "nepse": 2
+  },
+  "sample_results": [
+    {
+      "story_id": "cd31b2bb-6127-468b-9533-744249af1b72",
+      "title": "कस्ता छन् सेयर मूल्य कम भएका यी बैंक?",
+      "language": "ne",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "2b25c5a9-a054-4144-835b-a7c1d77fe9b1",
+      "title": "Kathmandu Valley sees rise in minimum temperature",
+      "language": "en",
+      "entity_count": 1,
+      "entities": [
+        {
+          "text": "Kathmandu",
+          "canonical_id": "kathmandu",
+          "type": "LOCATION",
+          "confidence": 1.0,
+          "start": 0,
+          "end": 9,
+          "metadata": {},
+          "source": "common"
+        }
+      ]
+    },
+    {
+      "story_id": "98b61ea0-fe51-4710-9700-e92dce419e49",
+      "title": "रास्वपाकी जिल्ला उपसभापति कांग्रेसमा",
+      "language": "ne",
+      "entity_count": 1,
+      "entities": [
+        {
+          "text": "राष्ट्रिय स्वतन्त्र पार्टी",
+          "canonical_id": "rsp",
+          "type": "ORGANIZATION",
+          "confidence": 1.0,
+          "start": 83,
+          "end": 109,
+          "metadata": {
+            "party": null,
+            "role": "Political Party",
+            "kb_id": "e81f6327-ff26-4785-97e4-609160e1a595"
+          },
+          "source": "kb"
+        }
+      ]
+    },
+    {
+      "story_id": "47e1d20e-f68b-46c3-9849-342a9f64e7b2",
+      "title": "Politics of discouragement",
+      "language": "en",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "f4cb4f44-cc30-42a6-9c55-f432dcde28d7",
+      "title": "Is the Indian Nipah variant more severe?",
+      "language": "en",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "4eaf5f51-df1c-4d14-9944-48854171717c",
+      "title": "Security tightened in Jhapa–5 constituency",
+      "language": "en",
+      "entity_count": 2,
+      "entities": [
+        {
+          "text": "Jhapa",
+          "canonical_id": "district_jhapa",
+          "type": "LOCATION",
+          "confidence": 0.855,
+          "start": 22,
+          "end": 27,
+          "metadata": {
+            "province_id": 1
+          },
+          "source": "district"
+        },
+        {
+          "text": "Damak",
+          "canonical_id": "damak",
+          "type": "LOCATION",
+          "confidence": 0.9,
+          "start": 64,
+          "end": 69,
+          "metadata": {},
+          "source": "common"
+        }
+      ]
+    },
+    {
+      "story_id": "d1433807-fba7-4185-9c89-4f1c2b495b8a",
+      "title": "नेपाल मुक्तक प्रतिष्ठानले ‘मुक्तक साम्रज्ञी’ शेरचन र डा. रूपक श्रेष्ठलाई अर्पियाे सम्मान",
+      "language": "ne",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "4dbb23e6-63e4-4c84-af3a-508f6a3c83a2",
+      "title": "Economic Digest: Nepal’s Business News in a Snap",
+      "language": "en",
+      "entity_count": 2,
+      "entities": [
+        {
+          "text": "KATHMANDU",
+          "canonical_id": "kathmandu",
+          "type": "LOCATION",
+          "confidence": 1.0,
+          "start": 49,
+          "end": 58,
+          "metadata": {},
+          "source": "common"
+        },
+        {
+          "text": "NEPSE",
+          "canonical_id": "nepse",
+          "type": "ORGANIZATION",
+          "confidence": 0.81,
+          "start": 371,
+          "end": 376,
+          "metadata": {},
+          "source": "common"
+        }
+      ]
+    },
+    {
+      "story_id": "8da65f4b-f46b-4cfc-9104-a3bdb00d079c",
+      "title": "रास्वपा उपसभापति नै कांग्रेसमा फर्किइन्",
+      "language": "ne",
+      "entity_count": 1,
+      "entities": [
+        {
+          "text": "रास्वपा",
+          "canonical_id": "rsp",
+          "type": "ORGANIZATION",
+          "confidence": 0.9,
+          "start": 0,
+          "end": 7,
+          "metadata": {
+            "party": null,
+            "role": "Political Party",
+            "kb_id": "e81f6327-ff26-4785-97e4-609160e1a595"
+          },
+          "source": "kb_alias"
+        }
+      ]
+    },
+    {
+      "story_id": "094f8b55-e998-4797-9f84-aea39097d274",
+      "title": "काठमाडौं-२ : रास्वपालाई सिट जोगाउने चुनौती, अरू दललाई ‘विरासत’ फर्काउने आश",
+      "language": "ne",
+      "entity_count": 1,
+      "entities": [
+        {
+          "text": "काठमाडौं",
+          "canonical_id": "kathmandu",
+          "type": "LOCATION",
+          "confidence": 1.0,
+          "start": 0,
+          "end": 8,
+          "metadata": {},
+          "source": "common"
+        }
+      ]
+    },
+    {
+      "story_id": "3a3ca840-7d8e-479e-a298-51558d7d94bc",
+      "title": "Militants kill 33 in Pakistan",
+      "language": "en",
+      "entity_count": 1,
+      "entities": [
+        {
+          "text": "Pakistan",
+          "canonical_id": "pakistan",
+          "type": "LOCATION",
+          "confidence": 1.0,
+          "start": 21,
+          "end": 29,
+          "metadata": {},
+          "source": "common"
+        }
+      ]
+    },
+    {
+      "story_id": "787b0700-9543-4427-b797-8a2ab6435ae8",
+      "title": "युवालाई रील बनाउन सिकाउँदै भारत सरकार, १५ हजार स्कुलमा कन्टेन्ट क्रिएसन ल्याब स्थापना गर्ने",
+      "language": "ne",
+      "entity_count": 2,
+      "entities": [
+        {
+          "text": "भारत",
+          "canonical_id": "india",
+          "type": "LOCATION",
+          "confidence": 0.9,
+          "start": 27,
+          "end": 31,
+          "metadata": {},
+          "source": "common"
+        },
+        {
+          "text": "काठमाडौं",
+          "canonical_id": "kathmandu",
+          "type": "LOCATION",
+          "confidence": 1.0,
+          "start": 100,
+          "end": 108,
+          "metadata": {},
+          "source": "common"
+        }
+      ]
+    },
+    {
+      "story_id": "facea955-3e2d-46d6-983c-09c4eb39dd94",
+      "title": "NEPSE slumps nearly 20 points",
+      "language": "en",
+      "entity_count": 2,
+      "entities": [
+        {
+          "text": "NEPSE",
+          "canonical_id": "nepse",
+          "type": "ORGANIZATION",
+          "confidence": 0.81,
+          "start": 0,
+          "end": 5,
+          "metadata": {},
+          "source": "common"
+        },
+        {
+          "text": "Kathmandu",
+          "canonical_id": "kathmandu",
+          "type": "LOCATION",
+          "confidence": 1.0,
+          "start": 50,
+          "end": 59,
+          "metadata": {},
+          "source": "common"
+        }
+      ]
+    },
+    {
+      "story_id": "d6379bbc-61ed-44a7-b7ed-2fcdbeec08a5",
+      "title": "साफ महिला च्याम्पियनसिपः नेपाल भुटानसँग भिड्दै",
+      "language": "ne",
+      "entity_count": 1,
+      "entities": [
+        {
+          "text": "साफ",
+          "canonical_id": "saff",
+          "type": "ORGANIZATION",
+          "confidence": 0.63,
+          "start": 0,
+          "end": 3,
+          "metadata": {},
+          "source": "common"
+        }
+      ]
+    },
+    {
+      "story_id": "e2392c50-ddc3-4585-91c8-14186a1c68d1",
+      "title": "पाकिस्तानी सुरक्षा बल र बिएलए लडाकूबीच ४० घन्टा भिडन्त",
+      "language": "ne",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "10dddfba-0272-4b85-9a63-23426256caa7",
+      "title": "रुसी सेनाले युक्रेनमा गरेको ड्रोन आक्रमणमा परी १५ जना मजदुरको ज्यान गयो, ७ घाइते",
+      "language": "ne",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "dd293466-7f8a-4ae7-9cb4-af14425c37df",
+      "title": "ठेकेदारको लापरबाहीले स्थानीय तहका प्रशासनिक भवन अलपत्र",
+      "language": "ne",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "f55da93e-6a84-46f3-af66-d20f4d1c4817",
+      "title": "इरानमाथि हमला गरे क्षेत्रीय युद्ध हुने खामेनीको चेतावनी",
+      "language": "ne",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "372dd43a-5707-4c84-b31b-97eefa572caa",
+      "title": "रिपोर्टरको सम्झनामा माघ १९ को ‘सत्ता कू’",
+      "language": "ne",
+      "entity_count": 0,
+      "entities": []
+    },
+    {
+      "story_id": "ff8a9248-0ec1-4fee-a443-66e28ef48a93",
+      "title": "नारायणी नदीमा सुरु भयो नेपालकै पहिलो लक्जरी ‘राइनो क्रुज’",
+      "language": "ne",
+      "entity_count": 0,
+      "entities": []
+    }
+  ]
+}

@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en" class="bp6-dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NepalOSINT News Mock</title>
+  <link rel="stylesheet" href="./node_modules/@blueprintjs/core/lib/css/blueprint.css">
+  <link rel="stylesheet" href="./node_modules/@blueprintjs/icons/lib/css/blueprint-icons.css">
+  <style>
+    :root {
+      --mock-bg: #0f1115;
+      --mock-surface: #151922;
+      --mock-panel: #1b2029;
+      --mock-panel-2: #202631;
+      --mock-border: rgba(255, 255, 255, 0.08);
+      --mock-border-strong: rgba(255, 255, 255, 0.14);
+      --mock-text: #f5f8fb;
+      --mock-text-soft: #adb7c4;
+      --mock-text-muted: #7d8a99;
+      --mock-blue: #4c90ff;
+      --mock-blue-soft: rgba(76, 144, 255, 0.14);
+      --mock-green: #2fb673;
+      --mock-amber: #d9a43b;
+      --mock-red: #d05757;
+      --mock-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+      --mock-radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(circle at top center, rgba(76, 144, 255, 0.09), transparent 30%),
+        linear-gradient(180deg, #0c0f14 0%, #10131a 100%);
+      color: var(--mock-text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    body {
+      padding: 22px;
+    }
+
+    .mock-shell {
+      max-width: 1540px;
+      margin: 0 auto;
+    }
+
+    .bp6-navbar {
+      background: rgba(18, 22, 30, 0.88);
+      border: 1px solid var(--mock-border);
+      border-radius: 16px;
+      box-shadow: var(--mock-shadow);
+      padding: 0 18px;
+      height: 58px;
+      backdrop-filter: blur(14px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, var(--mock-blue), #275fd6);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 13px;
+      box-shadow: 0 8px 20px rgba(76, 144, 255, 0.24);
+    }
+
+    .brand-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--mock-green);
+    }
+
+    .brand-live::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--mock-green);
+      box-shadow: 0 0 12px rgba(47, 182, 115, 0.75);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      margin-left: 28px;
+    }
+
+    .nav-tab {
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: var(--mock-text-soft);
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid transparent;
+    }
+
+    .nav-tab.active {
+      background: var(--mock-blue-soft);
+      color: #d9e7ff;
+      border-color: rgba(76, 144, 255, 0.28);
+    }
+
+    .mock-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin: 18px 0 14px;
+      padding: 14px 18px;
+      border: 1px solid var(--mock-border);
+      border-radius: 16px;
+      background: rgba(21, 26, 34, 0.88);
+      box-shadow: var(--mock-shadow);
+    }
+
+    .mock-hero-title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+
+    .mock-hero-copy {
+      color: var(--mock-text-soft);
+      font-size: 13px;
+      line-height: 1.55;
+      max-width: 820px;
+    }
+
+    .mock-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .mock-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .panel {
+      background:
+        linear-gradient(180deg, rgba(27, 32, 41, 0.98), rgba(21, 26, 34, 0.98));
+      border: 1px solid var(--mock-border);
+      border-radius: var(--mock-radius);
+      box-shadow: var(--mock-shadow);
+      overflow: hidden;
+    }
+
+    .span-8 { grid-column: span 8; }
+    .span-7 { grid-column: span 7; }
+    .span-5 { grid-column: span 5; }
+    .span-4 { grid-column: span 4; }
+    .span-12 { grid-column: span 12; }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--mock-border);
+      background: rgba(255, 255, 255, 0.01);
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--mock-text-soft);
+    }
+
+    .panel-title .bp6-icon {
+      color: var(--mock-blue);
+    }
+
+    .panel-body {
+      padding: 16px;
+    }
+
+    .hero-brief {
+      display: grid;
+      grid-template-columns: 1.25fr 0.85fr;
+      gap: 14px;
+    }
+
+    .brief-main {
+      padding: 18px;
+      border: 1px solid var(--mock-border);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at top right, rgba(76, 144, 255, 0.12), transparent 34%),
+        linear-gradient(180deg, rgba(29, 36, 48, 0.98), rgba(21, 26, 34, 0.98));
+    }
+
+    .eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #8bb6ff;
+      margin-bottom: 10px;
+    }
+
+    .brief-headline {
+      font-size: 26px;
+      line-height: 1.16;
+      letter-spacing: -0.03em;
+      margin: 0 0 12px;
+    }
+
+    .brief-summary {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #d3dbe6;
+      margin-bottom: 16px;
+    }
+
+    .signal-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .signal-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      color: var(--mock-text-soft);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .signal-pill strong {
+      color: var(--mock-text);
+      font-weight: 700;
+    }
+
+    .brief-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-top: 14px;
+      border-top: 1px solid var(--mock-border);
+      color: var(--mock-text-muted);
+      font-size: 12px;
+    }
+
+    .brief-side {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .mini-card {
+      padding: 16px;
+      border: 1px solid var(--mock-border);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.015);
+      min-height: 124px;
+    }
+
+    .mini-card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--mock-text-muted);
+      margin-bottom: 12px;
+    }
+
+    .mini-kpi {
+      font-size: 30px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin-bottom: 6px;
+    }
+
+    .mini-copy {
+      color: var(--mock-text-soft);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .status-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .status-row {
+      display: grid;
+      grid-template-columns: 132px 1fr;
+      gap: 12px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .status-row strong {
+      color: var(--mock-text-soft);
+      font-weight: 600;
+    }
+
+    .story-list,
+    .tracker-list,
+    .check-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .story-card,
+    .tracker-card,
+    .check-card {
+      border: 1px solid var(--mock-border);
+      background: rgba(255, 255, 255, 0.015);
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .story-card.featured {
+      background:
+        radial-gradient(circle at top right, rgba(76, 144, 255, 0.09), transparent 45%),
+        rgba(255, 255, 255, 0.02);
+      border-color: rgba(76, 144, 255, 0.22);
+    }
+
+    .story-meta,
+    .tracker-meta,
+    .check-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+      color: var(--mock-text-muted);
+      font-size: 11px;
+    }
+
+    .story-title,
+    .tracker-title,
+    .check-title {
+      font-size: 17px;
+      line-height: 1.4;
+      letter-spacing: -0.02em;
+      margin: 0 0 8px;
+    }
+
+    .story-snippet,
+    .tracker-snippet,
+    .check-snippet {
+      color: var(--mock-text-soft);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .source-stack {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .source-tag {
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--mock-text-soft);
+      font-size: 11px;
+    }
+
+    .priority-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.06);
+      margin-top: 12px;
+    }
+
+    .priority-bar > span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--mock-blue), #7aaeff);
+    }
+
+    .province-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .province-table thead th {
+      text-align: left;
+      padding: 0 0 10px;
+      border-bottom: 1px solid var(--mock-border);
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--mock-text-muted);
+    }
+
+    .province-table tbody td {
+      padding: 14px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    .province-name {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .risk-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .risk-high { color: var(--mock-red); background: rgba(208, 87, 87, 0.12); }
+    .risk-medium { color: var(--mock-amber); background: rgba(217, 164, 59, 0.12); }
+    .risk-low { color: var(--mock-green); background: rgba(47, 182, 115, 0.12); }
+    .risk-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: currentColor;
+    }
+
+    .trend-good { color: var(--mock-green); }
+    .trend-flat { color: var(--mock-text-soft); }
+    .trend-bad { color: var(--mock-red); }
+
+    .muted {
+      color: var(--mock-text-muted);
+    }
+
+    .bp6-tag {
+      border-radius: 999px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .tag-blue { background: rgba(76, 144, 255, 0.14); color: #8eb8ff; }
+    .tag-green { background: rgba(47, 182, 115, 0.14); color: #7ddaa8; }
+    .tag-amber { background: rgba(217, 164, 59, 0.14); color: #ebc778; }
+    .tag-red { background: rgba(208, 87, 87, 0.14); color: #ed9999; }
+    .tag-neutral { background: rgba(255, 255, 255, 0.06); color: #c3ccd8; }
+
+    .head-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .head-actions .bp6-button {
+      border-radius: 10px;
+    }
+
+    @media (max-width: 1200px) {
+      .span-8,
+      .span-7,
+      .span-5,
+      .span-4 {
+        grid-column: span 12;
+      }
+
+      .hero-brief {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 12px;
+      }
+
+      .bp6-navbar {
+        height: auto;
+        padding: 12px;
+      }
+
+      .bp6-navbar-group {
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .nav-tabs {
+        margin-left: 0;
+      }
+
+      .mock-hero {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .status-row {
+        grid-template-columns: 1fr;
+        gap: 4px;
+      }
+    }
+  </style>
+</head>
+<body class="bp6-dark">
+  <div class="mock-shell">
+    <div class="bp6-navbar">
+      <div class="bp6-navbar-group bp6-align-left">
+        <div class="brand">
+          <span class="brand-mark">N</span>
+          <div>
+            <div>NepalOSINT</div>
+            <div class="brand-live">Live</div>
+          </div>
+        </div>
+        <div class="nav-tabs">
+          <div class="nav-tab active">News</div>
+          <div class="nav-tab">Accountability</div>
+          <div class="nav-tab">Elections</div>
+        </div>
+      </div>
+      <div class="bp6-navbar-group bp6-align-right">
+        <button class="bp6-button bp6-minimal bp6-small">
+          <span class="bp6-icon bp6-icon-search"></span>
+          Search
+        </button>
+        <span class="bp6-tag tag-green">Operational</span>
+      </div>
+    </div>
+
+    <div class="mock-hero">
+      <div>
+        <div class="mock-hero-title">News Workspace Mock</div>
+        <div class="mock-hero-copy">
+          Same content and same dashboard capabilities, but with a calmer hierarchy: one lead brief, one clean feed, one verification panel, one narrative tracker, and one readable provincial table.
+        </div>
+      </div>
+      <div class="mock-toolbar">
+        <button class="bp6-button bp6-intent-primary">Approve direction</button>
+        <button class="bp6-button bp6-minimal">Compare with current</button>
+      </div>
+    </div>
+
+    <div class="mock-grid">
+      <section class="panel span-8">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="bp6-icon bp6-icon-flash"></span>
+            National Brief
+          </div>
+          <div class="head-actions">
+            <span class="bp6-tag tag-blue">Fresh 18m</span>
+            <span class="bp6-tag tag-neutral">224 stories reviewed</span>
+          </div>
+        </div>
+        <div class="panel-body hero-brief">
+          <div class="brief-main">
+            <div class="eyebrow">Operational summary</div>
+            <h1 class="brief-headline">Election legitimacy pressure and western violence patterns remain the two dominant national signals.</h1>
+            <div class="brief-summary">
+              Kathmandu, Sarahi, and Parsa continue to anchor the ballot-invalidity legitimacy narrative, while Surkhet sustains a separate high-sensitivity violence thread. The system should surface these as the two lead reading paths, rather than making users decode them across multiple widgets.
+            </div>
+            <div class="signal-row">
+              <span class="signal-pill"><strong>Priority</strong> Election legitimacy</span>
+              <span class="signal-pill"><strong>Escalation</strong> Surkhet violence</span>
+              <span class="signal-pill"><strong>Positive</strong> Gandaki aviation recovery</span>
+            </div>
+            <div class="brief-footer">
+              <span>Updated Mar 10, 2026 at 12:08</span>
+              <button class="bp6-button bp6-minimal bp6-small">Open full brief</button>
+            </div>
+          </div>
+          <div class="brief-side">
+            <div class="mini-card">
+              <div class="mini-card-title">Current Status</div>
+              <div class="mini-kpi" style="color: var(--mock-amber);">Guarded</div>
+              <div class="mini-copy">National conditions remain stable overall, but two narratives need senior attention.</div>
+            </div>
+            <div class="mini-card">
+              <div class="mini-card-title">Analyst Focus</div>
+              <div class="status-list">
+                <div class="status-row"><strong>Top districts</strong><span>Kathmandu, Sarahi, Parsa, Surkhet</span></div>
+                <div class="status-row"><strong>Story velocity</strong><span>Elevated in political and security clusters</span></div>
+                <div class="status-row"><strong>Recommended action</strong><span>Keep the lead story lane focused on 3 to 5 threads only</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel span-4">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="bp6-icon bp6-icon-endorsed"></span>
+            Verification Board
+          </div>
+          <div class="head-actions">
+            <span class="bp6-tag tag-green">2 verified</span>
+            <span class="bp6-tag tag-red">1 disputed</span>
+          </div>
+        </div>
+        <div class="panel-body check-list">
+          <article class="check-card">
+            <div class="check-meta">
+              <span class="bp6-tag tag-green">Mostly true</span>
+              <span>75% confidence</span>
+            </div>
+            <h3 class="check-title">UML popularity record claim is broadly corroborated, but slogan attribution remains weak.</h3>
+            <div class="check-snippet">Keep the verdict visible, but compress the explanation into a short editorial note. This should read like an analyst decision, not a long evidence dump.</div>
+          </article>
+          <article class="check-card">
+            <div class="check-meta">
+              <span class="bp6-tag tag-red">Disputed</span>
+              <span>Source conflict</span>
+            </div>
+            <h3 class="check-title">Reported ministerial decision timing still varies across primary and secondary reports.</h3>
+            <div class="check-snippet">Use this panel for unresolved claims only, so it stays high signal.</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel span-7">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="bp6-icon bp6-icon-feed"></span>
+            Live Feed
+          </div>
+          <div class="head-actions">
+            <span class="bp6-tag tag-blue">Curated 6</span>
+            <button class="bp6-button bp6-minimal bp6-small">Filters</button>
+          </div>
+        </div>
+        <div class="panel-body story-list">
+          <article class="story-card featured">
+            <div class="story-meta">
+              <span class="bp6-tag tag-amber">High</span>
+              <span class="bp6-tag tag-neutral">Political</span>
+              <span>Setopati</span>
+              <span>6m ago</span>
+            </div>
+            <h3 class="story-title">Election Commission report now shifts into cabinet discussion, moving legitimacy pressure from counting rooms into government response.</h3>
+            <div class="story-snippet">A featured top story should get a short analytical sentence, not just a headline. That gives the page professional editorial weight.</div>
+            <div class="source-stack">
+              <span class="source-tag">2 corroborating sources</span>
+              <span class="source-tag">policy impact likely</span>
+            </div>
+          </article>
+
+          <article class="story-card">
+            <div class="story-meta">
+              <span class="bp6-tag tag-amber">Medium</span>
+              <span class="bp6-tag tag-neutral">Political</span>
+              <span>Gorkhapatra</span>
+              <span>13m ago</span>
+            </div>
+            <h3 class="story-title">Government signals clearer framework on provincial restructuring.</h3>
+            <div class="story-snippet">Keep secondary stories to a compact, readable row-card pattern with one sentence only.</div>
+          </article>
+
+          <article class="story-card">
+            <div class="story-meta">
+              <span class="bp6-tag tag-red">High</span>
+              <span class="bp6-tag tag-neutral">Security</span>
+              <span>Khabarhub</span>
+              <span>16m ago</span>
+            </div>
+            <h3 class="story-title">Surkhet homicide case sustains the western fatal violence narrative into another cycle.</h3>
+            <div class="story-snippet">The point is to reduce badge clutter and increase readable hierarchy.</div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel span-5">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="bp6-icon bp6-icon-heat-grid"></span>
+            Narrative Tracker
+          </div>
+          <div class="head-actions">
+            <span class="bp6-tag tag-amber">5 priority</span>
+          </div>
+        </div>
+        <div class="panel-body tracker-list">
+          <article class="tracker-card">
+            <div class="tracker-meta">
+              <span class="bp6-tag tag-red">#1</span>
+              <span>Political legitimacy</span>
+              <span>Updated 4h</span>
+            </div>
+            <h3 class="tracker-title">Abnormal invalid ballots are becoming the master story that ties several provinces together.</h3>
+            <div class="tracker-snippet">Rank, label, one-line explanation, source depth. Nothing else.</div>
+            <div class="priority-bar"><span style="width: 86%;"></span></div>
+          </article>
+
+          <article class="tracker-card">
+            <div class="tracker-meta">
+              <span class="bp6-tag tag-amber">#2</span>
+              <span>Public health</span>
+              <span>Updated 4h</span>
+            </div>
+            <h3 class="tracker-title">Measles response in Baglung is climbing because it now combines vaccination, local trust, and remote access friction.</h3>
+            <div class="priority-bar"><span style="width: 59%; background: linear-gradient(90deg, #d9a43b, #edc470);"></span></div>
+          </article>
+
+          <article class="tracker-card">
+            <div class="tracker-meta">
+              <span class="bp6-tag tag-blue">#3</span>
+              <span>Political</span>
+              <span>Updated 5h</span>
+            </div>
+            <h3 class="tracker-title">Sapta ri result disputes remain active, but should sit below the cross-province legitimacy story.</h3>
+            <div class="priority-bar"><span style="width: 42%;"></span></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel span-12">
+        <div class="panel-head">
+          <div class="panel-title">
+            <span class="bp6-icon bp6-icon-map-marker"></span>
+            Provincial Pulse
+          </div>
+          <div class="head-actions">
+            <span class="bp6-tag tag-neutral">7 provinces</span>
+            <span class="bp6-tag tag-blue">One-line summaries</span>
+          </div>
+        </div>
+        <div class="panel-body">
+          <table class="province-table">
+            <thead>
+              <tr>
+                <th style="width: 160px;">Province</th>
+                <th style="width: 140px;">Risk</th>
+                <th style="width: 120px;">Trend</th>
+                <th style="width: 110px;">Signals</th>
+                <th>Summary</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="province-name">Koshi</div><div class="muted">5 districts active</div></td>
+                <td><span class="risk-pill risk-medium"><span class="risk-dot"></span>Medium</span></td>
+                <td><span class="trend-flat">Stable</span></td>
+                <td>2 anomalies</td>
+                <td>A long-tail criminal justice case has become the lead provincial signal, but it should sit beneath the national legitimacy lane.</td>
+              </tr>
+              <tr>
+                <td><div class="province-name">Madhesh</div><div class="muted">10 districts active</div></td>
+                <td><span class="risk-pill risk-medium"><span class="risk-dot"></span>Medium</span></td>
+                <td><span class="trend-bad">Worsening</span></td>
+                <td>3 anomalies</td>
+                <td>Sarlahi, Parsa, and Rautahat keep ballot-invalidity and opposition trust issues elevated, making this the strongest provincial risk row.</td>
+              </tr>
+              <tr>
+                <td><div class="province-name">Bagmati</div><div class="muted">60 stories tracked</div></td>
+                <td><span class="risk-pill risk-high"><span class="risk-dot"></span>High</span></td>
+                <td><span class="trend-flat">Stable</span></td>
+                <td>3 anomalies</td>
+                <td>Kathmandu air quality and national political spillover remain the two main watch items; both deserve cleaner display than the current dense row design.</td>
+              </tr>
+              <tr>
+                <td><div class="province-name">Gandaki</div><div class="muted">5 stories tracked</div></td>
+                <td><span class="risk-pill risk-low"><span class="risk-dot"></span>Low</span></td>
+                <td><span class="trend-good">Improving</span></td>
+                <td>2 anomalies</td>
+                <td>Pokhara-Jomsom air service recovery is the main positive signal and can be used to balance the page visually.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Home, Vote, AlertTriangle, SlidersHorizontal } from 'lucide-react';
+import { Home, Landmark, AlertTriangle, SlidersHorizontal } from 'lucide-react';
 import { useDashboardStore } from '../../stores/dashboardStore';
 
 export const MobileBottomNav = memo(function MobileBottomNav() {
@@ -17,23 +17,23 @@ export const MobileBottomNav = memo(function MobileBottomNav() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       <button
-        onClick={() => handlePreset('consumer')}
+        onClick={() => handlePreset('news')}
         className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 transition-colors ${
-          activePreset === 'consumer' ? 'text-[#2D72D2]' : 'text-[#738091]'
+          activePreset === 'news' ? 'text-[#2D72D2]' : 'text-[#738091]'
         }`}
       >
-        <Home size={20} strokeWidth={activePreset === 'consumer' ? 2.2 : 1.8} />
-        <span className="text-[10px] font-medium">Home</span>
+        <Home size={20} strokeWidth={activePreset === 'news' ? 2.2 : 1.8} />
+        <span className="text-[10px] font-medium">News</span>
       </button>
 
       <button
-        onClick={() => handlePreset('elections')}
+        onClick={() => handlePreset('parliament')}
         className={`flex flex-1 flex-col items-center gap-0.5 py-1.5 transition-colors ${
-          activePreset === 'elections' ? 'text-[#2D72D2]' : 'text-[#738091]'
+          activePreset === 'parliament' ? 'text-[#2D72D2]' : 'text-[#738091]'
         }`}
       >
-        <Vote size={20} strokeWidth={activePreset === 'elections' ? 2.2 : 1.8} />
-        <span className="text-[10px] font-medium">Elections</span>
+        <Landmark size={20} strokeWidth={activePreset === 'parliament' ? 2.2 : 1.8} />
+        <span className="text-[10px] font-medium">Accountability</span>
       </button>
 
       <button

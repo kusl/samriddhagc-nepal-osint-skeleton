@@ -86,7 +86,7 @@ export function useNewsFeed(options: UseNewsFeedOptions = {}) {
       if (token) {
         headers['Authorization'] = `Bearer ${token}`
       }
-      const res = await fetch('/api/v1/stories/recent?hours=6&limit=120', { headers })
+      const res = await fetch('/api/v1/stories/recent?hours=6&limit=200', { headers })
       if (!res.ok) return null
       const data = (await res.json()) as NewsItem[]
       if (!Array.isArray(data)) return null

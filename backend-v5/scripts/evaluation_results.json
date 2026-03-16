@@ -1,0 +1,143 @@
+{
+  "stats": {
+    "total": 3731,
+    "recent_7d": 3731,
+    "severity_distribution": {
+      "medium": 3087,
+      "critical": 319,
+      "high": 318,
+      "low": 7
+    },
+    "category_distribution": {
+      "political": 1569,
+      "disaster": 227,
+      "security": 330,
+      "social": 319,
+      "null": 636,
+      "economic": 650
+    },
+    "language_distribution": {
+      "en": 576,
+      "ne": 3155
+    }
+  },
+  "analysis": {
+    "total_evaluated": 100,
+    "errors": 89,
+    "language_accuracy": 1.0,
+    "language_total": 100,
+    "severity_exact_accuracy": 0.68,
+    "severity_close_accuracy": 0.97,
+    "severity_total": 100,
+    "severity_confusion": {
+      "medium": {
+        "medium": 62,
+        "critical": 1,
+        "high": 7,
+        "low": 15
+      },
+      "critical": {
+        "critical": 4,
+        "high": 4,
+        "medium": 1
+      },
+      "high": {
+        "medium": 3,
+        "high": 2,
+        "low": 1
+      }
+    },
+    "entities_mean": 1.08,
+    "entities_median": 1.0,
+    "entities_with_any": 57,
+    "entity_type_distribution": {
+      "ORGANIZATION": 27,
+      "LOCATION": 62,
+      "PERSON": 19
+    }
+  },
+  "issues": [
+    {
+      "type": "severity_mismatch",
+      "pattern": "medium\u2192low",
+      "count": 15,
+      "actual": "medium",
+      "predicted": "low",
+      "sample_texts": [
+        "\u0928\u093e\u0930\u093e\u092f\u0923\u0940 \u0928\u0926\u0940\u092e\u093e \u0938\u0941\u0930\u0941 \u092d\u092f\u094b \u0928\u0947\u092a\u093e\u0932\u0915\u0948 \u092a\u0939\u093f\u0932\u094b \u0932\u0915\u094d\u091c\u0930\u0940 \u2018\u0930\u093e\u0907\u0928\u094b \u0915\u094d\u0930\u0941\u091c\u2019",
+        "\u091f\u093f\u092d\u0940\u092c\u093e\u091f \u0920\u0942\u0932\u094b \u092a\u0930\u094d\u0926\u093e\u092e\u093e \u092a\u094d\u0930\u0935\u0947\u0936 \u0917\u0930\u094d\u0926\u0948 \u090f\u0915\u0924\u093e \u0915\u092a\u0942\u0930\u0915\u094b \u0938\u0941\u092a\u0930\u0939\u093f\u091f \u0936\u094b '\u0928\u093e\u0917\u093f\u0928'",
+        "\u0930\u093e\u0937\u094d\u091f\u094d\u0930\u092a\u0924\u093f \u091c\u093e\u092a\u093e\u0928\u092e\u093e"
+      ]
+    },
+    {
+      "type": "severity_mismatch",
+      "pattern": "medium\u2192high",
+      "count": 7,
+      "actual": "medium",
+      "predicted": "high",
+      "sample_texts": [
+        "\u0920\u0947\u0915\u0947\u0926\u093e\u0930\u0915\u094b \u0932\u093e\u092a\u0930\u092c\u093e\u0939\u0940\u0932\u0947 \u0938\u094d\u0925\u093e\u0928\u0940\u092f \u0924\u0939\u0915\u093e \u092a\u094d\u0930\u0936\u093e\u0938\u0928\u093f\u0915 \u092d\u0935\u0928 \u0905\u0932\u092a\u0924\u094d\u0930",
+        "\u0928\u093e\u0930\u093e\u092f\u0923\u0940 \u0928\u0926\u0940\u092e\u093e \u0938\u0941\u0930\u0941 \u092d\u092f\u094b \u0928\u0947\u092a\u093e\u0932\u0915\u0948 \u092a\u0939\u093f\u0932\u094b \u0932\u0915\u094d\u091c\u0930\u0940 \u2018\u0930\u093e\u0907\u0928\u094b \u0915\u094d\u0930\u0941\u091c\u2019",
+        "\u0916\u0932\u0928\u093e\u092f\u0915 \u092c\u0928\u0947\u0930 \u0907\u0924\u093f\u0939\u093e\u0938\u0915\u094b \u092a\u093e\u0928\u093e\u092e\u093e \u0939\u0930\u093e\u0909\u0928 \u091a\u093e\u0939\u0928\u094d\u0928\u0901- \u092a\u094d\u0930\u091a\u0923\u094d\u0921"
+      ]
+    },
+    {
+      "type": "severity_mismatch",
+      "pattern": "critical\u2192high",
+      "count": 4,
+      "actual": "critical",
+      "predicted": "high",
+      "sample_texts": [
+        "\u092c\u0932\u0941\u091a\u093f\u0938\u094d\u0924\u093e\u0928\u092e\u093e \u0918\u093e\u0924\u0915 \u0917\u094b\u0932\u0940\u0915\u093e\u0923\u094d\u0921 \u0930 \u092c\u092e \u0906\u0915\u094d\u0930\u092e\u0923\u0903 \u0939\u093e\u0932\u0938\u092e\u094d\u092e \u0967 \u0938\u092f \u096f\u0969 \u091c\u0928\u093e\u0915\u094b \u092e\u0943\u0924\u094d\u092f\u0941",
+        "\u0935\u093f\u0915\u094d\u0937\u093f\u092a\u094d\u0924 \u0915\u092e\u0932\u093e : \u091c\u092c \u092e\u093e\u092a\u0938\u0947 \u0917\u0930\u0947\u0915\u093e \u0936\u094d\u0930\u0940\u092e\u093e\u0928\u094d\u200c\u0932\u0947 \u0924\u0940\u0928\u092e\u0939\u093f\u0928\u0947 \u091b\u094b\u0930\u094b \u0928\u093f\u092e\u094b\u0920\u0947",
+        "\u091f\u094d\u0930\u0915\u0932\u0947 \u0938\u094d\u0915\u0941\u091f\u0930\u0932\u093e\u0908 \u0920\u0915\u094d\u0915\u0930 \u0926\u093f\u0901\u0926\u093e \u091b\u094b\u0930\u093e\u0915\u094b \u092e\u0943\u0924\u094d\u092f\u0941, \u092c\u093e\u092c\u0941 \u0918\u093e\u0907\u0924\u0947"
+      ]
+    },
+    {
+      "type": "severity_mismatch",
+      "pattern": "high\u2192medium",
+      "count": 3,
+      "actual": "high",
+      "predicted": "medium",
+      "sample_texts": [
+        "\u0930\u093f\u092a\u094b\u0930\u094d\u091f\u0930\u0915\u094b \u0938\u092e\u094d\u091d\u0928\u093e\u092e\u093e \u092e\u093e\u0918 \u0967\u096f \u0915\u094b \u2018\u0938\u0924\u094d\u0924\u093e \u0915\u0942\u2019",
+        "\u0925\u093e\u0930\u0942 \u092e\u0930\u094d\u092e \u090f\u0915\u093e\u0924\u093f\u0930, \u0928\u0947\u0924\u093e \u0905\u0930\u094d\u0915\u093e\u0924\u093f\u0930",
+        "As polls near, Oli sounds softer on Gen Z uprising"
+      ]
+    },
+    {
+      "type": "severity_mismatch",
+      "pattern": "medium\u2192critical",
+      "count": 1,
+      "actual": "medium",
+      "predicted": "critical",
+      "sample_texts": [
+        "\u092a\u093e\u0915\u093f\u0938\u094d\u0924\u093e\u0928\u0940 \u0938\u0941\u0930\u0915\u094d\u0937\u093e \u092c\u0932 \u0930 \u092c\u093f\u090f\u0932\u090f \u0932\u0921\u093e\u0915\u0942\u092c\u0940\u091a \u096a\u0966 \u0918\u0928\u094d\u091f\u093e \u092d\u093f\u0921\u0928\u094d\u0924"
+      ]
+    },
+    {
+      "type": "severity_mismatch",
+      "pattern": "critical\u2192medium",
+      "count": 1,
+      "actual": "critical",
+      "predicted": "medium",
+      "sample_texts": [
+        "\u0924\u0940\u0928 \u092b\u0930\u094d\u092e\u0932\u093e\u0908 \u0969\u0966 \u0939\u091c\u093e\u0930 \u091c\u0930\u093f\u0935\u093e\u0928\u093e"
+      ]
+    },
+    {
+      "type": "severity_mismatch",
+      "pattern": "high\u2192low",
+      "count": 1,
+      "actual": "high",
+      "predicted": "low",
+      "sample_texts": [
+        "\u0938\u092e\u094d\u092c\u0928\u094d\u0927\u092e\u093e \u0926\u0942\u0930\u0940\u0915\u094b \u0915\u093e\u0930\u0923 \u092c\u0928\u094d\u0926\u0948 \u091b \u0939\u094d\u0935\u093e\u091f\u094d\u0938\u090f\u092a\u0915\u094b \u2018\u0932\u0915 \u091a\u094d\u092f\u093e\u091f\u094d\u0938\u2019 \u092b\u093f\u091a\u0930"
+      ]
+    }
+  ],
+  "suggestions": [
+    "\u26a0\ufe0f Missing high-severity classification (3 cases). Review the high-severity examples for better coverage.",
+    "\u26a0\ufe0f Under-predicting critical severity (1 cases). Consider adding more critical examples to SEVERITY_EXAMPLES or lowering severity_temperature."
+  ]
+}

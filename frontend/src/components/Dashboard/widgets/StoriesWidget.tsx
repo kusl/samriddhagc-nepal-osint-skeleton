@@ -228,132 +228,94 @@ export const StoriesWidget = memo(function StoriesWidget() {
       badge={historicalTotal}
       actions={<span className="widget-action active">History</span>}
     >
-      <div style={{ display: 'flex', gap: 6, padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', overflowX: 'auto' }}>
+      {/* Single filter row */}
+      <div style={{ display: 'flex', gap: 3, padding: '4px 8px', borderBottom: '1px solid var(--border-subtle)', alignItems: 'center', flexWrap: 'wrap' }}>
         {(['all', 'economic', 'political', 'security', 'social'] as StoryCategoryFilter[]).map((item) => (
           <button
             key={item}
             className={`widget-action ${historicalCategory === item ? 'active' : ''}`}
             onClick={() => setHistoricalCategory(item)}
-            style={{ fontSize: '10px', textTransform: 'capitalize', whiteSpace: 'nowrap' }}
+            style={{ fontSize: '8px', textTransform: 'capitalize', whiteSpace: 'nowrap', padding: '1px 5px' }}
           >
             {item}
           </button>
         ))}
-      </div>
-
-      <div style={{ display: 'flex', gap: 8, padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', flexWrap: 'wrap' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-muted)' }}>
-          From
-          <input
-            type="date"
-            value={fromDate}
-            onChange={(event) => setFromDate(event.target.value)}
-            style={{
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-primary)',
-              borderRadius: 4,
-              fontSize: 10,
-              padding: '3px 6px',
-            }}
-          />
-        </label>
-
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 10, color: 'var(--text-muted)' }}>
-          To
-          <input
-            type="date"
-            value={toDate}
-            onChange={(event) => setToDate(event.target.value)}
-            style={{
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-primary)',
-              borderRadius: 4,
-              fontSize: 10,
-              padding: '3px 6px',
-            }}
-          />
-        </label>
-
+        <div style={{ width: 1, height: 10, background: 'var(--border-subtle)' }} />
+        <input
+          type="date"
+          value={fromDate}
+          onChange={(event) => setFromDate(event.target.value)}
+          title="From date"
+          style={{
+            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+            color: 'var(--text-primary)', borderRadius: 3, fontSize: 8, padding: '1px 3px', width: 95,
+          }}
+        />
+        <input
+          type="date"
+          value={toDate}
+          onChange={(event) => setToDate(event.target.value)}
+          title="To date"
+          style={{
+            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+            color: 'var(--text-primary)', borderRadius: 3, fontSize: 8, padding: '1px 3px', width: 95,
+          }}
+        />
         <button
           type="button"
           className={`widget-action ${multiSourceOnly ? 'active' : ''}`}
           onClick={() => setMultiSourceOnly((prev) => !prev)}
-          style={{ fontSize: 10 }}
+          style={{ fontSize: 8, padding: '1px 4px' }}
         >
-          Multi-Source Only
+          Multi
         </button>
-
         <button
           type="button"
           className="widget-action"
           onClick={clearFilters}
-          style={{ fontSize: 10 }}
+          style={{ fontSize: 8, padding: '1px 4px' }}
         >
           Clear
         </button>
-      </div>
-
-      <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <select
-            onChange={(event) => {
-              handleAddSource(event.target.value);
-              event.currentTarget.value = '';
-            }}
-            defaultValue=""
+        <div style={{ width: 1, height: 10, background: 'var(--border-subtle)' }} />
+        <select
+          onChange={(event) => {
+            handleAddSource(event.target.value);
+            event.currentTarget.value = '';
+          }}
+          defaultValue=""
+          style={{
+            background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+            color: 'var(--text-primary)', borderRadius: 3, fontSize: 8, padding: '1px 3px', maxWidth: 130,
+          }}
+        >
+          <option value="">+ Source ({sourceOptions.length})</option>
+          {availableSources.map((source) => (
+            <option key={source.source_id} value={source.source_id}>
+              {source.source_name} ({source.story_count})
+            </option>
+          ))}
+        </select>
+        {selectedSources.map((source) => (
+          <span
+            key={source.source_id}
             style={{
-              flex: 1,
-              background: 'var(--bg-surface)',
-              border: '1px solid var(--border-subtle)',
-              color: 'var(--text-primary)',
-              borderRadius: 4,
-              fontSize: 10,
-              padding: '4px 6px',
+              display: 'inline-flex', alignItems: 'center', gap: 2,
+              fontSize: 7, padding: '1px 4px', borderRadius: 3,
+              border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)',
             }}
           >
-            <option value="">+ Add source filter</option>
-            {availableSources.map((source) => (
-              <option key={source.source_id} value={source.source_id}>
-                {source.source_name} ({source.story_count})
-              </option>
-            ))}
-          </select>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>
-            {sourcesQuery.isLoading ? 'Loading sources...' : `${sourceOptions.length} sources`}
+            {source.source_name}
+            <button
+              type="button"
+              onClick={() => handleRemoveSource(source.source_id)}
+              style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              title={`Remove ${source.source_name}`}
+            >
+              <X size={7} />
+            </button>
           </span>
-        </div>
-
-        {selectedSources.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-            {selectedSources.map((source) => (
-              <span
-                key={source.source_id}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontSize: 10,
-                  padding: '2px 6px',
-                  borderRadius: 999,
-                  border: '1px solid var(--border-subtle)',
-                  background: 'var(--bg-elevated)',
-                }}
-              >
-                {source.source_name}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveSource(source.source_id)}
-                  style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}
-                  title={`Remove ${source.source_name}`}
-                >
-                  <X size={10} />
-                </button>
-              </span>
-            ))}
-          </div>
-        )}
+        ))}
       </div>
 
       {!historicalStories.length ? (

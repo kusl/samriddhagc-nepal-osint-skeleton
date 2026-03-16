@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Parliament Analysis Preview</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #111418; color: #F6F7F9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 20px; }
+.container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.full-width { grid-column: 1 / -1; }
+.card { background: #1C2127; border: 1px solid #404854; border-radius: 8px; overflow: hidden; }
+.card-header { padding: 12px 16px; border-bottom: 1px solid #404854; display: flex; align-items: center; gap: 8px; }
+.card-header h2 { font-size: 14px; font-weight: 600; }
+.card-header .badge { font-size: 10px; background: rgba(45,114,210,0.15); color: #2D72D2; padding: 2px 8px; border-radius: 10px; }
+
+/* KPI */
+.kpi-row { display: flex; padding: 12px 16px; border-bottom: 1px solid #404854; gap: 0; }
+.kpi { flex: 1; text-align: center; }
+.kpi-value { font-size: 22px; font-weight: 700; }
+.kpi-label { font-size: 9px; color: #8A9BA8; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+
+/* Scoreboard */
+.score-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #252A31; transition: background 0.15s; }
+.score-row:hover { background: #252A31; }
+.rank { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+.rank-1 { background: rgba(255,215,0,0.15); color: #FFD700; border: 1px solid rgba(255,215,0,0.3); }
+.rank-2 { background: rgba(192,192,192,0.15); color: #C0C0C0; border: 1px solid rgba(192,192,192,0.3); }
+.rank-3 { background: rgba(205,127,50,0.15); color: #CD7F32; border: 1px solid rgba(205,127,50,0.3); }
+.rank-n { background: #252A31; color: #8A9BA8; border: 1px solid #404854; }
+.score-info { flex: 1; min-width: 0; }
+.score-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.score-meta { font-size: 10px; color: #8A9BA8; margin-top: 2px; display: flex; gap: 8px; }
+.score-bars { margin-top: 4px; display: flex; flex-direction: column; gap: 3px; }
+.bar-row { display: flex; align-items: center; gap: 6px; }
+.bar-label { font-size: 8px; color: #8A9BA8; width: 24px; text-transform: uppercase; }
+.bar-track { flex: 1; height: 4px; background: #2F343C; border-radius: 2px; }
+.bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+.score-value { font-size: 18px; font-weight: 700; color: #2D72D2; flex-shrink: 0; width: 36px; text-align: right; }
+
+/* Session */
+.session { padding: 14px 16px; border-bottom: 1px solid #252A31; cursor: pointer; transition: background 0.15s; }
+.session:hover { background: #252A31; }
+.session-header { display: flex; justify-content: space-between; align-items: center; }
+.session-title { font-size: 13px; font-weight: 600; }
+.session-date { font-size: 11px; color: #8A9BA8; }
+.session-summary { font-size: 11px; color: #ABB3BF; line-height: 1.6; margin-top: 8px; padding: 8px 10px; background: rgba(45,114,210,0.04); border-left: 3px solid #2D72D2; border-radius: 4px; }
+.session-meta { display: flex; gap: 10px; margin-top: 4px; font-size: 10px; color: #8A9BA8; }
+.tag { font-size: 9px; padding: 2px 8px; border-radius: 3px; font-weight: 600; display: inline-block; margin: 2px; }
+.tag-topic { background: rgba(45,114,210,0.1); color: #4C9AFF; }
+.tag-analyzed { background: rgba(35,133,81,0.15); color: #3DCC91; }
+.tag-pending { background: rgba(200,118,25,0.15); color: #FBB360; }
+
+/* Agenda */
+.agenda { padding: 10px 16px; border-bottom: 1px solid #252A31; }
+.agenda-header { display: flex; align-items: center; gap: 8px; }
+.agenda-topic { font-size: 12px; font-weight: 600; flex: 1; }
+.intensity { font-size: 8px; padding: 2px 6px; border-radius: 3px; font-weight: 700; text-transform: uppercase; }
+.intensity-high { background: rgba(205,66,70,0.15); color: #FF6B6B; }
+.intensity-medium { background: rgba(200,118,25,0.15); color: #FBB360; }
+.intensity-low { background: rgba(35,133,81,0.15); color: #3DCC91; }
+.outcome { font-size: 8px; padding: 2px 6px; border-radius: 3px; font-weight: 700; text-transform: uppercase; }
+.outcome-passed { background: rgba(35,133,81,0.15); color: #3DCC91; }
+.outcome-rejected { background: rgba(205,66,70,0.15); color: #FF6B6B; }
+.outcome-debated { background: rgba(100,100,100,0.15); color: #8A9BA8; }
+.outcome-deferred { background: rgba(200,118,25,0.15); color: #FBB360; }
+.agenda-desc { font-size: 10px; color: #ABB3BF; line-height: 1.5; margin-top: 6px; }
+.agenda-sides { display: flex; gap: 16px; margin-top: 6px; font-size: 9px; }
+.side-for { color: #3DCC91; }
+.side-against { color: #FF6B6B; }
+
+.party-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; flex-shrink: 0; }
+
+.tabs { display: flex; border-bottom: 1px solid #404854; }
+.tab { flex: 1; padding: 10px; text-align: center; font-size: 12px; cursor: pointer; border-bottom: 2px solid transparent; color: #8A9BA8; transition: all 0.15s; }
+.tab.active { color: #F6F7F9; border-bottom-color: #2D72D2; background: #252A31; font-weight: 600; }
+.tab:hover { color: #F6F7F9; }
+
+.loading { text-align: center; padding: 40px; color: #8A9BA8; }
+h1 { font-size: 20px; margin-bottom: 16px; }
+h1 span { color: #2D72D2; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="full-width">
+    <h1>🏛️ Parliamentary <span>Analysis Dashboard</span></h1>
+  </div>
+
+  <!-- KPIs -->
+  <div class="full-width card">
+    <div class="kpi-row" id="kpis">
+      <div class="kpi"><div class="kpi-value" style="color:#2D72D2">—</div><div class="kpi-label">Sessions</div></div>
+      <div class="kpi"><div class="kpi-value" style="color:#238551">—</div><div class="kpi-label">Analyzed</div></div>
+      <div class="kpi"><div class="kpi-value" style="color:#9179F2">—</div><div class="kpi-label">Speeches</div></div>
+      <div class="kpi"><div class="kpi-value" style="color:#C87619">—</div><div class="kpi-label">MPs Scored</div></div>
+    </div>
+  </div>
+
+  <!-- Scoreboard -->
+  <div class="card">
+    <div class="card-header">
+      <span style="font-size:16px">🏆</span>
+      <h2>MP Engagement Scoreboard</h2>
+      <span class="badge">AI Scored</span>
+    </div>
+    <div id="scoreboard" style="max-height: 600px; overflow-y: auto;">
+      <div class="loading">Loading scoreboard...</div>
+    </div>
+  </div>
+
+  <!-- Sessions + Agendas -->
+  <div class="card">
+    <div class="card-header">
+      <span style="font-size:16px">📋</span>
+      <h2>Session Analysis</h2>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('sessions')">Sessions</div>
+      <div class="tab" onclick="switchTab('agendas')">Agendas</div>
+    </div>
+    <div id="sessions-tab" style="max-height: 550px; overflow-y: auto;">
+      <div class="loading">Loading sessions...</div>
+    </div>
+    <div id="agendas-tab" style="max-height: 550px; overflow-y: auto; display: none;">
+      <div class="loading">Loading agendas...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api/v1';
+let TOKEN = '';
+
+const PARTY_COLORS = {
+  'Nepali Congress': '#E74C3C',
+  'Nepal Communist Party (UML)': '#D63031',
+  'Nepal Communist Party (Maoist Center)': '#E17055',
+  'Rastriya Swotantra Party': '#0984E3',
+  'Communist Party of Nepal (Unified Socialist)': '#6C5CE7',
+  'Janata Samajbadi Party Nepal': '#00B894',
+  'Rastriya Prajatantra Party': '#2D3436',
+};
+
+function pc(party) { return PARTY_COLORS[party] || '#5C7080'; }
+function shortParty(p) {
+  if (!p) return '—';
+  return p.replace('Nepal Communist Party (','').replace(')','')
+    .replace('Communist Party of Nepal (','').replace('Rastriya Swotantra Party','RSP')
+    .replace('Nepali Congress','NC').replace('Janata Samajbadi Party Nepal','JSP');
+}
+
+async function login() {
+  const email = localStorage.getItem('parliamentPreviewEmail') || 'dev@narada.dev';
+  const password = window.prompt('Enter the OSINT password for preview login');
+  if (!password) throw new Error('OSINT password is required for preview login');
+  const r = await fetch(`${API}/auth/login`, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({email, password})
+  });
+  const d = await r.json();
+  TOKEN = d.access_token;
+}
+
+async function apiFetch(path) {
+  const r = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${TOKEN}` }});
+  return r.json();
+}
+
+function switchTab(tab) {
+  document.getElementById('sessions-tab').style.display = tab === 'sessions' ? '' : 'none';
+  document.getElementById('agendas-tab').style.display = tab === 'agendas' ? '' : 'none';
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+async function loadAll() {
+  await login();
+
+  // Summary + KPIs
+  const summary = await apiFetch('/verbatim/summary');
+  const scoreboard = await apiFetch('/verbatim/scoreboard?limit=30');
+  const agendas = await apiFetch('/verbatim/agenda-timeline?limit=50');
+
+  // KPIs
+  const kpiEl = document.getElementById('kpis');
+  const vals = [
+    { v: summary.total_sessions, c: '#2D72D2', l: 'Sessions' },
+    { v: summary.analyzed_sessions, c: '#238551', l: 'Analyzed' },
+    { v: summary.total_speeches, c: '#9179F2', l: 'Speeches' },
+    { v: scoreboard.items?.length || 0, c: '#C87619', l: 'MPs Scored' },
+  ];
+  kpiEl.innerHTML = vals.map(k => `
+    <div class="kpi">
+      <div class="kpi-value" style="color:${k.c}">${k.v}</div>
+      <div class="kpi-label">${k.l}</div>
+    </div>
+  `).join('');
+
+  // Scoreboard
+  const sbEl = document.getElementById('scoreboard');
+  if (!scoreboard.items?.length) {
+    sbEl.innerHTML = '<div class="loading">No scored MPs yet</div>';
+  } else {
+    sbEl.innerHTML = scoreboard.items.map((mp, i) => {
+      const rankClass = i < 3 ? `rank-${i+1}` : 'rank-n';
+      const color = pc(mp.party);
+      return `
+        <div class="score-row">
+          <div class="rank ${rankClass}">${i+1}</div>
+          <div class="score-info">
+            <div class="score-name">${mp.name_en || mp.name_ne || 'Unknown'}</div>
+            <div class="score-meta">
+              <span><span class="party-dot" style="background:${color}"></span>${shortParty(mp.party)}</span>
+              <span>${mp.total_speeches} speeches</span>
+              <span>${mp.sessions_scored} sessions</span>
+            </div>
+            <div class="score-bars">
+              <div class="bar-row">
+                <span class="bar-label">Eng</span>
+                <div class="bar-track"><div class="bar-fill" style="width:${mp.avg_engagement*10}%;background:#2D72D2"></div></div>
+              </div>
+              <div class="bar-row">
+                <span class="bar-label">Rel</span>
+                <div class="bar-track"><div class="bar-fill" style="width:${mp.avg_relevance*10}%;background:#238551"></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="score-value">${mp.avg_engagement.toFixed(1)}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Sessions
+  const sessEl = document.getElementById('sessions-tab');
+  if (!summary.recent_sessions?.length) {
+    sessEl.innerHTML = '<div class="loading">No sessions</div>';
+  } else {
+    sessEl.innerHTML = summary.recent_sessions.map(s => {
+      const topics = (s.key_topics || []).map(t => `<span class="tag tag-topic">${t}</span>`).join('');
+      const agendaHtml = (s.agenda_items || []).map(a => {
+        const ic = a.intensity || 'medium';
+        const oc = a.outcome || '';
+        const ocClass = oc === 'passed' ? 'outcome-passed' : oc === 'rejected' ? 'outcome-rejected' : oc === 'deferred' ? 'outcome-deferred' : 'outcome-debated';
+        let sides = '';
+        if (a.supporters?.length) sides += `<span class="side-for">For: ${a.supporters.join(', ')}</span>`;
+        if (a.opponents?.length) sides += `<span class="side-against">Against: ${a.opponents.join(', ')}</span>`;
+        return `
+          <div class="agenda">
+            <div class="agenda-header">
+              <span class="agenda-topic">${a.topic}</span>
+              <span class="intensity intensity-${ic}">${ic}</span>
+              ${oc ? `<span class="outcome ${ocClass}">${oc}</span>` : ''}
+            </div>
+            <div class="agenda-desc">${a.description || ''}</div>
+            ${sides ? `<div class="agenda-sides">${sides}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+      return `
+        <div class="session" onclick="this.querySelector('.session-detail').style.display = this.querySelector('.session-detail').style.display === 'none' ? '' : 'none'">
+          <div class="session-header">
+            <span class="session-title">Meeting ${s.meeting_no || '?'}</span>
+            <span class="session-date">${s.session_date || ''}</span>
+          </div>
+          <div class="session-meta">
+            <span>${s.speech_count} speeches</span>
+            ${s.is_analyzed ? '<span class="tag tag-analyzed">Analyzed</span>' : '<span class="tag tag-pending">Pending</span>'}
+          </div>
+          <div class="session-detail" style="display:none">
+            ${s.session_summary ? `<div class="session-summary">${s.session_summary}</div>` : ''}
+            ${topics ? `<div style="margin-top:8px">${topics}</div>` : ''}
+            ${agendaHtml}
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Agendas timeline
+  const agEl = document.getElementById('agendas-tab');
+  if (!agendas.items?.length) {
+    agEl.innerHTML = '<div class="loading">No agendas</div>';
+  } else {
+    agEl.innerHTML = agendas.items.map(a => {
+      const ic = a.intensity || 'medium';
+      const oc = a.outcome || '';
+      const ocClass = oc === 'passed' ? 'outcome-passed' : oc === 'rejected' ? 'outcome-rejected' : oc === 'deferred' ? 'outcome-deferred' : 'outcome-debated';
+      let sides = '';
+      if (a.supporters?.length) sides += `<span class="side-for">For: ${a.supporters.join(', ')}</span>`;
+      if (a.opponents?.length) sides += `<span class="side-against">Against: ${a.opponents.join(', ')}</span>`;
+      return `
+        <div class="agenda" onclick="this.querySelector('.agenda-desc')?.classList.toggle('hidden')">
+          <div class="agenda-header">
+            <span class="agenda-topic">${a.topic}</span>
+            <span class="intensity intensity-${ic}">${ic}</span>
+            ${oc ? `<span class="outcome ${ocClass}">${oc}</span>` : ''}
+          </div>
+          <div style="font-size:9px;color:#8A9BA8;margin-top:2px">Meeting ${a.meeting_no || '?'} · ${a.session_date || ''}</div>
+          <div class="agenda-desc">${a.description || ''}</div>
+          ${sides ? `<div class="agenda-sides">${sides}</div>` : ''}
+        </div>
+      `;
+    }).join('');
+  }
+}
+
+loadAll().catch(e => console.error(e));
+</script>
+</body>
+</html>

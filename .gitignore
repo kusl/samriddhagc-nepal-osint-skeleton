@@ -1,37 +1,87 @@
+# Environment & Secrets
+.env
+.env.consumer
+.env.local
+.env.production
+frontend/.env.development
+frontend/.env.production
+.claude/
+.run/
+analyst_state/
+Screenshot*.png
+
 # Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-venv/
+*$py.class
+*.so
 .venv/
+venv/
+env/
+.Python
+*.egg-info/
+dist/
+build/
 *.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.cover
 
-# Environment
-.env
-.env.*
-!.env.example
+# Node.js
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+
+# Data & large files
+data/
+*.sqlite3
+*.db
+bipad_nepal_disasters.json
+analysis_output/
+investigation_output/
+narada.db
+
+# External libraries (cloned repos)
+backend-v5/pwtt_lib/
+
+# RL model artifacts (CPU-inference .pt files)
+backend/data/models/
+*.pt
+
+# Bulk-merge audit reports (generated locally)
+backend/data/merge_reports/
 
 # IDE
-.vscode/
 .idea/
+.vscode/
 *.swp
 *.swo
-
-# OS
+*~
 .DS_Store
-Thumbs.db
 
-# Node
-node_modules/
-dist/
+# SSL keys/certs (never commit)
+infrastructure/nginx/ssl/
+*.pem
+
+# Docker volumes
+postgres_data/
+neo4j_data/
+redis_data/
+backend-v5/.models/
+backend-v5/app/services/analyst_agent/
+
+# Celery
+celerybeat-schedule
 
 # Logs
 *.log
 logs/
+worker.log
+backfill_ocr*.log
 
-# Database
-*.db
-*.sqlite3
-
-# Docker
-docker-compose.override.yml
+# Ralph (will be created when you use Ralph)
+progress.txt

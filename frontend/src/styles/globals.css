@@ -8,7 +8,7 @@
 @import './bloomberg-theme.css';
 
 /* Google Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -68,12 +68,14 @@
   /* Section Labels */
   .section-label {
     @apply text-xs font-medium uppercase tracking-wide text-bp-text-muted mb-2;
+    font-family: var(--font-widget-sans, 'IBM Plex Mono', monospace);
   }
 
   /* Blueprint section header utility */
   .bp-section-header {
-    @apply text-xs font-semibold uppercase tracking-wider text-bp-text-muted;
-    letter-spacing: 0.08em;
+    @apply text-[13px] font-semibold uppercase text-[#F6F7F9];
+    letter-spacing: 0.1em;
+    font-family: var(--font-widget-sans, 'IBM Plex Mono', monospace);
   }
 
   /* Cards */

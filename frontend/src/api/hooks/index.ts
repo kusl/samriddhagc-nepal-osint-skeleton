@@ -1,3 +1,12 @@
+// Analytics hooks
+export {
+  useAnalyticsSummary,
+  useThreatMatrix,
+  useKeyActors,
+  useExecutiveSummary,
+  analyticsKeys,
+} from './useAnalytics';
+
 // Stories hooks
 export {
   useStories,
@@ -32,6 +41,14 @@ export {
   useRiverAlerts,
   riverKeys,
 } from './useRiver';
+
+// KPI hooks (Palantir-grade metrics)
+export {
+  useKPISnapshot,
+  useAlertDetails,
+  useHourlyTrends,
+  kpiKeys,
+} from './useKPI';
 
 // Weather hooks (DHM Nepal)
 export {
@@ -107,7 +124,61 @@ export {
   energyKeys,
 } from './useEnergy';
 
-// Situation Briefs hooks (Analyst Agent)
+// Political Entities / Key Actors hooks
+export {
+  usePoliticalEntities,
+  usePoliticalEntity,
+  usePoliticalEntityByCanonical,
+  useEntityStories,
+  useEntityTimeline,
+  useKeyActorDetail,
+  entityKeys,
+} from './useEntities';
+
+// Collaboration hooks (Palantir-grade OSINT)
+export {
+  // Cases
+  useCases,
+  useCase,
+  useCreateCase,
+  useUpdateCase,
+  // Teams
+  useTeams,
+  useTeam,
+  useMyTeams,
+  // Verification
+  useVerificationQueue,
+  useMyVerificationRequests,
+  useCreateVerificationRequest,
+  useCastVote,
+  useVerificationVotes,
+  // Watchlists
+  useWatchlists,
+  useWatchlistItems,
+  useCreateWatchlistItem,
+  // Activity
+  useActivityFeed,
+  useMentions,
+  useMyMetrics,
+  useLeaderboard,
+  useAnalystMetrics,
+  // Notes
+  useNotes,
+  useNote,
+  useCreateNote,
+  useUpdateNote,
+  useDeleteNote,
+  useTogglePinNote,
+  // Source Reliability
+  useSources,
+  useSource,
+  useSourceStats,
+  useRateSource,
+  // Keys
+  collaborationKeys,
+} from './useCollaboration';
+
+// Situation Briefs hooks (Narada Analyst Agent)
 export {
   useLatestBrief,
   useBriefById,
@@ -121,22 +192,23 @@ export {
 export {
   useClusterTimeline,
   useDevelopingStories,
+  useStoryTracker,
   useProvinceAnomalies,
   situationMonitorKeys,
 } from './useSituationMonitor';
 
-// Fact-check stub (no-op in skeleton)
-export function useRequestFactCheck() {
-  return {
-    mutate: (_storyId: string, _options?: { onSuccess?: () => void; onError?: (err: unknown) => void }) => {
-      _options?.onSuccess?.();
-    },
-    mutateAsync: async (_storyId: string) => {},
-    isPending: false,
-    isError: false,
-    isSuccess: false,
-  };
-}
+// Fact-check hooks (user-requested verification)
+export {
+  useFactCheckResults,
+  useFactCheckStatus,
+  useRequestFactCheck,
+  useFactCheckResultForStory,
+  useUserStatements,
+  useSubmitStatement,
+  useMyStoryRequests,
+  factCheckKeys,
+} from './useFactCheck';
+export type { FactCheckResult, FactCheckStatus, StatementFactCheck, PendingStoryRequest } from '../factCheck';
 
 // Aviation monitoring hooks (ADS-B)
 export {

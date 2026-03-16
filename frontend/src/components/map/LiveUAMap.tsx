@@ -528,7 +528,7 @@ export function LiveUAMap({
         <div className="flex items-center gap-4">
           {/* Brand */}
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-gray-900">NepalOSINT</span>
+            <span className="font-semibold text-gray-900">NARADA</span>
             <span className="text-xs text-gray-500 hidden sm:inline">Intelligence Map</span>
           </div>
 
@@ -783,7 +783,7 @@ export function LiveUAMap({
       {/* Footer - Coordinates and Scale (minimal) */}
       <div className="flex items-center justify-between px-4 py-1.5 bg-white border-t border-gray-200 text-xs text-gray-500">
         <div className="flex items-center gap-4">
-          <span className="font-medium text-gray-700">NepalOSINT Intel</span>
+          <span className="font-medium text-gray-700">NARADA Intel</span>
           <span>Scale 1:{leafletMapRef.current ? Math.round(156543.03 * Math.cos(27.7 * Math.PI / 180) / Math.pow(2, leafletMapRef.current.getZoom())).toLocaleString() : '---'}</span>
         </div>
         <div className="flex items-center gap-4 font-mono">

@@ -216,11 +216,15 @@ export const NewsFeedWidget = memo(function NewsFeedWidget() {
                     </span>
                   )}
                 </div>
-                <span className="feed-title">
-                  {group.title}
-                </span>
-                <div className="feed-time">
-                  {formatTimeAgo(group.published_at || group.created_at)}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                  <span className="feed-title" style={{ flex: 1 }}>
+                    {group.title}
+                  </span>
+                  <span className="feed-time" style={{ whiteSpace: 'nowrap', flexShrink: 0, marginTop: 2 }}>
+                    {formatTimeAgo(group.published_at || group.created_at)}
+                  </span>
+                </div>
+                <div className="feed-time" style={{ marginTop: 2 }}>
                   {!isMultiSource && group.sources[0]?.source_name && (
                     <span className="feed-source">{group.sources[0].source_name}</span>
                   )}

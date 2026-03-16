@@ -4,11 +4,23 @@ import { useDashboardStore, WIDGET_META, PRESETS, WidgetSize, canAccessWidget, g
 import { useAuthStore } from '../../store/slices/authSlice';
 
 const SIZES: WidgetSize[] = ['hero', 'brief', 'full', 'large', 'medium', 'small', 'mini'];
+const ARCHIVED_WIDGET_IDS = new Set([
+  'elections',
+  'election-map',
+  'election-pr',
+  'election-seats',
+  'election-status',
+  'swing-analysis',
+  'close-races',
+  'incumbency',
+  'candidates',
+  'party-switch',
+  'election-live',
+]);
 
 // Presets available for each role
-// Election day: only show election monitor preset
-const CONSUMER_PRESETS = ['news', 'elections'];
-const ANALYST_PRESETS = ['news', 'elections', 'analyst'];
+const CONSUMER_PRESETS = ['news', 'parliament'];
+const ANALYST_PRESETS = ['news', 'parliament', 'intelligence'];
 
 export function CustomizePanel() {
   const {
@@ -45,10 +57,10 @@ export function CustomizePanel() {
   // Filter by role - consumers only see consumer-accessible widgets
   const userRole = user?.role;
   const enabledWidgets = widgetOrder.filter(id =>
-    widgetVisibility[id] && WIDGET_META[id] && canAccessWidget(id, userRole) && !isWidgetWIP(id)
+    widgetVisibility[id] && WIDGET_META[id] && canAccessWidget(id, userRole) && !isWidgetWIP(id) && !ARCHIVED_WIDGET_IDS.has(id)
   );
   const disabledWidgets = Object.keys(WIDGET_META).filter(id =>
-    !widgetVisibility[id] && canAccessWidget(id, userRole) && !isWidgetWIP(id)
+    !widgetVisibility[id] && canAccessWidget(id, userRole) && !isWidgetWIP(id) && !ARCHIVED_WIDGET_IDS.has(id)
   );
 
   // Drag handlers
@@ -320,7 +332,7 @@ export function CustomizePanel() {
         {/* Footer */}
         <div className="p-4 bg-[var(--bg-elevated)] border-t border-[var(--border-subtle)] flex gap-2">
           <button
-            onClick={() => applyPreset(isConsumer ? 'news' : 'analyst')}
+            onClick={() => applyPreset(isConsumer ? 'news' : 'intelligence')}
             className="flex-1 py-2.5 px-4 text-[12px] font-semibold border border-[var(--border-default)] bg-[var(--bg-active)] text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
           >
             Reset

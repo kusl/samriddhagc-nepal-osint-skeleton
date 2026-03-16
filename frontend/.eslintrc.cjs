@@ -24,11 +24,14 @@ module.exports = {
   overrides: [
     {
       files: [
+        'src/pages/CorporateIntel.tsx',
         'src/pages/TradeAnalysis.tsx',
         'src/pages/DamageAssessment.tsx',
-        'src/components/common/NepalOSINTNavbar.tsx',
+        'src/components/common/NaradaNavbar.tsx',
         'src/components/layout/AnalystShell.tsx',
-        'src/components/ui/nepalosint-ui.tsx',
+        'src/components/ui/narada-ui.tsx',
+        'src/components/corporate/CompanyExplorer.tsx',
+        'src/components/connected-analyst/ConnectedAnalystWorkspace.tsx',
       ],
       rules: {
         '@blueprintjs/classes-constants': 'warn',

@@ -31,7 +31,7 @@ export function NaradaNavbar({ activePage }: NaradaNavbarProps) {
       {/* Left: Branding */}
       <div className="flex min-w-[80px] items-center">
         <span className="text-[13px] font-bold tracking-[0.15em] text-bp-text">
-          NepalOSINT
+          NARADA
         </span>
       </div>
 

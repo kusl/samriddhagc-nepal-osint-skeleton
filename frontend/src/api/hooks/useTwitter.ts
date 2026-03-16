@@ -46,7 +46,7 @@ export function useTweets(params: {
   nepal_relevance?: string;
   category?: string;
   relevant_only?: boolean;
-  source?: 'accounts' | 'hashtags';
+  source?: 'accounts' | 'hashtags' | 'reddit';
   author?: string;
   hashtag?: string;
   severity?: 'critical' | 'high' | 'medium' | 'low';
@@ -62,8 +62,10 @@ export function useTweets(params: {
   return useQuery<TweetListResponse>({
     queryKey: twitterKeys.tweets(queryParams),
     queryFn: () => getTweets(queryParams),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 10 * 60 * 1000, // Auto-refresh every 10 minutes
+    staleTime: 30 * 1000, // Keep the social feed fresh enough for local Nitter runs
+    refetchInterval: 60 * 1000, // Auto-refresh every minute
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
   });
 }
 

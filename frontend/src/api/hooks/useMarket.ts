@@ -24,8 +24,11 @@ export function useMarketSummary() {
   return useQuery<MarketSummary>({
     queryKey: marketKeys.summary(),
     queryFn: getMarketSummary,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 5 * 60 * 1000, // Auto-refresh every 5 minutes
+    staleTime: 30 * 60 * 1000, // 30 minutes
+    gcTime: 60 * 60 * 1000, // keep cached for 1 hour
+    refetchInterval: 30 * 60 * 1000, // hourly backend poll does not need 5-minute fanout
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 }
 

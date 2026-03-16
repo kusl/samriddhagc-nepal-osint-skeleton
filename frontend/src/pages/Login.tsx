@@ -1,17 +1,46 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { Eye, EyeOff, Users, BarChart3, Code2, UserCircle, AlertTriangle, Globe, Database, Shield, Lock, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, Users, BarChart3, Code2, UserCircle, AlertTriangle, ArrowLeft } from 'lucide-react'
 import { login as apiLogin, googleAuth as apiGoogleAuth, guestLogin as apiGuestLogin, sendOtp as apiSendOtp, signup as apiSignup } from '../api/auth'
 import { useAuthStore, UserRole, User } from '../store/slices/authSlice'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
 
-// Demo accounts — only shown in development mode. Change these passwords in production.
-const DEMO_ACCOUNTS: { role: UserRole; email: string; password: string; label: string; description: string; icon: typeof Users }[] = import.meta.env.DEV ? [
-  { role: 'consumer', email: 'consumer@nepalosint.dev', password: 'consumerpassword123', label: 'Consumer', description: 'Read-only dashboard access', icon: Users },
-  { role: 'analyst', email: 'analyst@nepalosint.dev', password: 'analystpassword123', label: 'Analyst', description: 'Feedback & analysis tools', icon: BarChart3 },
-  { role: 'dev', email: 'dev@nepalosint.dev', password: 'devpassword123', label: 'Developer', description: 'Full system access', icon: Code2 },
-] : []
+type DemoAccount = {
+  role: UserRole
+  email: string
+  password: string
+  label: string
+  description: string
+  icon: typeof Users
+}
+
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  {
+    role: 'consumer',
+    email: import.meta.env.VITE_DEMO_CONSUMER_EMAIL as string | undefined,
+    password: import.meta.env.VITE_DEMO_CONSUMER_PASSWORD as string | undefined,
+    label: 'Consumer',
+    description: 'Read-only dashboard access',
+    icon: Users,
+  },
+  {
+    role: 'analyst',
+    email: import.meta.env.VITE_DEMO_ANALYST_EMAIL as string | undefined,
+    password: import.meta.env.VITE_DEMO_ANALYST_PASSWORD as string | undefined,
+    label: 'Analyst',
+    description: 'Feedback & analysis tools',
+    icon: BarChart3,
+  },
+  {
+    role: 'dev',
+    email: import.meta.env.VITE_DEMO_DEV_EMAIL as string | undefined,
+    password: import.meta.env.VITE_DEMO_DEV_PASSWORD as string | undefined,
+    label: 'Developer',
+    description: 'Full system access',
+    icon: Code2,
+  },
+].filter((account): account is DemoAccount => Boolean(account.email && account.password))
 
 function toStoreUser(apiUser: {
   id: string
@@ -409,27 +438,8 @@ export default function Login() {
             Real-time open source intelligence across Nepal. Structured data, entity graphs, and actionable insights for analysts and decision-makers.
           </p>
 
-          {/* Capability badges */}
-          <div className="mt-10 flex flex-wrap gap-2.5">
-            {[
-              { icon: Globe, text: '75+ Sources' },
-              { icon: Lock, text: 'Real-time Ingestion' },
-              { icon: Database, text: 'Entity Graph' },
-              { icon: Shield, text: 'Encrypted Sessions' },
-            ].map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2 rounded border border-bp-border/25 bg-[#0d1118]/50 px-3 py-1.5">
-                <Icon size={12} className="text-bp-primary/60" />
-                <span className="text-[11px] font-medium text-bp-text-secondary/80">{text}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
-        {/* Bottom */}
-        <div className="relative z-10 flex items-center justify-between text-[10px] text-bp-text-disabled">
-          <span className="font-mono tracking-wider">&copy; 2026 NEPALOSINT</span>
-          <span className="font-mono tracking-wider">OPEN SOURCE INTELLIGENCE PLATFORM</span>
-        </div>
       </div>
 
       {/* ========== RIGHT PANEL — Auth ========== */}
@@ -599,6 +609,9 @@ export default function Login() {
                     <UserCircle size={15} />
                     {guestLoading ? 'Creating session...' : 'Continue as Guest'}
                   </button>
+                  <p className="mt-2 text-center text-[11px] text-bp-text-disabled">
+                    You&apos;ll get a quick dashboard guide after entry.
+                  </p>
                 </>
               )}
 
@@ -703,6 +716,9 @@ export default function Login() {
                     <UserCircle size={15} />
                     {guestLoading ? 'Creating session...' : 'Continue as Guest'}
                   </button>
+                  <p className="mt-2 text-center text-[11px] text-bp-text-disabled">
+                    You&apos;ll get a quick dashboard guide after entry.
+                  </p>
                 </>
               )}
 
@@ -761,7 +777,7 @@ export default function Login() {
           </div>
 
           {/* Demo access */}
-          {demoMode && mode === 'signin' && (
+          {demoMode && DEMO_ACCOUNTS.length > 0 && mode === 'signin' && (
             <div className="mt-5 rounded border border-bp-border/30 bg-[#0e1319]/60 p-5">
               <div className="mb-3 flex items-center gap-2">
                 <span className="h-px flex-1 bg-bp-border/20" />

@@ -1,0 +1,2174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>NepalOSINT Mobile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F6F1E8;
+  --bg-soft: #FBF8F3;
+  --surface: #FFFFFF;
+  --surface-tint: #F2ECE2;
+  --border: #DDD3C4;
+  --text: #122033;
+  --text-secondary: #4B5B70;
+  --text-muted: #7C8796;
+  --accent: #C94F2D;
+  --accent-soft: #F6DFD8;
+  --navy: #183B63;
+  --navy-soft: #DCE7F4;
+  --green: #2F6B5F;
+  --green-soft: #DCECE7;
+  --amber: #B7791F;
+  --amber-soft: #F7E7CA;
+  --red: #B6423C;
+  --red-soft: #F6DEDC;
+  --shadow-soft: 0 10px 30px rgba(18, 32, 51, 0.06);
+  --shadow-strong: 0 26px 70px rgba(18, 32, 51, 0.12);
+  --radius-card: 18px;
+  --radius-pill: 14px;
+  --radius-chip: 999px;
+  --font-sans: "Instrument Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-serif: "Source Serif 4", Georgia, serif;
+  --font-mono: "IBM Plex Mono", "SFMono-Regular", monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(201, 79, 45, 0.08), transparent 30%),
+    radial-gradient(circle at top right, rgba(24, 59, 99, 0.08), transparent 32%),
+    linear-gradient(180deg, #fcfaf7 0%, var(--bg) 28%, #f2eadf 100%);
+  color: var(--text);
+  font-size: 16px;
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  background: none;
+  appearance: none;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.page-bg {
+  min-height: 100dvh;
+  display: flex;
+  align-items: stretch;
+  overflow: hidden;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    14px
+    max(18px, env(safe-area-inset-bottom));
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 430px;
+  height: calc(100dvh - max(18px, env(safe-area-inset-top)) - max(18px, env(safe-area-inset-bottom)));
+  margin: 0 auto;
+  background: rgba(251, 248, 243, 0.9);
+  border: 1px solid rgba(221, 211, 196, 0.85);
+  border-radius: 30px;
+  box-shadow: var(--shadow-strong);
+  overflow: hidden;
+  position: relative;
+  backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.35), transparent 18%),
+    radial-gradient(circle at top right, rgba(201, 79, 45, 0.08), transparent 22%),
+    radial-gradient(circle at 20% 14%, rgba(24, 59, 99, 0.08), transparent 24%);
+  pointer-events: none;
+}
+
+.app-shell::after {
+  content: "";
+  position: absolute;
+  top: 96px;
+  right: -42px;
+  width: 156px;
+  height: 156px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(201, 79, 45, 0.14), rgba(201, 79, 45, 0));
+  pointer-events: none;
+}
+
+.top-bar {
+  z-index: 40;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 14px;
+  min-height: 72px;
+  background: rgba(251, 248, 243, 0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(221, 211, 196, 0.8);
+}
+
+.brand-lockup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.brand-title {
+  min-width: 0;
+}
+
+.brand-wordmark {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.brand-wordmark span {
+  color: var(--accent);
+}
+
+.brand-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.16s ease, border-color 0.16s ease, transform 0.16s ease;
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+  background: var(--surface);
+  border-color: #cbbba5;
+}
+
+.icon-btn:active {
+  transform: translateY(1px);
+}
+
+.icon-btn:focus-visible,
+.chip:focus-visible,
+.cta-btn:focus-visible,
+.nav-item:focus-visible,
+.search-panel input:focus-visible,
+.story-card:focus-visible,
+.story-lead-card:focus-visible,
+.timeline-card:focus-visible,
+.cluster-card:focus-visible,
+.story-list-item:focus-visible,
+.radar-card:focus-visible,
+.watch-card:focus-visible,
+.alert-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.content-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  z-index: 1;
+}
+
+.screen {
+  display: none;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 16px 16px 118px;
+  animation: fade-slide 0.18s ease;
+}
+
+.screen::-webkit-scrollbar {
+  display: none;
+}
+
+.screen.active {
+  display: block;
+}
+
+.screen-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 2px 0;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--text-muted);
+}
+
+.section-link {
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0;
+}
+
+.search-prompt,
+.story-card,
+.story-lead-card,
+.hero-card,
+.module-card,
+.timeline-card,
+.watch-card,
+.alert-card,
+.fact-mini-card {
+  background: var(--surface);
+  border: 1px solid rgba(221, 211, 196, 0.95);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  max-width: 100%;
+}
+
+.screen-inner > *,
+.story-grid > *,
+.teaser-grid > *,
+.parliament-detail-row > *,
+.hero-metrics > *,
+.promise-grid > *,
+.radar-grid > * {
+  min-width: 0;
+}
+
+.search-prompt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  width: 100%;
+  color: var(--text-muted);
+  text-align: left;
+  position: relative;
+  overflow: hidden;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 241, 232, 0.92));
+  border: 1px solid rgba(221, 211, 196, 0.95);
+  box-shadow: var(--shadow-soft);
+}
+
+.search-prompt::after {
+  content: "";
+  position: absolute;
+  inset: auto -30px -40px auto;
+  width: 110px;
+  height: 110px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(24, 59, 99, 0.08), rgba(24, 59, 99, 0));
+}
+
+.search-icon-bubble {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(221, 211, 196, 0.9);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--navy);
+  flex-shrink: 0;
+}
+
+.search-prompt strong {
+  color: var(--text);
+  display: block;
+  font-size: 15px;
+}
+
+.search-prompt span {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.hero-card {
+  padding: 20px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(246, 241, 232, 0.96)),
+    var(--surface);
+  border-color: rgba(201, 79, 45, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-card.accountability-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(220, 231, 244, 0.9) 52%, rgba(246, 223, 216, 0.82) 100%),
+    var(--surface);
+  border-color: rgba(24, 59, 99, 0.12);
+}
+
+.hero-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--accent), #dc8059 55%, rgba(220, 128, 89, 0));
+}
+
+.hero-card.accountability-hero::before {
+  background: linear-gradient(90deg, var(--navy), var(--accent) 62%, rgba(201, 79, 45, 0));
+}
+
+.hero-card::after {
+  content: "";
+  position: absolute;
+  right: -18px;
+  top: -16px;
+  width: 132px;
+  height: 132px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(201, 79, 45, 0.13), rgba(201, 79, 45, 0));
+}
+
+.hero-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+.hero-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.hero-title {
+  margin: 14px 0 10px;
+  font-family: var(--font-serif);
+  font-size: 32px;
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  overflow-wrap: anywhere;
+}
+
+.hero-summary {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.hero-metrics {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.hero-metric {
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(221, 211, 196, 0.9);
+}
+
+.hero-metric span {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.hero-metric strong {
+  display: block;
+  font-size: 19px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  margin-bottom: 4px;
+}
+
+.hero-metric em {
+  display: block;
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.hero-note {
+  margin-top: 14px;
+  padding-left: 12px;
+  border-left: 3px solid rgba(24, 59, 99, 0.18);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.hero-footer {
+  margin-top: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.cta-btn {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.cta-btn.primary {
+  background: var(--accent);
+  color: #fff;
+}
+
+.cta-btn.primary:hover {
+  background: #b84626;
+}
+
+.cta-btn.secondary {
+  background: var(--surface);
+  color: var(--navy);
+  border-color: rgba(24, 59, 99, 0.2);
+}
+
+.cta-btn.secondary:hover {
+  background: var(--navy-soft);
+}
+
+.chip-row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-chip);
+  background: var(--surface);
+  color: var(--text);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chip.soft-accent { background: var(--accent-soft); color: var(--accent); }
+.chip.soft-navy { background: var(--navy-soft); color: var(--navy); }
+.chip.soft-green { background: var(--green-soft); color: var(--green); }
+.chip.soft-amber { background: var(--amber-soft); color: var(--amber); }
+
+.chip.filter-chip {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(221, 211, 196, 0.85);
+}
+
+.chip.filter-chip.active {
+  background: var(--navy);
+  color: #fff;
+}
+
+.sticky-chip-bar {
+  margin: -4px 0 0;
+  background: linear-gradient(180deg, rgba(251, 248, 243, 0.98) 68%, rgba(251, 248, 243, 0));
+  padding: 4px 0 12px;
+}
+
+.tracker-marquee {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tracker-marquee::-webkit-scrollbar {
+  display: none;
+}
+
+.tracker-marquee-track {
+  display: inline-flex;
+  gap: 10px;
+  min-width: max-content;
+  padding-right: 12px;
+}
+
+.alert-card {
+  padding: 16px;
+  border-left: 4px solid var(--red);
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 241, 232, 0.92));
+}
+
+.alert-card::after {
+  content: "";
+  position: absolute;
+  right: -24px;
+  top: -24px;
+  width: 110px;
+  height: 110px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(182, 66, 60, 0.08), rgba(182, 66, 60, 0));
+}
+
+.alert-card .title-row,
+.watch-card .title-row,
+.story-card .meta-row,
+.story-lead-card .meta-row,
+.timeline-card .timeline-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge.red { background: var(--red-soft); color: var(--red); }
+.badge.amber { background: var(--amber-soft); color: var(--amber); }
+.badge.green { background: var(--green-soft); color: var(--green); }
+.badge.navy { background: var(--navy-soft); color: var(--navy); }
+.badge.accent { background: var(--accent-soft); color: var(--accent); }
+
+.alert-title,
+.story-card h3,
+.story-lead-card h2,
+.timeline-card h3,
+.watch-card h3 {
+  margin: 8px 0 6px;
+  font-size: 18px;
+  line-height: 1.28;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.story-card h3 {
+  font-size: 17px;
+}
+
+.alert-copy,
+.story-summary,
+.story-lead-summary,
+.timeline-copy,
+.watch-copy,
+.module-copy {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.meta-pill,
+.meta-text,
+.mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.meta-pill {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--surface-tint);
+}
+
+.story-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.story-card,
+.story-lead-card,
+.timeline-card,
+.watch-card,
+.fact-mini-card,
+.module-card {
+  padding: 16px;
+  transition: background 0.16s ease, border-color 0.16s ease;
+  min-width: 0;
+}
+
+.story-card:hover,
+.story-lead-card:hover,
+.timeline-card:hover,
+.watch-card:hover,
+.fact-mini-card:hover,
+.module-card:hover,
+.alert-card:hover {
+  background: #fffcf8;
+  border-color: #d5c8b6;
+}
+
+.story-card-featured {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 241, 232, 0.94));
+}
+
+.summary-card {
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 236, 226, 0.92));
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.summary-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-stat {
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(221, 211, 196, 0.92);
+}
+
+.summary-stat span {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.summary-stat strong {
+  display: block;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  margin-bottom: 6px;
+}
+
+.summary-stat p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.official-list,
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.official-card,
+.feed-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 241, 232, 0.94));
+  border: 1px solid rgba(221, 211, 196, 0.95);
+  box-shadow: var(--shadow-soft);
+}
+
+.official-topline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.official-name {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.25;
+  letter-spacing: -0.03em;
+}
+
+.official-role {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.official-copy,
+.feed-card p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+
+.official-progress {
+  margin-top: 12px;
+}
+
+.official-progress-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.progress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.progress-value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(24, 59, 99, 0.08);
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--navy), #3368a4);
+}
+
+.progress-fill.warn {
+  background: linear-gradient(90deg, var(--amber), #d4a556);
+}
+
+.progress-fill.risk {
+  background: linear-gradient(90deg, var(--red), #d36d66);
+}
+
+.feed-card h3 {
+  margin: 8px 0 6px;
+  font-size: 17px;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+}
+
+.story-visual {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(24, 59, 99, 0.96), rgba(48, 83, 125, 0.92));
+  color: #fff;
+}
+
+.story-visual-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+
+.story-visual-value {
+  margin: 6px 0 4px;
+  font-family: var(--font-serif);
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.story-visual-caption {
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.88;
+}
+
+.importance-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.importance-tag::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.importance-tag.major { color: var(--accent); }
+.importance-tag.watch { color: var(--amber); }
+.importance-tag.developing { color: var(--green); }
+
+.parliament-today {
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(220, 231, 244, 0.72), rgba(255, 255, 255, 0.94));
+  border: 1px solid rgba(24, 59, 99, 0.12);
+}
+
+.parliament-title {
+  margin: 10px 0 8px;
+  font-size: 20px;
+  line-height: 1.22;
+  letter-spacing: -0.03em;
+}
+
+.parliament-detail-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.detail-box {
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(24, 59, 99, 0.08);
+  border-radius: 14px;
+}
+
+.detail-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.detail-value {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.teaser-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fact-mini-card .fact-label,
+.watch-card .watch-label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.fact-mini-card h3,
+.watch-card h3 {
+  font-size: 16px;
+  margin: 8px 0 6px;
+}
+
+.filter-note {
+  margin: 0 2px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.story-lead-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.story-lead-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--accent);
+}
+
+.story-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.story-list-item {
+  display: grid;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(221, 211, 196, 0.88);
+}
+
+.story-list-item .topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.story-list-item h4 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.36;
+  letter-spacing: -0.02em;
+}
+
+.story-list-item p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.cluster-card {
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid rgba(221, 211, 196, 0.95);
+  border-radius: 18px;
+}
+
+.cluster-title {
+  margin: 8px 0 6px;
+  font-size: 18px;
+  line-height: 1.3;
+  letter-spacing: -0.03em;
+}
+
+.cluster-copy {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.55;
+}
+
+.promise-card {
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(220, 231, 244, 0.55), rgba(255, 255, 255, 0.94));
+  border: 1px solid rgba(24, 59, 99, 0.12);
+}
+
+.promise-bar {
+  display: flex;
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(24, 59, 99, 0.08);
+  margin: 14px 0;
+}
+
+.promise-bar span {
+  height: 100%;
+}
+
+.promise-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.promise-stat {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.74);
+  border: 1px solid rgba(24, 59, 99, 0.08);
+}
+
+.promise-stat strong {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+
+.timeline-stack,
+.watch-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.timeline-card {
+  border-left: 4px solid var(--navy);
+}
+
+.timeline-card .timeline-date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.timeline-card .timeline-stage {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.radar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.radar-card {
+  padding: 15px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 236, 226, 0.9));
+  border: 1px solid rgba(221, 211, 196, 0.95);
+  box-shadow: var(--shadow-soft);
+  min-width: 0;
+}
+
+.radar-label {
+  display: block;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.radar-value {
+  display: block;
+  margin: 10px 0 8px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--navy);
+  overflow-wrap: anywhere;
+}
+
+.radar-copy {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.watch-card.rank-1 { border-left: 4px solid var(--red); }
+.watch-card.rank-2 { border-left: 4px solid var(--amber); }
+.watch-card.rank-3,
+.watch-card.rank-4 { border-left: 4px solid var(--green); }
+
+.watch-meta {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 105;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: max(18px, env(safe-area-inset-top)) 14px 14px;
+  background: rgba(18, 32, 51, 0.22);
+  backdrop-filter: blur(6px);
+}
+
+.settings-overlay.open {
+  display: flex;
+}
+
+.settings-panel {
+  width: min(100%, 430px);
+  background: rgba(251, 248, 243, 0.98);
+  border: 1px solid rgba(221, 211, 196, 0.95);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(18, 32, 51, 0.14);
+  padding: 16px;
+}
+
+.settings-panel h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: -0.03em;
+}
+
+.settings-panel p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.settings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(221, 211, 196, 0.85);
+}
+
+.settings-row:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.settings-copy strong {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.settings-copy span {
+  display: block;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.settings-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.search-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(18, 32, 51, 0.28);
+  backdrop-filter: blur(6px);
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding: max(18px, env(safe-area-inset-top)) 14px 14px;
+}
+
+.search-overlay.open {
+  display: flex;
+}
+
+.search-panel {
+  width: min(100%, 480px);
+  background: rgba(251, 248, 243, 0.98);
+  border: 1px solid rgba(221, 211, 196, 0.95);
+  border-radius: 24px;
+  box-shadow: 0 20px 60px rgba(18, 32, 51, 0.16);
+  padding: 16px;
+}
+
+.search-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.search-panel h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.search-panel p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.search-panel input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 15px;
+  outline: none;
+}
+
+.search-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.bottom-nav {
+  z-index: 35;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(251, 248, 243, 0.94);
+  border-top: 1px solid rgba(221, 211, 196, 0.88);
+  backdrop-filter: blur(16px);
+}
+
+.nav-item {
+  min-height: 58px;
+  border: none;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 8px 6px;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+}
+
+.nav-item span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.nav-item.active {
+  background: var(--surface);
+  color: var(--accent);
+  border: 1px solid rgba(201, 79, 45, 0.16);
+  box-shadow: 0 10px 22px rgba(201, 79, 45, 0.08);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes fade-slide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .app-shell {
+    border-radius: 0;
+  }
+
+  .page-bg {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .teaser-grid,
+  .parliament-detail-row,
+  .promise-grid,
+  .radar-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-title {
+    font-size: 26px;
+  }
+}
+</style>
+<style>
+/* ── Overrides for clean 3-tab layout ─── */
+.promise-category {
+  background: var(--surface);
+  border: 1px solid rgba(221,211,196,0.95);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.promise-category-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 0.15s;
+}
+.promise-category-header:active { background: var(--surface-tint); }
+.promise-category-header .cat-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font: 700 9px/1 var(--font-mono);
+  letter-spacing: 0.02em;
+  color: var(--accent);
+  background: rgba(201,79,45,0.08);
+  flex-shrink: 0;
+}
+.promise-category-header .cat-info { flex: 1; min-width: 0; }
+.promise-category-header .cat-name {
+  font: 600 14px/1.2 var(--font-sans);
+  color: var(--text);
+}
+.promise-category-header .cat-count {
+  font: 500 11px/1 var(--font-mono);
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.promise-category-header .cat-mini-bar {
+  display: flex; height: 4px; border-radius: 2px;
+  overflow: hidden; background: var(--border);
+  margin-top: 6px; width: 100%;
+}
+.promise-category-header .cat-mini-bar span { height: 100%; }
+.promise-category-header .cat-chevron {
+  width: 20px; height: 20px; flex-shrink: 0;
+  color: var(--text-muted);
+  transition: transform 0.25s ease;
+}
+.promise-category.open .cat-chevron { transform: rotate(180deg); }
+.promise-category-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+.promise-category.open .promise-category-body {
+  max-height: 2000px;
+}
+.promise-category-body-inner {
+  padding: 0 16px 12px;
+  border-top: 1px solid var(--border);
+}
+.pledge-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(221,211,196,0.4);
+}
+.pledge-row:last-child { border-bottom: none; }
+.pledge-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.pledge-dot.done { background: var(--green); }
+.pledge-dot.progress { background: var(--amber); }
+.pledge-dot.stalled { background: var(--red); }
+.pledge-dot.pending { background: var(--border); }
+.pledge-text {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+  flex: 1;
+}
+.pledge-text small {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+.stat-row {
+  display: flex;
+  gap: 8px;
+  margin: 8px 0;
+}
+.stat-pill {
+  flex: 1;
+  text-align: center;
+  padding: 10px 4px;
+  border-radius: 12px;
+  background: var(--surface-tint);
+  border: 1px solid var(--border);
+}
+.stat-pill strong {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  font-family: var(--font-mono);
+}
+.stat-pill span {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.session-card {
+  background: var(--surface);
+  border: 1px solid rgba(221,211,196,0.95);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+  padding: 16px;
+  margin-bottom: 10px;
+}
+.session-card h3 {
+  font: 600 15px/1.35 var(--font-sans);
+  margin: 0 0 6px;
+}
+.session-card p {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0;
+}
+.session-meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.chip-filter-bar {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 4px 0 8px;
+}
+.chip-filter-bar .chip {
+  font-size: 12px;
+  padding: 6px 12px;
+}
+.chip-filter-bar .chip.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.legend-row {
+  display: flex; gap: 12px; padding: 8px 0 4px;
+  flex-wrap: wrap;
+}
+.legend-item {
+  display: flex; align-items: center; gap: 5px;
+  font: 500 11px/1 var(--font-mono);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.legend-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+}
+</style>
+</head>
+<body>
+<div class="page-bg">
+  <div class="app-shell">
+    <header class="top-bar" style="justify-content:center; text-align:center;">
+      <div class="brand-wordmark">Nepal<span>OSINT</span></div>
+    </header>
+
+    <main class="content-area">
+
+      <!-- ═══ HOME ═══ -->
+      <section class="screen active" id="tab-home" aria-labelledby="nav-home">
+        <div class="screen-inner">
+
+          <article class="hero-card" tabindex="0">
+            <div class="hero-topline">
+              <span class="eyebrow" id="hero-eyebrow">SITUATION BRIEF</span>
+              <span class="meta-pill" id="hero-time">—</span>
+            </div>
+            <h1 class="hero-title" id="hero-title" style="font-size:20px; line-height:1.35;">Loading situation brief...</h1>
+            <div class="stat-row">
+              <div class="stat-pill" id="kpi-alerts"><strong>—</strong><span>Alerts</span></div>
+              <div class="stat-pill" id="kpi-events"><strong>—</strong><span>Events</span></div>
+              <div class="stat-pill" id="kpi-threat"><strong>—</strong><span>Threat</span></div>
+            </div>
+            <div class="hero-footer">
+              <button class="cta-btn primary" data-jump-tab="news">Promise Tracker</button>
+              <button class="cta-btn secondary" data-jump-tab="parliament">Parliament</button>
+            </div>
+          </article>
+
+          <div class="section-header">
+            <div class="section-label">Promise Tracker</div>
+            <button class="section-link" data-jump-tab="news">View all 105</button>
+          </div>
+          <article class="module-card" tabindex="0" id="home-promise-summary">
+            <div class="promise-bar" id="home-bar" aria-hidden="true" style="margin-bottom:10px"></div>
+            <div class="stat-row" id="home-promise-stats">
+              <div class="stat-pill"><strong id="hp-done">—</strong><span>Done</span></div>
+              <div class="stat-pill"><strong id="hp-progress">—</strong><span>Progress</span></div>
+              <div class="stat-pill"><strong id="hp-stalled">—</strong><span>Stalled</span></div>
+              <div class="stat-pill"><strong id="hp-pending">—</strong><span>Pending</span></div>
+            </div>
+          </article>
+
+          <div class="section-header">
+            <div class="section-label">Bills Pipeline</div>
+          </div>
+          <article class="module-card" tabindex="0" id="home-bills">
+            <div class="promise-bar" id="home-bills-bar" aria-hidden="true" style="margin-bottom:10px"></div>
+            <div class="stat-row">
+              <div class="stat-pill"><strong id="hb-passed">—</strong><span>Passed</span></div>
+              <div class="stat-pill"><strong id="hb-committee">—</strong><span>Committee</span></div>
+              <div class="stat-pill"><strong id="hb-filed">—</strong><span>Filed</span></div>
+              <div class="stat-pill"><strong id="hb-total">—</strong><span>Total</span></div>
+            </div>
+          </article>
+
+          <div class="section-header">
+            <div class="section-label">Latest Session</div>
+            <button class="section-link" data-jump-tab="parliament">All sessions</button>
+          </div>
+          <div id="home-session"></div>
+
+          <div class="section-header">
+            <div class="section-label">Latest Stories</div>
+          </div>
+          <div id="home-stories"></div>
+
+        </div>
+      </section>
+
+      <!-- ═══ PROMISES ═══ -->
+      <section class="screen" id="tab-news" aria-labelledby="nav-news">
+        <div class="screen-inner">
+
+          <article class="module-card" tabindex="0" style="padding:14px 16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <strong style="font-size:16px;">RSP Manifesto Tracker</strong>
+              <span class="badge accent" id="promise-count-badge">105 pledges</span>
+            </div>
+            <div class="promise-bar" id="promise-bar" aria-hidden="true" style="margin-bottom:10px"></div>
+            <div class="stat-row" id="promise-stats">
+              <div class="stat-pill"><strong id="ps-done">—</strong><span>Done</span></div>
+              <div class="stat-pill"><strong id="ps-progress">—</strong><span>Progress</span></div>
+              <div class="stat-pill"><strong id="ps-stalled">—</strong><span>Stalled</span></div>
+              <div class="stat-pill"><strong id="ps-pending">—</strong><span>Pending</span></div>
+            </div>
+            <div class="legend-row">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div>Done</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div>Progress</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>Stalled</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--border)"></div>Pending</div>
+            </div>
+          </article>
+
+          <div id="promise-list"></div>
+
+        </div>
+      </section>
+
+      <!-- ═══ PARLIAMENT ═══ -->
+      <section class="screen" id="tab-parliament" aria-labelledby="nav-parliament">
+        <div class="screen-inner">
+
+          <div class="section-header">
+            <div class="section-label">Analyzed Sessions</div>
+            <span class="badge navy" id="session-count-badge">—</span>
+          </div>
+          <div id="parliament-sessions"></div>
+
+          <div class="section-header" style="margin-top:8px;">
+            <div class="section-label">Bills Tracker</div>
+          </div>
+          <div id="parliament-bills"></div>
+
+        </div>
+      </section>
+
+    </main>
+
+    <nav class="bottom-nav" aria-label="Primary">
+      <button class="nav-item active" id="nav-home" data-tab="home" aria-current="page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 10.5 12 3l9 7.5"></path>
+          <path d="M5 9.5V21h14V9.5"></path>
+        </svg>
+        <span>Home</span>
+      </button>
+      <button class="nav-item" id="nav-news" data-tab="news">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"></path>
+          <rect x="9" y="3" width="6" height="4" rx="2"></rect>
+          <path d="M9 14h6"></path><path d="M9 18h6"></path>
+        </svg>
+        <span>Promises</span>
+      </button>
+      <button class="nav-item" id="nav-parliament" data-tab="parliament">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21h18"></path>
+          <path d="M5 21V10"></path><path d="M9 21V10"></path>
+          <path d="M15 21V10"></path><path d="M19 21V10"></path>
+          <path d="M3 10h18L12 3 3 10z"></path>
+        </svg>
+        <span>Parliament</span>
+      </button>
+    </nav>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// RSP 105 MANIFESTO PROMISES
+// ═══════════════════════════════════════════════════════════
+const PROMISES = [
+  // ── Good Governance & Anti-Corruption (15) ──
+  // RSP won 124/161 FPTP seats — two-thirds supermajority. Government formation underway.
+  {c:"Governance",t:"Prosecute corruption from previous governments",s:"pending",n:"Anti-corruption investigation directives issued. CIAA cases being reviewed under new mandate."},
+  {c:"Governance",t:"End political appointments in public institutions",s:"pending",n:"Cabinet directive to review all political appointments. Merit-based selection framework being drafted."},
+  {c:"Governance",t:"Make CIAA independent and effective",s:"pending",n:"CIAA independence bill being drafted with supermajority backing."},
+  {c:"Governance",t:"Mandatory asset disclosure for all elected officials",s:"pending",n:"All RSP MPs submitted voluntary asset disclosures. Legislation being drafted."},
+  {c:"Governance",t:"Digital transparency portal for government spending",s:"pending",n:"Portal development contracted. Expected launch within first 100 days."},
+  {c:"Governance",t:"Whistleblower protection law",s:"pending",n:"Queued for first parliamentary session."},
+  {c:"Governance",t:"Reform public procurement to prevent collusion",s:"pending",n:"Procurement amendment bill drafted for first session."},
+  {c:"Governance",t:"Reduce cabinet size to 15 ministers",s:"pending",n:"RSP formed cabinet with 15 ministers as promised."},
+  {c:"Governance",t:"Abolish parliamentary development fund",s:"pending",n:"Scheduled for parliamentary debate in first session."},
+  {c:"Governance",t:"Performance-based evaluation of civil servants",s:"pending",n:"Policy framework being designed by transition team."},
+  {c:"Governance",t:"Right to Information enforcement with penalties",s:"pending",n:"Amendment being drafted."},
+  {c:"Governance",t:"Reform Election Commission appointment process",s:"pending",n:"Constitutional amendment needed. Under review."},
+  {c:"Governance",t:"Zero tolerance policy on bribery in public services",s:"pending",n:"Executive directive issued to all ministries on day one."},
+  {c:"Governance",t:"Local government accountability audits",s:"pending",n:"Audit framework being designed."},
+  {c:"Governance",t:"Citizen report card system for public services",s:"pending",n:"Concept design phase with digital governance team."},
+
+  // ── Economy & Employment (14) ──
+  {c:"Economy",t:"Create 500,000 jobs in first two years",s:"pending",n:"Employment program design underway. Budget allocation pending first fiscal plan."},
+  {c:"Economy",t:"Youth entrepreneurship fund of NPR 50 billion",s:"pending",n:"Fund structure being designed. Will be in first budget."},
+  {c:"Economy",t:"Reduce trade deficit through import substitution",s:"pending",n:"Trade policy review initiated."},
+  {c:"Economy",t:"Special economic zones in all provinces",s:"pending",n:"Feasibility studies commissioned for 4 new SEZs."},
+  {c:"Economy",t:"Reform tax system to reduce burden on middle class",s:"pending",n:"Tax reform commission being formed."},
+  {c:"Economy",t:"Attract $5 billion FDI in five years",s:"pending",n:"New FDI policy framework under development."},
+  {c:"Economy",t:"Support startup ecosystem with regulatory sandbox",s:"pending",n:"Regulatory sandbox framework being studied."},
+  {c:"Economy",t:"Digitize all business registration processes",s:"pending",n:"Online registration portal expansion ordered."},
+  {c:"Economy",t:"Reform banking sector regulation",s:"pending",n:"NRB governance review initiated. Deputy governor vacancies being filled on merit."},
+  {c:"Economy",t:"Cooperative sector reform and oversight",s:"pending",n:"Reform bill being drafted after cooperative crisis."},
+  {c:"Economy",t:"Tourism target: 3 million visitors by 2085 BS",s:"pending",n:"New tourism master plan being commissioned."},
+  {c:"Economy",t:"Minimum wage linked to inflation index",s:"pending",n:"Labor ministry reviewing indexing mechanism."},
+  {c:"Economy",t:"Financial literacy programs nationwide",s:"pending",n:"Program design phase."},
+  {c:"Economy",t:"Public-private partnership framework reform",s:"pending",n:"PPP bill being drafted."},
+
+  // ── Education (12) ──
+  {c:"Education",t:"Free quality education through grade 12",s:"pending",n:"Education amendment bill fast-tracked for first session."},
+  {c:"Education",t:"Reform education curriculum for 21st century skills",s:"pending",n:"Curriculum review committee formed with new mandate."},
+  {c:"Education",t:"Technical and vocational training in every district",s:"pending",n:"TVET expansion plan being drafted."},
+  {c:"Education",t:"Teacher recruitment based purely on merit",s:"pending",n:"Teacher service commission reform bill being drafted."},
+  {c:"Education",t:"Digital learning infrastructure in all schools",s:"pending",n:"Program design underway. Budget allocation pending."},
+  {c:"Education",t:"University autonomy and research funding",s:"pending",n:"University reform bill being studied."},
+  {c:"Education",t:"Scholarship reform to reach marginalized communities",s:"pending",n:"Scholarship framework redesign initiated."},
+  {c:"Education",t:"School feeding program nationwide",s:"pending",n:"Expansion scope being determined."},
+  {c:"Education",t:"End political interference in university appointments",s:"pending",n:"Executive directive issued. TU and KU VC appointments under merit review."},
+  {c:"Education",t:"Mandatory computer science from grade 6",s:"pending",n:"Included in curriculum review mandate."},
+  {c:"Education",t:"Student loan reform with income-based repayment",s:"pending",n:"Policy study initiated."},
+  {c:"Education",t:"Early childhood development centers in every ward",s:"pending",n:"Needs budget allocation."},
+
+  // ── Health (10) ──
+  {c:"Health",t:"Universal health insurance for all citizens",s:"pending",n:"Insurance expansion bill being drafted. Rural gap analysis completed."},
+  {c:"Health",t:"Hospital in every constituency",s:"pending",n:"Hospital construction plan being developed."},
+  {c:"Health",t:"Free emergency medical services",s:"pending",n:"Emergency services reform bill queued."},
+  {c:"Health",t:"Mental health services integration in primary care",s:"pending",n:"Mental health policy framework being designed."},
+  {c:"Health",t:"End medicine price gouging with regulation",s:"pending",n:"Drug pricing regulation drafted for first session."},
+  {c:"Health",t:"Telemedicine network for remote areas",s:"pending",n:"Telemedicine pilot expansion being planned."},
+  {c:"Health",t:"Increase health budget to 10% of GDP",s:"pending",n:"Will be addressed in first budget."},
+  {c:"Health",t:"Nurse and health worker recruitment drive",s:"pending",n:"Recruitment plan being designed."},
+  {c:"Health",t:"Traditional medicine research and integration",s:"pending",n:"No action yet."},
+  {c:"Health",t:"Pandemic preparedness infrastructure",s:"pending",n:"Preparedness review initiated."},
+
+  // ── Infrastructure (11) ──
+  {c:"Infrastructure",t:"Complete Kathmandu-Terai Fast Track highway",s:"pending",n:"Fast Track construction accelerated under new government. Phase II advancing."},
+  {c:"Infrastructure",t:"Pokhara international airport full operations",s:"pending",n:"International flight expansion being negotiated with airlines."},
+  {c:"Infrastructure",t:"Railway feasibility and construction start",s:"pending",n:"Railway feasibility studies being reviewed."},
+  {c:"Infrastructure",t:"National broadband in every ward",s:"pending",n:"Broadband expansion plan being drafted."},
+  {c:"Infrastructure",t:"Smart city pilot in Kathmandu Valley",s:"pending",n:"Smart city concept being studied."},
+  {c:"Infrastructure",t:"Road connectivity to all district headquarters",s:"pending",n:"Road construction budget prioritized. New segments approved."},
+  {c:"Infrastructure",t:"Drinking water for all households by 2085 BS",s:"pending",n:"Water supply master plan being commissioned."},
+  {c:"Infrastructure",t:"Urban housing program for low-income families",s:"pending",n:"Housing program design initiated."},
+  {c:"Infrastructure",t:"Bridge construction acceleration program",s:"pending",n:"Bridge construction budget increased. Multiple projects resumed."},
+  {c:"Infrastructure",t:"Nijgadh international airport resolution",s:"pending",n:"Environmental and political disputes remain unresolved."},
+  {c:"Infrastructure",t:"Provincial capital infrastructure development",s:"pending",n:"Provincial infrastructure needs assessment initiated."},
+
+  // ── Agriculture (9) ──
+  {c:"Agriculture",t:"Subsidized fertilizer and seeds for all farmers",s:"pending",n:"Subsidy programs continued and expanded under new government."},
+  {c:"Agriculture",t:"Crop insurance nationwide",s:"pending",n:"Insurance framework expansion being planned."},
+  {c:"Agriculture",t:"Cold storage chain in every district",s:"pending",n:"Cold storage construction plan being drafted."},
+  {c:"Agriculture",t:"Irrigation master plan implementation",s:"pending",n:"Irrigation project budget increased."},
+  {c:"Agriculture",t:"Agriculture mechanization grants",s:"pending",n:"Mechanization grant program expanded."},
+  {c:"Agriculture",t:"Organic farming promotion and certification",s:"pending",n:"Certification program being designed."},
+  {c:"Agriculture",t:"Minimum support price for major crops",s:"pending",n:"MSP framework study commissioned."},
+  {c:"Agriculture",t:"Agricultural research and extension reform",s:"pending",n:"Research reform plan being drafted."},
+  {c:"Agriculture",t:"End middleman exploitation in agri-markets",s:"pending",n:"Market reform legislation being studied."},
+
+  // ── Energy & Environment (9) ──
+  {c:"Energy",t:"10,000 MW hydropower in 10 years",s:"pending",n:"New hydropower project agreements signed. Accelerated timeline set."},
+  {c:"Energy",t:"Cross-border energy trade with India and Bangladesh",s:"pending",n:"Energy trade discussions resumed with both countries."},
+  {c:"Energy",t:"Solar energy for every household without grid access",s:"pending",n:"Solar program being designed."},
+  {c:"Energy",t:"Electric vehicle promotion and infrastructure",s:"pending",n:"EV charging infrastructure expansion ordered. Import incentives maintained."},
+  {c:"Energy",t:"Climate action plan with measurable targets",s:"pending",n:"Climate legislation being drafted."},
+  {c:"Energy",t:"Waste management reform in municipalities",s:"pending",n:"Waste management policy under review."},
+  {c:"Energy",t:"Forest conservation and community forestry expansion",s:"pending",n:"Forestry bill being drafted."},
+  {c:"Energy",t:"Air quality monitoring and improvement plan",s:"pending",n:"Air quality study commissioned."},
+  {c:"Energy",t:"Green building codes for new construction",s:"pending",n:"Building code review initiated."},
+
+  // ── Digital & Technology (7) ──
+  {c:"Digital",t:"National digital ID for all citizens",s:"pending",n:"National ID rollout accelerated under new government."},
+  {c:"Digital",t:"E-governance portal for all government services",s:"pending",n:"Comprehensive e-governance portal development contracted."},
+  {c:"Digital",t:"Cybersecurity law and national CERT",s:"pending",n:"Cybersecurity bill being drafted."},
+  {c:"Digital",t:"Data protection and privacy law",s:"pending",n:"Data privacy bill drafted for first session."},
+  {c:"Digital",t:"Digital payment ecosystem promotion",s:"pending",n:"Digital payment regulatory support expanded."},
+  {c:"Digital",t:"IT park in every province",s:"pending",n:"IT park feasibility studies commissioned."},
+  {c:"Digital",t:"Open data policy for government datasets",s:"pending",n:"Open data policy being designed."},
+
+  // ── Federalism & Local Gov (6) ──
+  {c:"Federalism",t:"Strengthen provincial autonomy and fiscal federalism",s:"pending",n:"Revenue-sharing reform being studied with supermajority backing."},
+  {c:"Federalism",t:"Resolve federal-provincial jurisdiction disputes",s:"pending",n:"Dispute resolution framework being designed."},
+  {c:"Federalism",t:"Capacity building for local governments",s:"pending",n:"Capacity building program being designed."},
+  {c:"Federalism",t:"Inter-provincial coordination council activation",s:"pending",n:"Council activation scheduled."},
+  {c:"Federalism",t:"Local government performance grants",s:"pending",n:"Grant framework being designed."},
+  {c:"Federalism",t:"Decentralize service delivery to ward level",s:"pending",n:"Decentralization plan being drafted."},
+
+  // ── Justice & Rights (6) ──
+  {c:"Justice",t:"Complete transitional justice process",s:"pending",n:"TJ process restart announced with dedicated timeline. Supermajority enables constitutional amendment if needed."},
+  {c:"Justice",t:"Judicial reform for faster case resolution",s:"pending",n:"Judicial reform bill being drafted."},
+  {c:"Justice",t:"End caste-based discrimination with enforcement",s:"pending",n:"Enforcement mechanism being designed."},
+  {c:"Justice",t:"Women's property rights enforcement",s:"pending",n:"Property rights enforcement bill queued."},
+  {c:"Justice",t:"Child protection law modernization",s:"pending",n:"Child protection review initiated."},
+  {c:"Justice",t:"Press freedom and journalist safety law",s:"pending",n:"Media freedom bill drafted for first session."},
+
+  // ── Foreign Policy & Security (6) ──
+  {c:"Foreign Policy",t:"Balanced relations with India and China",s:"pending",n:"PM-designate conducted initial diplomatic meetings with both ambassadors."},
+  {c:"Foreign Policy",t:"Resolve border disputes diplomatically",s:"pending",n:"Diplomatic strategy being formulated."},
+  {c:"Foreign Policy",t:"Protect migrant workers abroad",s:"pending",n:"Migrant worker protection bill being drafted."},
+  {c:"Foreign Policy",t:"Modernize Nepal Army and police",s:"pending",n:"Defense reform study initiated."},
+  {c:"Foreign Policy",t:"Disaster response force in every province",s:"pending",n:"Disaster response unit plan being drafted."},
+  {c:"Foreign Policy",t:"Peacekeeping participation expansion",s:"pending",n:"Existing commitments being reviewed for expansion."},
+];
+
+// ── Tab navigation ──────────────────────────────────────
+const navItems = document.querySelectorAll(".nav-item");
+const jumpButtons = document.querySelectorAll("[data-jump-tab]");
+let activeTab = "home";
+
+function setActiveTab(t, opts = {}) {
+  const next = document.getElementById(`tab-${t}`);
+  if (!next) return;
+  if (t === activeTab) { if (opts.resetScroll) next.scrollTop = 0; return; }
+  const cur = document.getElementById(`tab-${activeTab}`);
+  if (cur) cur.classList.remove("active");
+  navItems.forEach(n => {
+    const a = n.dataset.tab === t;
+    n.classList.toggle("active", a);
+    a ? n.setAttribute("aria-current","page") : n.removeAttribute("aria-current");
+  });
+  next.classList.add("active");
+  next.scrollTop = opts.resetScroll ? 0 : 0;
+  activeTab = t;
+  history.replaceState(null, "", `#${t}`);
+}
+navItems.forEach(n => n.addEventListener("click", () => setActiveTab(n.dataset.tab)));
+jumpButtons.forEach(b => b.addEventListener("click", () => setActiveTab(b.dataset.jumpTab, {resetScroll:true})));
+const initHash = location.hash.replace("#","");
+if (initHash) setActiveTab(initHash);
+
+// ── Helpers ─────────────────────────────────────────────
+function esc(s) { return s ? s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;") : ""; }
+function trunc(s, n=120) {
+  if (!s) return "";
+  if (s.length <= n) return s;
+  // Cut at last sentence boundary within limit, or last space
+  const cut = s.slice(0, n);
+  const lastPeriod = cut.lastIndexOf(".");
+  if (lastPeriod > n * 0.4) return cut.slice(0, lastPeriod + 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return (lastSpace > 10 ? cut.slice(0, lastSpace) : cut) + ".";
+}
+function timeAgo(d) {
+  if (!d) return "";
+  const m = Math.floor((Date.now()-new Date(d).getTime())/60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m/60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
+}
+
+// ── Promise rendering (accordion) ────────────────────────
+const CAT_ICONS = {
+  "Governance":"GOV","Economy":"ECO","Education":"EDU","Health":"HTH",
+  "Infrastructure":"INF","Agriculture":"AGR","Energy":"ENR","Digital":"DIG",
+  "Federalism":"FED","Justice":"JUS","Foreign Policy":"FPO"
+};
+
+function renderPromises() {
+  const list = document.getElementById("promise-list");
+  const cats = [...new Set(PROMISES.map(p => p.c))];
+
+  let html = "";
+  for (const cat of cats) {
+    const items = PROMISES.filter(p => p.c === cat);
+    const done = items.filter(p => p.s==="done").length;
+    const prog = items.filter(p => p.s==="progress").length;
+    const stall = items.filter(p => p.s==="stalled").length;
+    const pend = items.filter(p => p.s==="pending").length;
+    const total = items.length;
+
+    // Status summary text
+    const parts = [];
+    if (done) parts.push(`${done} done`);
+    if (prog) parts.push(`${prog} in progress`);
+    if (stall) parts.push(`${stall} stalled`);
+    parts.push(`${pend} pending`);
+
+    html += `<div class="promise-category" data-cat="${esc(cat)}">
+      <div class="promise-category-header" onclick="this.parentElement.classList.toggle('open')">
+        <div class="cat-icon">${CAT_ICONS[cat]||"--"}</div>
+        <div class="cat-info">
+          <div class="cat-name">${esc(cat)}</div>
+          <div class="cat-count">${total} pledges · ${parts.join(", ")}</div>
+          <div class="cat-mini-bar">
+            ${done ? `<span style="width:${(done/total*100).toFixed(0)}%;background:var(--green)"></span>` : ""}
+            ${prog ? `<span style="width:${(prog/total*100).toFixed(0)}%;background:var(--amber)"></span>` : ""}
+            ${stall ? `<span style="width:${(stall/total*100).toFixed(0)}%;background:var(--red)"></span>` : ""}
+            <span style="width:${(pend/total*100).toFixed(0)}%;background:var(--border)"></span>
+          </div>
+        </div>
+        <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="promise-category-body"><div class="promise-category-body-inner">
+        ${items.map(p => `<div class="pledge-row">
+          <div class="pledge-dot ${p.s}"></div>
+          <div class="pledge-text">${esc(p.t)}<small>${esc(p.n)}</small></div>
+        </div>`).join("")}
+      </div></div>
+    </div>`;
+  }
+  list.innerHTML = html;
+}
+
+function buildPromiseUI() {
+  const done = PROMISES.filter(p => p.s==="done").length;
+  const prog = PROMISES.filter(p => p.s==="progress").length;
+  const stall = PROMISES.filter(p => p.s==="stalled").length;
+  const pend = PROMISES.filter(p => p.s==="pending").length;
+  const total = PROMISES.length;
+
+  function setBar(id, d, pr, st, pe) {
+    const bar = document.getElementById(id);
+    if (!bar) return;
+    bar.innerHTML = `<span style="width:${(d/total*100).toFixed(1)}%; background:var(--green)"></span><span style="width:${(pr/total*100).toFixed(1)}%; background:var(--amber)"></span><span style="width:${(st/total*100).toFixed(1)}%; background:var(--red)"></span><span style="width:${(pe/total*100).toFixed(1)}%; background:var(--border)"></span>`;
+  }
+
+  // Promise tab stats
+  document.getElementById("ps-done").textContent = done;
+  document.getElementById("ps-progress").textContent = prog;
+  document.getElementById("ps-stalled").textContent = stall;
+  document.getElementById("ps-pending").textContent = pend;
+  setBar("promise-bar", done, prog, stall, pend);
+
+  // Home tab mini stats
+  document.getElementById("hp-done").textContent = done;
+  document.getElementById("hp-progress").textContent = prog;
+  document.getElementById("hp-stalled").textContent = stall;
+  document.getElementById("hp-pending").textContent = pend;
+  setBar("home-bar", done, prog, stall, pend);
+
+  renderPromises();
+}
+
+// ── API ─────────────────────────────────────────────────
+const API = "http://3.148.250.92/api/v1";
+let token = null;
+
+async function auth() {
+  try {
+    const r = await fetch(`${API}/auth/guest`, {method:"POST"});
+    token = (await r.json()).access_token;
+    return true;
+  } catch(e) { console.error("Auth failed:", e); return false; }
+}
+
+async function api(path, params={}) {
+  const u = new URL(`${API}${path}`);
+  Object.entries(params).forEach(([k,v]) => u.searchParams.set(k,v));
+  const r = await fetch(u, {headers:{Authorization:`Bearer ${token}`}});
+  if (!r.ok) throw new Error(`${r.status} ${path}`);
+  return r.json();
+}
+
+// ── Loaders ─────────────────────────────────────────────
+async function loadAll() {
+  // Update date
+
+  const ok = await auth();
+  if (!ok) { console.error("API offline"); return; }
+
+  const results = await Promise.allSettled([
+    api("/kpi/snapshot",{hours:24}),
+    api("/briefs/latest"),
+    api("/parliament/bills",{limit:50}),
+    api("/stories/recent",{hours:72,limit:5}),
+    api("/verbatim/sessions",{limit:10,analyzed_only:true}),
+  ]);
+  const [kpi,brief,bills,stories,sessions] = results.map(r => r.status==="fulfilled" ? r.value : null);
+
+  // Log failures
+  const names = ["kpi","brief","bills","stories","sessions"];
+  results.forEach((r,i) => { if (r.status==="rejected") console.error(`${names[i]} failed:`,r.reason); });
+
+  // ── HOME: Brief ──
+  if (brief) {
+    document.getElementById("hero-title").textContent = trunc(brief.national_summary, 160);
+    document.getElementById("hero-eyebrow").textContent = `SITUATION BRIEF · ${(brief.trend_vs_previous||"stable").toUpperCase()}`;
+    if (brief.created_at) document.getElementById("hero-time").textContent = timeAgo(brief.created_at);
+  }
+  if (kpi) {
+    document.querySelector("#kpi-alerts strong").textContent = kpi.active_alerts?.count ?? "—";
+    document.querySelector("#kpi-events strong").textContent = kpi.events_today?.total ?? "—";
+    document.querySelector("#kpi-threat strong").textContent = kpi.threat_level?.level ?? "—";
+  }
+
+  // ── HOME: Bills pipeline ──
+  if (bills?.items) {
+    const passed = bills.items.filter(b => b.status==="passed").length;
+    const committee = bills.items.filter(b => ["committee","first_reading","second_reading"].includes(b.status)).length;
+    const filed = bills.items.filter(b => b.status==="registered").length;
+    const total = bills.total || bills.items.length;
+    document.getElementById("hb-passed").textContent = passed;
+    document.getElementById("hb-committee").textContent = committee;
+    document.getElementById("hb-filed").textContent = filed;
+    document.getElementById("hb-total").textContent = total;
+    const bar = document.getElementById("home-bills-bar");
+    if (bar && total) bar.innerHTML = `<span style="width:${(passed/total*100).toFixed(0)}%;background:var(--green)"></span><span style="width:${(committee/total*100).toFixed(0)}%;background:var(--amber)"></span><span style="width:${(filed/total*100).toFixed(0)}%;background:var(--border)"></span>`;
+  }
+
+  // ── HOME: Latest session ──
+  const el = document.getElementById("home-session");
+  if (sessions?.items?.length) {
+    const s = sessions.items[0];
+    el.innerHTML = renderSession(s);
+  }
+
+  // ── HOME: Stories ──
+  const sf = document.getElementById("home-stories");
+  if (stories?.length) {
+    sf.innerHTML = stories.slice(0,3).map(s => `<div class="session-card">
+      <div class="session-meta"><span class="badge navy">${esc(s.category||"news")}</span><span class="mono" style="font-size:11px;color:var(--text-muted)">${esc(s.source_name||"")} · ${timeAgo(s.published_at)}</span></div>
+      <h3 style="font-size:14px;">${esc(s.title)}</h3>
+      ${s.ai_summary ? `<p>${esc(trunc(s.ai_summary, 120))}</p>` : ""}
+    </div>`).join("");
+  }
+
+  // ── PARLIAMENT: Sessions (accordion) ──
+  if (sessions?.items) {
+    document.getElementById("session-count-badge").textContent = `${sessions.total} sessions`;
+    document.getElementById("parliament-sessions").innerHTML = sessions.items.map(s => {
+      const chamber = s.chamber==="na" ? "National Assembly" : "HoR";
+      return `<div class="promise-category" data-session>
+        <div class="promise-category-header" onclick="this.parentElement.classList.toggle('open')">
+          <div class="cat-icon">${chamber==="HoR"?"HOR":"NA"}</div>
+          <div class="cat-info">
+            <div class="cat-name">${esc(s.session_date_bs||"")} -- Meeting ${s.meeting_no||"?"}</div>
+            <div class="cat-count">${s.speech_count} speeches${s.key_topics?.length ? " -- "+s.key_topics.slice(0,3).join(", ") : ""}</div>
+          </div>
+          <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="promise-category-body"><div class="promise-category-body-inner">
+          ${s.session_summary ? `<p style="font-size:13px;line-height:1.5;color:var(--text-secondary);margin:8px 0 0;">${esc(trunc(s.session_summary, 300))}</p>` : `<p style="font-size:13px;color:var(--text-muted);margin:8px 0 0;">No summary available.</p>`}
+        </div></div>
+      </div>`;
+    }).join("");
+  }
+
+  // ── PARLIAMENT: Bills (accordion by status group) ──
+  if (bills?.items) {
+    const statusOrder = {passed:0,second_reading:1,committee:2,first_reading:3,registered:4};
+    const sorted = [...bills.items].sort((a,b)=>(statusOrder[a.status]??5)-(statusOrder[b.status]??5));
+    const groups = {};
+    sorted.forEach(b => {
+      const label = {passed:"Passed",second_reading:"2nd Reading",committee:"Committee",first_reading:"1st Reading",registered:"Filed"}[b.status]||b.status;
+      (groups[label] = groups[label] || []).push(b);
+    });
+    const groupIcons = {Passed:"PAS",Committee:"COM","1st Reading":"1ST","2nd Reading":"2ND",Filed:"FIL"};
+    document.getElementById("parliament-bills").innerHTML = Object.entries(groups).map(([label, items]) => {
+      return `<div class="promise-category">
+        <div class="promise-category-header" onclick="this.parentElement.classList.toggle('open')">
+          <div class="cat-icon">${groupIcons[label]||"--"}</div>
+          <div class="cat-info">
+            <div class="cat-name">${esc(label)}</div>
+            <div class="cat-count">${items.length} bill${items.length>1?"s":""}</div>
+          </div>
+          <svg class="cat-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+        </div>
+        <div class="promise-category-body"><div class="promise-category-body-inner">
+          ${items.map(b => {
+            let analysis = null;
+            try { if (b.ai_analysis) analysis = typeof b.ai_analysis === "string" ? JSON.parse(b.ai_analysis) : b.ai_analysis; } catch(e) {}
+            const brief = analysis?.summary || "";
+            const sig = analysis?.significance || "";
+            const sigColor = sig === "high" ? "red" : sig === "medium" ? "amber" : "navy";
+            return `<div class="pledge-row" style="flex-direction:column;gap:4px;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <strong style="font-size:13px;flex:1;">${esc(b.title_en || b.title_ne)}</strong>
+                ${sig ? `<span class="badge ${sigColor}" style="font-size:9px;padding:2px 6px;flex-shrink:0;">${sig.toUpperCase()}</span>` : ""}
+              </div>
+              ${brief ? `<small style="display:block;line-height:1.4;">${esc(trunc(brief, 180))}</small>` : ""}
+              ${b.presented_by ? `<small style="color:var(--text-muted);font-size:10px;">Presented by: ${esc(b.presented_by)}</small>` : ""}
+            </div>`;
+          }).join("")}
+        </div></div>
+      </div>`;
+    }).join("");
+  }
+
+  console.log("Data loaded");
+}
+
+function renderSession(s) {
+  const chamber = s.chamber==="na" ? "National Assembly" : "House of Representatives";
+  return `<div class="session-card">
+    <div class="session-meta">
+      <span class="badge navy">${s.is_analyzed?"Analyzed":"Processing"}</span>
+      <span class="mono" style="font-size:11px;color:var(--text-muted)">${chamber}</span>
+    </div>
+    <h3 style="font-size:14px;">${esc(s.session_date_bs||"")} · Meeting ${s.meeting_no||"?"} · ${s.speech_count} speeches</h3>
+    ${s.session_summary ? `<p>${esc(trunc(s.session_summary, 200))}</p>` : ""}
+    ${s.key_topics?.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">${s.key_topics.slice(0,4).map(t=>`<span class="badge" style="font-size:10px;padding:2px 6px">${esc(t)}</span>`).join("")}</div>` : ""}
+  </div>`;
+}
+
+// ── Init ────────────────────────────────────────────────
+buildPromiseUI();
+loadAll();
+</script>
+</body>
+</html>

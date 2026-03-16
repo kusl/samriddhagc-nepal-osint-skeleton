@@ -1,32 +1,29 @@
-import { Check, X, RotateCcw, Upload } from 'lucide-react'
-
-interface Notification {
-  id: string
-  type: string
-  title: string
-  message: string | null
-  is_read: boolean
-  created_at: string
-  data?: Record<string, any> | null
-}
+import { AlertTriangle, Bell, MapPin, ShieldCheck } from 'lucide-react'
+import type { Notification } from '../../api/notifications'
 
 interface NotificationItemProps {
   notification: Notification
   onMarkRead: () => void
+  onMute: () => void
+  onFollowSimilar: () => void
+  onOpen: () => void
 }
 
-const ICON_MAP: Record<string, typeof Check> = {
-  correction_approved: Check,
-  correction_rejected: X,
-  correction_rolled_back: RotateCcw,
-  bulk_upload_complete: Upload,
-}
+const ICON_MAP = {
+  major_alert: AlertTriangle,
+  place_alert: MapPin,
+  topic_alert: Bell,
+  correction_approved: ShieldCheck,
+  correction_rejected: AlertTriangle,
+  correction_rolled_back: AlertTriangle,
+  bulk_upload_complete: Bell,
+} as const
 
-const COLOR_MAP: Record<string, string> = {
-  correction_approved: 'text-emerald-400 bg-emerald-500/10',
-  correction_rejected: 'text-red-400 bg-red-500/10',
-  correction_rolled_back: 'text-orange-400 bg-orange-500/10',
-  bulk_upload_complete: 'text-blue-400 bg-blue-500/10',
+const SEVERITY_COLOR: Record<string, string> = {
+  low: '#6b7280',
+  medium: '#eab308',
+  high: '#f97316',
+  critical: '#ef4444',
 }
 
 function formatRelative(dateStr: string): string {
@@ -42,34 +39,106 @@ function formatRelative(dateStr: string): string {
   return `${days}d ago`
 }
 
-export function NotificationItem({ notification, onMarkRead }: NotificationItemProps) {
-  const Icon = ICON_MAP[notification.type] || Check
-  const colorClass = COLOR_MAP[notification.type] || 'text-white/40 bg-white/5'
+export function NotificationItem({
+  notification,
+  onMarkRead,
+  onMute,
+  onFollowSimilar,
+  onOpen,
+}: NotificationItemProps) {
+  const Icon = ICON_MAP[notification.type as keyof typeof ICON_MAP] || Bell
+  const severityColor = notification.severity ? SEVERITY_COLOR[notification.severity] ?? '#3b82f6' : '#3b82f6'
 
   return (
     <div
-      className={`px-3 py-2.5 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors cursor-pointer ${
-        !notification.is_read ? 'bg-white/[0.02]' : ''
-      }`}
-      onClick={() => {
-        if (!notification.is_read) onMarkRead()
+      style={{
+        borderBottom: '1px solid rgba(255,255,255,0.05)',
+        background: notification.is_read ? 'transparent' : 'rgba(59, 130, 246, 0.04)',
+        display: 'grid',
+        gridTemplateColumns: '3px 1fr',
       }}
     >
-      <div className="flex gap-2.5">
-        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${colorClass}`}>
-          <Icon size={13} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-white truncate">{notification.title}</span>
-            {!notification.is_read && (
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-            )}
+      <div style={{ background: severityColor }} />
+      <div style={{ padding: '12px 14px 12px 12px' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+          <div style={{
+            width: 28, height: 28,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '1px solid rgba(120, 144, 176, 0.18)',
+            color: 'var(--text-secondary)',
+            background: 'rgba(255,255,255,0.03)',
+            flexShrink: 0,
+          }}>
+            <Icon size={13} />
           </div>
-          {notification.message && (
-            <p className="text-[11px] text-white/40 mt-0.5 line-clamp-2">{notification.message}</p>
-          )}
-          <p className="text-[10px] text-white/20 mt-1">{formatRelative(notification.created_at)}</p>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                {notification.type.replace('_', ' ')}
+              </span>
+              {notification.reason_label && (
+                <span style={{
+                  fontSize: 10,
+                  color: 'var(--text-secondary)',
+                  border: '1px solid rgba(120, 144, 176, 0.16)',
+                  padding: '2px 6px',
+                  fontFamily: 'var(--font-mono)',
+                }}>
+                  {notification.reason_label}
+                </span>
+              )}
+              {notification.severity && (
+                <span style={{
+                  fontSize: 10,
+                  color: severityColor,
+                  border: `1px solid ${severityColor}44`,
+                  padding: '2px 6px',
+                  fontFamily: 'var(--font-mono)',
+                  textTransform: 'uppercase',
+                }}>
+                  {notification.severity}
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                if (!notification.is_read) onMarkRead()
+                onOpen()
+              }}
+              style={{
+                display: 'block',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                margin: 0,
+                textAlign: 'left',
+                width: '100%',
+                cursor: 'pointer',
+              }}
+            >
+              <div style={{ fontSize: 13, color: 'var(--text-primary)', fontWeight: 600, lineHeight: 1.35 }}>
+                {notification.title}
+              </div>
+              {notification.message && (
+                <p style={{ margin: '5px 0 0', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  {notification.message}
+                </p>
+              )}
+            </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 10 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                {formatRelative(notification.created_at)}
+              </span>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="navbar-btn" onClick={onFollowSimilar} style={{ fontSize: 10 }}>
+                  Follow more
+                </button>
+                <button className="navbar-btn" onClick={onMute} style={{ fontSize: 10 }}>
+                  Mute
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

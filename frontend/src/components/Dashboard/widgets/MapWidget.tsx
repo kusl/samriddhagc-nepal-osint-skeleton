@@ -3,7 +3,7 @@ import {
   MapPin, RefreshCw, Filter, Clock, ChevronRight, ChevronLeft,
   Radio, AlertTriangle, Map, X, Layers, ZoomIn, ZoomOut,
   Crosshair, Activity, Eye, EyeOff, ChevronDown, ExternalLink,
-  Vote, Users, TrendingUp, ShieldCheck, Play, Pause, CheckCircle
+  Vote, Users, TrendingUp, ShieldCheck, CheckCircle, Rss
 } from 'lucide-react';
 import { Widget } from '../Widget';
 import L from 'leaflet';
@@ -29,8 +29,6 @@ import { useDistrictMapData, useNationalSummary, useLatestBrief, useRequestFactC
 import type { DistrictElectionData } from '../../../api/elections';
 import { loadElectionData, type ElectionData, type RawConstituencyResult, type RawCandidate } from '../../elections/electionDataLoader';
 import { ElectionMapContent } from './ElectionMapWidget';
-import type { TimelineBucket } from '../../map/TimelineSlider';
-
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -52,6 +50,8 @@ interface MapEvent {
   source_url?: string;
   cluster_id?: string;
   source_name?: string;
+  source_count?: number;
+  is_consolidated?: boolean;
   tactical_type?: string;
   tactical_context?: string;
   municipality?: string;
@@ -74,6 +74,8 @@ interface MapApiResponse {
       source_url?: string;
       cluster_id?: string;
       source_name?: string;
+      source_count?: number;
+      is_consolidated?: boolean;
       tactical_type?: string;
       tactical_context?: string;
       municipality?: string;
@@ -84,9 +86,9 @@ interface MapApiResponse {
 }
 
 function getMapEventLimit(hours: number): number {
-  if (hours >= 24 * 7) return 500;
-  if (hours >= 72) return 400;
-  return 300;
+  if (hours >= 24 * 7) return 1500;
+  if (hours >= 72) return 1200;
+  return 1000;
 }
 
 interface DistrictFeature {
@@ -306,164 +308,6 @@ function createPalantirMarker(category: string, severity: string): L.DivIcon {
   });
 }
 
-// =============================================================================
-// TACTICAL TYPE CONFIGURATION
-// =============================================================================
-
-const TACTICAL_CONFIG: Record<string, {
-  color: string;
-  label: string;
-  svg: string; // Multi-element SVG content using currentColor
-}> = {
-  SECURITY_DEPLOYMENT: { color: '#dc2626', label: 'Deployment', svg: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 13l2-2 2 2 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' },
-  ARREST: { color: '#7c3aed', label: 'Arrest', svg: '<circle cx="8" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="16" cy="10" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="11" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="14" x2="12" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' },
-  PROTEST: { color: '#f59e0b', label: 'Protest', svg: '<path d="M11 4c0-1 1-2 2-2s1.5 1 1.5 2v5h1V6c0-.5.5-1.5 1.5-1.5s1.5 1 1.5 1.5v6c0 4-3 7-6 7H10c-2 0-4-2-4-5v-3c0-1 .5-1.5 1.5-1.5S9 9 9 10v1" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' },
-  ELECTORAL_VIOLENCE: { color: '#ef4444', label: 'Election Clash', svg: '<rect x="5" y="8" width="14" height="12" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 8V6a3 3 0 016 0v2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 16l1.5-3 1.5 2 1.5-2 1.5 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>' },
-  BORDER_INCIDENT: { color: '#06b6d4', label: 'Border Alert', svg: '<rect x="5" y="5" width="14" height="14" rx="1" transform="rotate(45 12 12)" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="2" fill="currentColor"/>' },
-  STRIKE: { color: '#f97316', label: 'Unrest', svg: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="5.5" y1="5.5" x2="18.5" y2="18.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' },
-  POLITICAL_RALLY: { color: '#3b82f6', label: 'Rally', svg: '<circle cx="12" cy="5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="5" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="19" cy="8" r="2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 21v-4a4 4 0 018 0v4M2 21v-2.5a3 3 0 013-3M22 21v-2.5a3 3 0 00-3-3" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>' },
-  CRIME: { color: '#a855f7', label: 'Crime', svg: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="2" x2="12" y2="5" stroke="currentColor" stroke-width="1.5"/><line x1="12" y1="19" x2="12" y2="22" stroke="currentColor" stroke-width="1.5"/><line x1="2" y1="12" x2="5" y2="12" stroke="currentColor" stroke-width="1.5"/><line x1="19" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1.5"/>' },
-  CURFEW: { color: '#ef4444', label: 'Curfew', svg: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><polyline points="12,6 12,12 16,14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="4" y1="4" x2="20" y2="20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>' },
-  RIOT: { color: '#f97316', label: 'Unrest', svg: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="5.5" y1="5.5" x2="18.5" y2="18.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>' }, // Merged with STRIKE as "Unrest"
-  EXPLOSION: { color: '#b91c1c', label: 'Explosion', svg: '<polygon points="12,2 14.5,8 21,9 16.5,14 17.5,21 12,17.5 6.5,21 7.5,14 3,9 9.5,8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>' },
-  ACCIDENT: { color: '#64748b', label: 'Accident', svg: '<path d="M3 12l6-9 3 6 3-3 6 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><line x1="12" y1="15" x2="12" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="20.5" r="1" fill="currentColor"/>' },
-  OTHER: { color: '#6b7280', label: 'Other', svg: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.5"/><text x="12" y="16" text-anchor="middle" font-size="12" font-weight="bold" fill="currentColor">?</text>' },
-};
-
-// Normalize merged tactical types (RIOT → STRIKE, both shown as "Unrest")
-const normalizeTacticalType = (t: string | undefined): string | undefined =>
-  t === 'RIOT' ? 'STRIKE' : t;
-
-function createTacticalMarker(tacticalType: string, severity: string): L.DivIcon {
-  const config = TACTICAL_CONFIG[tacticalType] || TACTICAL_CONFIG.OTHER;
-  const outerSize = severity === 'CRITICAL' ? 36 : severity === 'HIGH' ? 30 : 24;
-  const innerSize = Math.round(outerSize * 0.7);
-  const glowStyle = severity === 'CRITICAL' ? `box-shadow: 0 0 10px ${config.color}60, 0 0 20px ${config.color}30;` : '';
-
-  return L.divIcon({
-    className: 'tactical-marker',
-    html: `
-      <div class="tactical-marker-diamond" style="
-        width: ${outerSize}px;
-        height: ${outerSize}px;
-        transform: rotate(45deg);
-        background: #0d1117;
-        border: 1.5px solid ${config.color};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        ${glowStyle}
-      ">
-        <div style="
-          transform: rotate(-45deg);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: ${config.color};
-        ">
-          <svg width="${innerSize}" height="${innerSize}" viewBox="0 0 24 24" style="color: ${config.color};" stroke="currentColor">
-            ${config.svg}
-          </svg>
-        </div>
-      </div>
-    `,
-    iconSize: [outerSize, outerSize],
-    iconAnchor: [outerSize / 2, outerSize / 2],
-  });
-}
-
-function createTacticalTooltip(event: MapEvent): string {
-  const config = TACTICAL_CONFIG[normalizeTacticalType(event.tactical_type) || 'OTHER'] || TACTICAL_CONFIG.OTHER;
-  const severityColor =
-    event.severity === 'CRITICAL' ? '#f85149' :
-    event.severity === 'HIGH' ? '#d29922' :
-    event.severity === 'MEDIUM' ? '#58a6ff' : '#3fb950';
-  const timeStr = new Date(event.timestamp).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false,
-  });
-  return `
-    <div style="padding: 8px 10px;">
-      <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-        <span style="color: ${config.color}; font-size: 10px;">◆</span>
-        <span style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: ${config.color}; letter-spacing: 0.8px;">
-          ${config.label}
-        </span>
-        <span style="
-          margin-left: auto;
-          padding: 1px 6px;
-          border-radius: 2px;
-          font-size: 8px;
-          font-weight: 700;
-          background: ${severityColor}20;
-          color: ${severityColor};
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        ">${event.severity}</span>
-      </div>
-      <div style="font-size: 11px; font-weight: 500; color: var(--pro-text-primary, #f0f1f3); line-height: 1.4; margin-bottom: 4px;">
-        ${truncateText(event.title, 100)}
-      </div>
-      <div style="font-size: 9px; color: var(--pro-text-muted, #6b7280);">
-        ${event.municipality || event.district || 'Nepal'} · ${timeStr}
-      </div>
-    </div>
-  `;
-}
-
-// =============================================================================
-// BORDER CROSSINGS
-// =============================================================================
-
-const BORDER_CROSSINGS = [
-  { name: 'Birgunj–Raxaul', lat: 27.0104, lng: 84.8766, country: 'India', flag: '🇮🇳' },
-  { name: 'Bhairahawa–Sunauli', lat: 27.5066, lng: 83.4523, country: 'India', flag: '🇮🇳' },
-  { name: 'Biratnagar', lat: 26.4833, lng: 87.2833, country: 'India', flag: '🇮🇳' },
-  { name: 'Kakarbhitta', lat: 26.6620, lng: 88.1284, country: 'India', flag: '🇮🇳' },
-  { name: 'Nepalgunj', lat: 28.0500, lng: 81.6167, country: 'India', flag: '🇮🇳' },
-  { name: 'Tatopani–Zhangmu', lat: 27.9600, lng: 85.9789, country: 'China', flag: '🇨🇳' },
-  { name: 'Rasuwa–Kerung', lat: 28.2800, lng: 85.3600, country: 'China', flag: '🇨🇳' },
-  { name: 'Mustang–Korala', lat: 29.1800, lng: 83.9500, country: 'China', flag: '🇨🇳' },
-] as const;
-
-function createBorderCrossingMarker(crossing: typeof BORDER_CROSSINGS[number]): L.DivIcon {
-  return L.divIcon({
-    className: 'border-crossing-marker',
-    html: `
-      <div style="
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 2px;
-      ">
-        <div style="
-          width: 28px;
-          height: 28px;
-          transform: rotate(45deg);
-          background: #0d1117;
-          border: 1.5px solid #f85149;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        ">
-          <span style="transform: rotate(-45deg); font-size: 14px; line-height: 1;">${crossing.flag}</span>
-        </div>
-        <div style="
-          font-family: 'JetBrains Mono', ui-monospace, monospace;
-          font-size: 8px;
-          font-weight: 700;
-          color: #f85149;
-          text-transform: uppercase;
-          letter-spacing: 1px;
-          text-shadow: 0 0 4px rgba(0,0,0,0.8);
-          white-space: nowrap;
-          margin-top: 2px;
-        ">CLOSED</div>
-      </div>
-    `,
-    iconSize: [40, 44],
-    iconAnchor: [20, 22],
-  });
-}
 
 function injectPalantirStyles() {
   if (document.getElementById('palantir-map-styles')) return;
@@ -529,35 +373,7 @@ function injectPalantirStyles() {
       background: transparent !important;
     }
 
-    /* Tactical mode styles */
-    .tactical-tooltip {
-      background: ${PRO_THEME.bg.elevated} !important;
-      border: 1px solid ${PRO_THEME.border.default} !important;
-      border-radius: 6px !important;
-      padding: 0 !important;
-      color: ${PRO_THEME.text.primary} !important;
-      font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace !important;
-      font-size: 11px !important;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4) !important;
-      max-width: 320px !important;
-      min-width: 220px !important;
-      overflow: hidden !important;
-    }
-    .tactical-tooltip:before { display: none !important; }
-
-    .tactical-marker { background: transparent !important; border: none !important; }
-    .tactical-marker-diamond {
-      transition: transform 0.15s ease;
-      cursor: pointer;
-      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
-    }
-    .tactical-marker-diamond:hover {
-      transform: rotate(45deg) scale(1.15) !important;
-      z-index: 10000 !important;
-    }
-
-    .border-crossing-marker { background: transparent !important; border: none !important; }
-  `;
+`;
   document.head.appendChild(style);
 }
 
@@ -569,9 +385,7 @@ function SituationMapWidget() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
-  const tacticalLayerGroupRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
-  const borderCrossingsLayerRef = useRef<L.LayerGroup | null>(null);
   const districtLayerRef = useRef<L.GeoJSON | null>(null);
   const openEventTooltipMarkerRef = useRef<L.Marker | null>(null);
 
@@ -579,8 +393,6 @@ function SituationMapWidget() {
   const { widgetSizes, activePreset: currentPreset } = useDashboardStore();
   const widgetSize = widgetSizes['map'] || 'medium';
   const isCompactMode = ['small', 'medium', 'third', 'quarter', 'mini', 'compact', 'slim'].includes(widgetSize);
-  const isIntelligencePreset = currentPreset === 'intelligence';
-
   const [events, setEvents] = useState<MapEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [hours, setHours] = useState(6);
@@ -600,23 +412,6 @@ function SituationMapWidget() {
   const [factCheckConfirm, setFactCheckConfirm] = useState<string | null>(null);
   const [factCheckRequested, setFactCheckRequested] = useState<Set<string>>(new Set());
   const factCheckMutation = useRequestFactCheck();
-
-  // Tactical mode state — auto-enabled on Intelligence Monitor preset
-  const [tacticalMode, setTacticalMode] = useState(isIntelligencePreset);
-  const [activeTacticalTypes, setActiveTacticalTypes] = useState<Set<string>>(
-    new Set(Object.keys(TACTICAL_CONFIG))
-  );
-  const [showBorderCrossings, setShowBorderCrossings] = useState(false);
-
-  // Sync tactical mode with preset changes
-  useEffect(() => {
-    setTacticalMode(isIntelligencePreset);
-  }, [isIntelligencePreset]);
-
-  // Playback state for 48h tactical timeline
-  const [playbackTime, setPlaybackTime] = useState<Date | null>(null);
-  const [isPlaybackActive, setIsPlaybackActive] = useState(false);
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   // Analyst brief data for province threat-level choropleth
   const { data: latestBrief } = useLatestBrief();
@@ -644,16 +439,30 @@ function SituationMapWidget() {
   const [showClusterPanel, setShowClusterPanel] = useState(false);
   const [expandedClusterId, setExpandedClusterId] = useState<string | null>(null);
 
+  const getMapEventGroupKey = useCallback((event: MapEvent) => {
+    return event.cluster_id || `standalone_${event.id}`;
+  }, []);
+
+  const getSeverityRank = useCallback((severity: string) => {
+    switch (severity) {
+      case 'CRITICAL':
+        return 4;
+      case 'HIGH':
+        return 3;
+      case 'MEDIUM':
+        return 2;
+      default:
+        return 1;
+    }
+  }, []);
+
   // Group cluster events by cluster_id for deduplication display
   const groupedClusterEvents = useMemo(() => {
     const groups = new globalThis.Map<string, { title: string; events: MapEvent[]; category: string; severity: string; timestamp: string }>();
 
     clusterEvents.forEach(event => {
-      // In tactical mode: group ALL events by normalized tactical type (they're already spatially clustered)
-      // In normal mode: group by cluster_id, standalone events stay separate
-      const groupKey = tacticalMode && event.tactical_type
-        ? `tactical_${normalizeTacticalType(event.tactical_type)}`
-        : (event.cluster_id || `standalone_${event.id}`);
+      // Group by cluster_id, standalone events stay separate
+      const groupKey = event.cluster_id || `standalone_${event.id}`;
 
       if (!groups.has(groupKey)) {
         groups.set(groupKey, {
@@ -680,14 +489,12 @@ function SituationMapWidget() {
     return Array.from(groups.entries())
       .map(([id, data]) => ({ id, ...data }))
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [clusterEvents, tacticalMode]);
+  }, [clusterEvents]);
 
   // =============================================================================
   // ELECTION MODE DETECTION
   // =============================================================================
   const isElectionMode = currentPreset === 'elections';
-  const isIntelligenceMode = currentPreset === 'intelligence';
-
   // Election store & hooks
   const { electionYear, mapColorMode, setMapColorMode, availableYears } = useElectionStore();
   const latestElectionYear = useMemo(() => Math.max(...(availableYears?.length ? availableYears : [electionYear])), [availableYears, electionYear]);
@@ -935,12 +742,6 @@ function SituationMapWidget() {
     const allEvents = [...events, ...announcementEvents];
 
     const filtered = allEvents.filter(e => {
-      // Tactical mode: show ONLY tactical-enriched stories
-      if (tacticalMode) {
-        const tt = normalizeTacticalType(e.tactical_type);
-        if (!tt) return false;
-        if (!activeTacticalTypes.has(tt)) return false;
-      }
       if (!activeCategories.has(e.category)) return false;
       if (selectedDistrictNames && e.district) {
         if (!selectedDistrictNames.has(normalizeDistrictName(e.district))) return false;
@@ -951,77 +752,39 @@ function SituationMapWidget() {
       return true;
     });
 
-    // In tactical mode, deduplicate by cluster_id — show only highest-severity story per cluster
-    if (tacticalMode) {
-      const seenClusters = new globalThis.Map<string, MapEvent>();
-      const result: MapEvent[] = [];
-      const severityRank: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
-      for (const e of filtered) {
-        if (!e.cluster_id) {
-          result.push(e);
-          continue;
-        }
-        const existing = seenClusters.get(e.cluster_id);
-        if (!existing || (severityRank[e.severity] || 0) > (severityRank[existing.severity] || 0)) {
-          seenClusters.set(e.cluster_id, e);
-        }
-      }
-      result.push(...seenClusters.values());
-      // Sort by timestamp descending
-      result.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      return result;
-    }
-
     return filtered;
-  }, [events, announcementEvents, activeCategories, selectedDistrictNames, selectedDistrict, tacticalMode, activeTacticalTypes]);
+  }, [events, announcementEvents, activeCategories, selectedDistrictNames, selectedDistrict]);
 
-  // 48h playback buckets (30-min intervals)
-  const playbackData = useMemo(() => {
-    if (!tacticalMode) return { startTime: new Date(), endTime: new Date(), buckets: [] as TimelineBucket[] };
-    const now = new Date();
-    const start = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    const bucketCount = 96; // 48h / 30min
-    const bucketMs = 30 * 60 * 1000;
-    const buckets: TimelineBucket[] = [];
-    for (let i = 0; i < bucketCount; i++) {
-      const t = new Date(start.getTime() + i * bucketMs);
-      buckets.push({ timestamp: t, count: 0, critical: 0, high: 0 });
-    }
-    filteredEvents.forEach(e => {
-      const ts = new Date(e.timestamp).getTime();
-      const idx = Math.floor((ts - start.getTime()) / bucketMs);
-      if (idx >= 0 && idx < bucketCount) {
-        buckets[idx].count++;
-        if (e.severity === 'CRITICAL') buckets[idx].critical++;
-        if (e.severity === 'HIGH') buckets[idx].high++;
+  const dedupedFilteredEvents = useMemo(() => {
+    const grouped = new globalThis.Map<string, MapEvent>();
+
+    filteredEvents.forEach((event) => {
+      const groupKey = getMapEventGroupKey(event);
+      const existing = grouped.get(groupKey);
+
+      if (!existing) {
+        grouped.set(groupKey, event);
+        return;
+      }
+
+      const existingSources = existing.source_count || 1;
+      const nextSources = event.source_count || 1;
+      const existingSeverity = getSeverityRank(existing.severity);
+      const nextSeverity = getSeverityRank(event.severity);
+      const existingTimestamp = new Date(existing.timestamp).getTime();
+      const nextTimestamp = new Date(event.timestamp).getTime();
+
+      if (
+        nextSources > existingSources ||
+        (nextSources === existingSources && nextSeverity > existingSeverity) ||
+        (nextSources === existingSources && nextSeverity === existingSeverity && nextTimestamp > existingTimestamp)
+      ) {
+        grouped.set(groupKey, event);
       }
     });
-    return { startTime: start, endTime: now, buckets };
-  }, [filteredEvents, tacticalMode]);
 
-  // Auto-advance playback
-  useEffect(() => {
-    if (!isPlaybackActive || !tacticalMode) return;
-    const stepMs = 10 * 60 * 1000 * playbackSpeed; // 10min per tick * speed
-    const interval = setInterval(() => {
-      setPlaybackTime(prev => {
-        const cur = prev || playbackData.startTime;
-        const next = new Date(cur.getTime() + stepMs);
-        if (next >= playbackData.endTime) {
-          setIsPlaybackActive(false);
-          return playbackData.endTime;
-        }
-        return next;
-      });
-    }, 500);
-    return () => clearInterval(interval);
-  }, [isPlaybackActive, playbackSpeed, tacticalMode, playbackData.startTime, playbackData.endTime]);
-
-  // Filter events by playback time cursor
-  const playbackFilteredEvents = useMemo(() => {
-    if (!playbackTime) return filteredEvents;
-    return filteredEvents.filter(e => new Date(e.timestamp).getTime() <= playbackTime.getTime());
-  }, [filteredEvents, playbackTime]);
+    return Array.from(grouped.values());
+  }, [filteredEvents, getMapEventGroupKey, getSeverityRank]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -1029,7 +792,7 @@ function SituationMapWidget() {
     const bySeverity: Record<string, number> = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 };
     const byProvince: Record<string, number> = {};
 
-    filteredEvents.forEach(e => {
+    dedupedFilteredEvents.forEach(e => {
       byCategory[e.category] = (byCategory[e.category] || 0) + 1;
       bySeverity[e.severity] = (bySeverity[e.severity] || 0) + 1;
       if (e.district) {
@@ -1038,15 +801,15 @@ function SituationMapWidget() {
       }
     });
 
-    return { total: filteredEvents.length, byCategory, bySeverity, byProvince };
-  }, [filteredEvents]);
+    return { total: dedupedFilteredEvents.length, byCategory, bySeverity, byProvince };
+  }, [dedupedFilteredEvents]);
 
   // Fetch events
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
       const preferredLimit = getMapEventLimit(hours);
-      const limitCandidates = Array.from(new Set([preferredLimit, 1000, 500, 200]));
+      const limitCandidates = Array.from(new Set([preferredLimit, 1500, 1000, 500]));
       let response: { data: MapApiResponse } | null = null;
       let lastError: unknown = null;
 
@@ -1087,6 +850,8 @@ function SituationMapWidget() {
         source_url: f.properties.source_url,
         cluster_id: f.properties.cluster_id,
         source_name: f.properties.source_name,
+        source_count: f.properties.source_count,
+        is_consolidated: f.properties.is_consolidated,
         tactical_type: f.properties.tactical_type,
         tactical_context: f.properties.tactical_context,
         municipality: f.properties.municipality,
@@ -1154,45 +919,6 @@ function SituationMapWidget() {
   }, []);
 
   // Always satellite tiles — user preference
-
-  // Border crossings layer (tactical mode only)
-  useEffect(() => {
-    if (!mapInstance.current) return;
-    const map = mapInstance.current;
-    // Remove existing
-    if (borderCrossingsLayerRef.current) {
-      map.removeLayer(borderCrossingsLayerRef.current);
-      borderCrossingsLayerRef.current = null;
-    }
-    if (!tacticalMode || !showBorderCrossings) return;
-
-    const group = L.layerGroup();
-    BORDER_CROSSINGS.forEach(crossing => {
-      const icon = createBorderCrossingMarker(crossing);
-      const marker = L.marker([crossing.lat, crossing.lng], { icon, zIndexOffset: -100 });
-      marker.bindTooltip(`
-        <div style="padding: 8px 10px; font-family: 'JetBrains Mono', ui-monospace, monospace;">
-          <div style="font-size: 11px; font-weight: 700; color: var(--pro-text-primary, #f0f1f3); margin-bottom: 4px;">
-            ${crossing.flag} ${crossing.name}
-          </div>
-          <div style="font-size: 9px; color: var(--pro-text-muted, #6b7280); margin-bottom: 4px;">${crossing.country} Border</div>
-          <div style="font-size: 9px; font-weight: 700; color: #f85149; text-transform: uppercase; letter-spacing: 0.5px;">
-            ⛔ CLOSED FOR ELECTIONS
-          </div>
-        </div>
-      `, { direction: 'top', offset: [0, -24], className: 'tactical-tooltip', permanent: false, sticky: false, interactive: false, opacity: 1 });
-      group.addLayer(marker);
-    });
-    group.addTo(map);
-    borderCrossingsLayerRef.current = group;
-
-    return () => {
-      if (borderCrossingsLayerRef.current && mapInstance.current) {
-        mapInstance.current.removeLayer(borderCrossingsLayerRef.current);
-        borderCrossingsLayerRef.current = null;
-      }
-    };
-  }, [tacticalMode, showBorderCrossings]);
 
   // Load GeoJSON
   useEffect(() => {
@@ -1271,7 +997,7 @@ function SituationMapWidget() {
         const f = feature as DistrictFeature;
         const name = f.properties.name || f.properties.DISTRICT || 'Unknown';
         const prov = f.properties.province || f.properties.PROVINCE || getProvinceForDistrict(name) || '';
-        const eventCount = filteredEvents.filter(e => e.district && normalizeDistrictName(e.district) === normalizeDistrictName(name)).length;
+        const eventCount = dedupedFilteredEvents.filter(e => e.district && normalizeDistrictName(e.district) === normalizeDistrictName(name)).length;
 
         // Election mode tooltip
         if (isElectionMode) {
@@ -1355,9 +1081,9 @@ function SituationMapWidget() {
   // Create cluster icon function
   const createClusterIcon = useCallback((cluster: L.MarkerCluster): L.DivIcon => {
     const markers = cluster.getAllChildMarkers();
-    const count = markers.length;
+    const uniqueEventKeys = new Set<string>();
 
-    // Analyze cluster contents — use tactical_type in tactical mode, category otherwise
+    // Analyze cluster contents by category
     const typeBreakdown: Record<string, number> = {};
     let maxSeverity = 'LOW';
     const severityOrder = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -1365,24 +1091,28 @@ function SituationMapWidget() {
     markers.forEach((marker) => {
       const event = (marker as any).eventData as MapEvent;
       if (event) {
-        const typeKey = tacticalMode && event.tactical_type ? (normalizeTacticalType(event.tactical_type) || event.category) : event.category;
-        typeBreakdown[typeKey] = (typeBreakdown[typeKey] || 0) + 1;
+        const eventKey = getMapEventGroupKey(event);
+        if (uniqueEventKeys.has(eventKey)) {
+          return;
+        }
+        uniqueEventKeys.add(eventKey);
+        typeBreakdown[event.category] = (typeBreakdown[event.category] || 0) + 1;
         if (severityOrder.indexOf(event.severity) > severityOrder.indexOf(maxSeverity)) {
           maxSeverity = event.severity;
         }
       }
     });
 
+    const count = uniqueEventKeys.size;
+
     // Find dominant type
-    let dominantType = tacticalMode ? 'OTHER' : 'GENERAL';
+    let dominantType = 'GENERAL';
     let maxCount = 0;
     Object.entries(typeBreakdown).forEach(([t, num]) => {
       if (num > maxCount) { maxCount = num; dominantType = t; }
     });
 
-    const config = tacticalMode
-      ? (TACTICAL_CONFIG[dominantType] || TACTICAL_CONFIG.OTHER)
-      : (CATEGORY_CONFIG[dominantType] || CATEGORY_CONFIG.GENERAL);
+    const config = CATEGORY_CONFIG[dominantType] || CATEGORY_CONFIG.GENERAL;
     const isCritical = maxSeverity === 'CRITICAL';
     const isHigh = maxSeverity === 'HIGH';
 
@@ -1401,9 +1131,7 @@ function SituationMapWidget() {
       typeEntries.sort(([, a], [, b]) => b - a);
 
       for (const [t, n] of typeEntries) {
-        const catConfig = tacticalMode
-          ? (TACTICAL_CONFIG[t] || TACTICAL_CONFIG.OTHER)
-          : (CATEGORY_CONFIG[t] || CATEGORY_CONFIG.GENERAL);
+        const catConfig = CATEGORY_CONFIG[t] || CATEGORY_CONFIG.GENERAL;
         const proportion = n / totalEvents;
         const sweepAngle = proportion * 360;
         if (sweepAngle < 2) continue;
@@ -1459,16 +1187,15 @@ function SituationMapWidget() {
       iconSize: [size, size],
       iconAnchor: [size / 2, size / 2],
     });
-  }, [tacticalMode]);
+  }, [getMapEventGroupKey]);
 
-  // Update markers — tactical mode: plain LayerGroup (no clustering); normal mode: clustered
+  // Update markers
   useEffect(() => {
     if (!mapInstance.current) return;
     const map = mapInstance.current;
 
     // Remove existing layers
     if (clusterGroupRef.current) { map.removeLayer(clusterGroupRef.current); clusterGroupRef.current = null; }
-    if (tacticalLayerGroupRef.current) { map.removeLayer(tacticalLayerGroupRef.current); tacticalLayerGroupRef.current = null; }
 
     // Don't show markers in election mode
     if (isElectionMode) return;
@@ -1515,11 +1242,10 @@ function SituationMapWidget() {
       });
     };
 
-    // ── Clustering config differs by mode ──
     const clusterGroup = L.markerClusterGroup({
-      maxClusterRadius: tacticalMode ? 35 : 50,
-      spiderfyOnMaxZoom: tacticalMode,
-      disableClusteringAtZoom: tacticalMode ? 10 : 12,
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: false,
+      disableClusteringAtZoom: 12,
       animate: true,
       animateAddingMarkers: false,
       removeOutsideVisibleBounds: true,
@@ -1552,31 +1278,18 @@ function SituationMapWidget() {
       setShowClusterPanel(true);
     });
 
-    // Choose events source based on mode
-    const eventsToRender = tacticalMode ? playbackFilteredEvents : filteredEvents;
-
-    eventsToRender.forEach(event => {
+    dedupedFilteredEvents.forEach(event => {
       const [lng, lat] = event.coordinates;
-      const normalizedTT = normalizeTacticalType(event.tactical_type);
-      const useTactical = tacticalMode && normalizedTT && activeTacticalTypes.has(normalizedTT);
-      if (tacticalMode && !useTactical) return; // Skip non-tactical in tactical mode
 
-      const icon = useTactical
-        ? createTacticalMarker(normalizedTT!, event.severity)
-        : createPalantirMarker(event.category, event.severity);
+      const icon = createPalantirMarker(event.category, event.severity);
       const marker = L.marker([lat, lng], { icon });
       (marker as any).eventData = event;
 
-      // Tactical mode: compact tooltip; Normal mode: full tooltip
-      if (useTactical) {
-        marker.bindTooltip(createTacticalTooltip(event), {
-          direction: 'top', offset: [0, -20], className: 'tactical-tooltip',
-          permanent: false, sticky: false, interactive: false, opacity: 1,
-        });
-      } else {
-        const config = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.GENERAL;
+      const config = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.GENERAL;
         const severityColor = PALANTIR_COLORS.severity[event.severity.toLowerCase() as keyof typeof PALANTIR_COLORS.severity] || '#64748b';
         const hasCasualties = event.deaths || event.injured;
+        const isMultiSource = (event.source_count || 1) > 1;
+        const sourceCount = event.source_count || 1;
 
         marker.bindTooltip(`
           <div style="padding: 0;">
@@ -1610,6 +1323,37 @@ function SituationMapWidget() {
               <div style="font-weight: 500; font-size: 13px; line-height: 1.5; color: var(--pro-text-primary, #f0f1f3);">
                 ${truncateText(event.title, 120)}
               </div>
+              ${isMultiSource ? `
+                <div style="display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap;">
+                  <div style="
+                    display: inline-flex; align-items: center; gap: 5px;
+                    padding: 3px 9px; border-radius: 4px;
+                    background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25);
+                  ">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    <span style="font-size: 10px; font-weight: 600; color: #10b981;">VERIFIED</span>
+                  </div>
+                  <div style="
+                    display: inline-flex; align-items: center; gap: 5px;
+                    padding: 3px 9px; border-radius: 4px;
+                    background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25);
+                  ">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                    <span style="font-size: 10px; font-weight: 600; color: #3b82f6;">${sourceCount} SOURCES</span>
+                  </div>
+                  ${event.source_name ? `
+                    <span style="font-size: 10px; color: var(--pro-text-muted, #6b7280);">via ${event.source_name}</span>
+                  ` : ''}
+                </div>
+              ` : event.source_name ? `
+                <div style="margin-top: 8px;">
+                  <span style="font-size: 10px; color: var(--pro-text-muted, #6b7280);">Source: ${event.source_name}</span>
+                </div>
+              ` : ''}
             </div>
             ${hasCasualties ? `
               <div style="padding: 10px 16px; background: rgba(220, 38, 38, 0.06); border-bottom: 1px solid var(--pro-border-default, rgba(255, 255, 255, 0.07));">
@@ -1633,7 +1377,6 @@ function SituationMapWidget() {
             </div>
           </div>
         `, { direction: 'top', offset: [0, -12], className: 'palantir-tooltip', permanent: false, sticky: false, interactive: false, opacity: 1 });
-      }
 
       bindMarkerClick(marker, event);
       clusterGroup.addLayer(marker);
@@ -1646,7 +1389,7 @@ function SituationMapWidget() {
         mapInstance.current.removeLayer(clusterGroupRef.current);
       }
     };
-  }, [filteredEvents, playbackFilteredEvents, createClusterIcon, isElectionMode, tacticalMode, activeTacticalTypes]);
+  }, [dedupedFilteredEvents, createClusterIcon, isElectionMode]);
 
   const toggleCategory = (cat: string) => {
     setActiveCategories(prev => {
@@ -1690,7 +1433,7 @@ function SituationMapWidget() {
   const recentEvents = useMemo(() => {
     // Deduplicate by title (keep most recent) in addition to cluster_id dedup
     const seenTitles = new globalThis.Map<string, MapEvent>();
-    const sorted = [...filteredEvents].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sorted = [...dedupedFilteredEvents].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     const deduped: MapEvent[] = [];
     for (const e of sorted) {
       const key = e.title.trim().toLowerCase();
@@ -1700,8 +1443,8 @@ function SituationMapWidget() {
       }
     }
     return deduped.slice(0, feedLimit);
-  }, [filteredEvents, feedLimit]);
-  const hasMoreEvents = filteredEvents.length > feedLimit;
+  }, [dedupedFilteredEvents, feedLimit]);
+  const hasMoreEvents = dedupedFilteredEvents.length > feedLimit;
 
   // Cluster size lookup — how many stories share each cluster_id
   const clusterSizeLookup = useMemo(() => {
@@ -1714,6 +1457,33 @@ function SituationMapWidget() {
     return counts;
   }, [events]);
 
+  const clusterSourceTotal = useMemo(() => {
+    return groupedClusterEvents.reduce((sum, group) => {
+      const groupedSources = group.events.reduce((groupSum, event) => groupSum + (event.source_count || 1), 0);
+      const lookupSources = group.id.startsWith('standalone_') ? 0 : (clusterSizeLookup.get(group.id) || 0);
+      return sum + Math.max(groupedSources, lookupSources, 1);
+    }, 0);
+  }, [groupedClusterEvents, clusterSizeLookup]);
+
+  const selectedEventGroup = useMemo(() => {
+    if (!selectedEvent) {
+      return null;
+    }
+    const selectedKey = getMapEventGroupKey(selectedEvent);
+    return groupedClusterEvents.find((group) => group.id === selectedKey) || null;
+  }, [selectedEvent, groupedClusterEvents, getMapEventGroupKey]);
+
+  const selectedEventSourceCount = useMemo(() => {
+    if (selectedEventGroup) {
+      const groupedSources = selectedEventGroup.events.reduce((sum, event) => sum + (event.source_count || 1), 0);
+      const lookupSources = selectedEventGroup.id.startsWith('standalone_')
+        ? 0
+        : (clusterSizeLookup.get(selectedEventGroup.id) || 0);
+      return Math.max(groupedSources, lookupSources, 1);
+    }
+    return selectedEvent?.source_count || 1;
+  }, [selectedEventGroup, selectedEvent, clusterSizeLookup]);
+
   // Count active filters
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -1724,7 +1494,7 @@ function SituationMapWidget() {
   }, [activeCategories, selectedProvinces, selectedDistrict]);
 
   return (
-    <Widget id="map" title={isElectionMode ? 'Election Map' : isIntelligenceMode ? 'Tactical Situation Map' : undefined} icon={isElectionMode ? <Vote size={14} /> : isIntelligenceMode ? <ShieldCheck size={14} /> : <MapPin size={14} />} actions={
+    <Widget id="map" title={isElectionMode ? 'Election Map' : undefined} icon={isElectionMode ? <Vote size={14} /> : <MapPin size={14} />} actions={
       <div className="flex items-center gap-2">
         {isElectionMode ? (
           <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30">
@@ -1736,21 +1506,6 @@ function SituationMapWidget() {
             <span className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-amber-500' : 'bg-emerald-500'}`} />
             <span className="text-[9px] font-semibold tracking-wide text-emerald-400">LIVE</span>
           </span>
-        )}
-        {!isElectionMode && (
-          <button
-            className="widget-action"
-            onClick={() => setTacticalMode(!tacticalMode)}
-            style={{
-              background: tacticalMode ? '#dc262620' : undefined,
-              border: tacticalMode ? '1px solid #dc262650' : undefined,
-              borderRadius: '4px',
-              padding: '2px 6px',
-            }}
-            title="Toggle tactical mode"
-          >
-            <ShieldCheck size={12} className={tacticalMode ? 'text-red-400' : ''} />
-          </button>
         )}
         <button className="widget-action" onClick={fetchEvents} disabled={loading || isElectionMode}>
           <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
@@ -1972,27 +1727,6 @@ function SituationMapWidget() {
             {/* Spacer */}
             <div style={{ flex: 1 }} />
 
-            {/* Tactical Mode Badge */}
-            {tacticalMode && !isElectionMode && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '4px 10px',
-                borderRadius: '4px',
-                background: '#dc262615',
-                border: '1px solid #dc262640',
-              }}>
-                <ShieldCheck size={11} style={{ color: '#dc2626' }} />
-                <span style={{ fontSize: '10px', fontWeight: 600, color: '#dc2626', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  TACTICAL
-                </span>
-                <span style={{ fontSize: '9px', color: '#dc262690' }}>
-                  {filteredEvents.filter(e => e.tactical_type).length}
-                </span>
-              </div>
-            )}
-
             {/* Map Controls */}
             {!isElectionMode && (
               <button
@@ -2048,8 +1782,8 @@ function SituationMapWidget() {
               zIndex: 1100,
               padding: '12px',
             }}>
-              {/* Categories Section — hidden in tactical mode */}
-              {!tacticalMode && <div style={{ marginBottom: '12px' }}>
+              {/* Categories Section */}
+              <div style={{ marginBottom: '12px' }}>
                 <div style={{ fontSize: '9px', color: PRO_THEME.text.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
                   Categories
                 </div>
@@ -2084,84 +1818,7 @@ function SituationMapWidget() {
                     );
                   })}
                 </div>
-              </div>}
-
-              {/* Tactical Type Filters (shown when tactical mode is active) */}
-              {tacticalMode && (
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ fontSize: '9px', color: '#dc2626', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                    Tactical Types
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {Object.entries(TACTICAL_CONFIG).filter(([k]) => k !== 'OTHER' && k !== 'RIOT').map(([key, tConfig]) => {
-                      const isActive = activeTacticalTypes.has(key);
-                      const count = filteredEvents.filter(e => normalizeTacticalType(e.tactical_type) === key).length;
-                      if (count === 0) return null;
-                      return (
-                        <button
-                          key={key}
-                          onClick={() => {
-                            setActiveTacticalTypes(prev => {
-                              const next = new Set(prev);
-                              next.has(key) ? next.delete(key) : next.add(key);
-                              return next;
-                            });
-                          }}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: '3px 7px',
-                            fontSize: '9px',
-                            fontWeight: 500,
-                            borderRadius: '3px',
-                            border: `1px solid ${isActive ? tConfig.color + '50' : PRO_THEME.border.subtle}`,
-                            cursor: 'pointer',
-                            background: isActive ? tConfig.color + '15' : 'transparent',
-                            color: isActive ? tConfig.color : PRO_THEME.text.muted,
-                            opacity: isActive ? 1 : 0.5,
-                            transition: 'all 0.15s',
-                          }}
-                        >
-                          <div style={{ width: '5px', height: '5px', borderRadius: '1px', background: tConfig.color }} />
-                          {tConfig.label}
-                          <span style={{ opacity: 0.7 }}>({count})</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Border Crossings Toggle (tactical mode) */}
-              {tacticalMode && (
-                <div style={{ marginBottom: '12px' }}>
-                  <button
-                    onClick={() => setShowBorderCrossings(!showBorderCrossings)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      padding: '5px 8px',
-                      fontSize: '9px',
-                      fontWeight: 600,
-                      borderRadius: '3px',
-                      border: `1px solid ${showBorderCrossings ? '#06b6d450' : PRO_THEME.border.subtle}`,
-                      cursor: 'pointer',
-                      background: showBorderCrossings ? '#06b6d415' : 'transparent',
-                      color: showBorderCrossings ? '#06b6d4' : PRO_THEME.text.muted,
-                      transition: 'all 0.15s',
-                      width: '100%',
-                    }}
-                  >
-                    <div style={{ width: '5px', height: '5px', borderRadius: '1px', background: '#06b6d4', transform: 'rotate(45deg)' }} />
-                    Border Crossings
-                    <span style={{ marginLeft: 'auto', fontSize: '8px', opacity: 0.7 }}>
-                      {showBorderCrossings ? 'ON' : 'OFF'}
-                    </span>
-                  </button>
-                </div>
-              )}
+              </div>
 
               {/* Regions Section */}
               <div style={{ marginBottom: '12px' }}>
@@ -2322,108 +1979,8 @@ function SituationMapWidget() {
               </div>
             )}
 
-            {/* Compact Tactical Playback Pill — bottom-left */}
-            {tacticalMode && !isElectionMode && (
-              <div style={{
-                position: 'absolute',
-                bottom: '10px',
-                left: '10px',
-                zIndex: 1002,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1px',
-                background: 'rgba(13, 17, 23, 0.92)',
-                backdropFilter: 'blur(8px)',
-                borderRadius: '6px',
-                border: '1px solid rgba(255,255,255,0.1)',
-                overflow: 'hidden',
-                fontFamily: 'var(--font-mono, monospace)',
-                fontSize: '10px',
-              }}>
-                {/* Play / Pause */}
-                <button
-                  onClick={() => {
-                    if (!playbackTime) setPlaybackTime(playbackData.startTime);
-                    setIsPlaybackActive(!isPlaybackActive);
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    width: '28px', height: '28px', border: 'none', cursor: 'pointer',
-                    background: isPlaybackActive ? '#dc262630' : 'transparent',
-                    color: isPlaybackActive ? '#dc2626' : '#9ca3af',
-                    transition: 'all 0.15s',
-                  }}
-                  title={isPlaybackActive ? 'Pause' : 'Play'}
-                >
-                  {isPlaybackActive ? <Pause size={11} /> : <Play size={11} />}
-                </button>
-
-                {/* Progress bar + time label */}
-                <div style={{ display: 'flex', flexDirection: 'column', padding: '4px 8px 4px 4px', gap: '3px', minWidth: '120px' }}>
-                  {/* Thin progress bar */}
-                  <div
-                    style={{ height: '3px', borderRadius: '2px', background: 'rgba(255,255,255,0.08)', cursor: 'pointer', position: 'relative' }}
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                      const t = new Date(playbackData.startTime.getTime() + pct * (playbackData.endTime.getTime() - playbackData.startTime.getTime()));
-                      setPlaybackTime(t);
-                    }}
-                  >
-                    <div style={{
-                      height: '100%', borderRadius: '2px',
-                      background: '#dc2626',
-                      width: `${playbackTime ? Math.min(100, ((playbackTime.getTime() - playbackData.startTime.getTime()) / (playbackData.endTime.getTime() - playbackData.startTime.getTime())) * 100) : 100}%`,
-                      transition: 'width 0.3s ease',
-                    }} />
-                  </div>
-                  {/* Time display */}
-                  <span style={{ color: '#9ca3af', fontSize: '9px', letterSpacing: '0.3px' }}>
-                    {(playbackTime || playbackData.endTime).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })}
-                  </span>
-                </div>
-
-                {/* Speed toggle */}
-                <button
-                  onClick={() => {
-                    const speeds = [1, 2, 5, 10];
-                    const idx = speeds.indexOf(playbackSpeed);
-                    setPlaybackSpeed(speeds[(idx + 1) % speeds.length]);
-                  }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 6px', height: '28px', border: 'none', cursor: 'pointer',
-                    background: 'transparent', color: '#6b7280', fontSize: '9px',
-                    fontWeight: 600, fontFamily: 'var(--font-mono, monospace)',
-                    borderLeft: '1px solid rgba(255,255,255,0.06)',
-                    transition: 'all 0.15s',
-                  }}
-                  title="Playback speed"
-                >
-                  {playbackSpeed}x
-                </button>
-
-                {/* Live / Reset */}
-                <button
-                  onClick={() => { setPlaybackTime(null); setIsPlaybackActive(false); }}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    padding: '0 7px', height: '28px', border: 'none', cursor: 'pointer',
-                    background: !playbackTime ? '#22c55e18' : 'transparent',
-                    color: !playbackTime ? '#22c55e' : '#6b7280', fontSize: '9px',
-                    fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.3px',
-                    borderLeft: '1px solid rgba(255,255,255,0.06)',
-                    transition: 'all 0.15s',
-                  }}
-                  title="Jump to live"
-                >
-                  LIVE
-                </button>
-              </div>
-            )}
-
             {/* Minimal Last Update (bottom-left) - Only in normal mode */}
-            {!isElectionMode && !tacticalMode && (
+            {!isElectionMode && (
               <div style={{
                 position: 'absolute',
                 bottom: '12px',
@@ -2565,9 +2122,9 @@ function SituationMapWidget() {
                       <span style={{ fontSize: '11px', color: PRO_THEME.text.muted, fontWeight: 500 }}>
                         stories near {clusterLocation}
                       </span>
-                      {clusterEvents.length > groupedClusterEvents.length && (
+                      {clusterSourceTotal > groupedClusterEvents.length && (
                         <span style={{ fontSize: '9px', color: '#10b981', fontWeight: 500 }}>
-                          ({clusterEvents.length} sources)
+                          ({clusterSourceTotal} sources)
                         </span>
                       )}
                     </div>
@@ -2618,13 +2175,12 @@ function SituationMapWidget() {
                   {/* Event List - Grouped by cluster_id */}
                   <div style={{ flex: 1, overflowY: 'auto' }}>
                     {groupedClusterEvents.slice(0, 25).map((group) => {
-                      const tacticalType = normalizeTacticalType(group.events[0]?.tactical_type);
-                      const config = tacticalMode && tacticalType
-                        ? (TACTICAL_CONFIG[tacticalType] || TACTICAL_CONFIG.OTHER)
-                        : (CATEGORY_CONFIG[group.category] || CATEGORY_CONFIG.GENERAL);
+                      const config = CATEGORY_CONFIG[group.category] || CATEGORY_CONFIG.GENERAL;
                       const isExpanded = expandedClusterId === group.id;
                       const severityColor = PALANTIR_COLORS.severity[group.severity.toLowerCase() as keyof typeof PALANTIR_COLORS.severity] || '#64748b';
-                      const sourceCount = group.events.length;
+                      const groupedSources = group.events.reduce((sum, event) => sum + (event.source_count || 1), 0);
+                      const lookupSources = group.id.startsWith('standalone_') ? 0 : (clusterSizeLookup.get(group.id) || 0);
+                      const sourceCount = Math.max(groupedSources, lookupSources, 1);
                       const isMultiSource = sourceCount > 1;
 
                       return (
@@ -2728,6 +2284,23 @@ function SituationMapWidget() {
                               </div>
                             </div>
                           </div>
+                          {isExpanded && isMultiSource && (
+                            <div style={{
+                              padding: '8px 14px 10px 14px',
+                              borderTop: `1px solid ${PRO_THEME.border.subtle}`,
+                              background: 'rgba(16, 185, 129, 0.05)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              fontSize: '9px',
+                              color: '#10b981',
+                              fontWeight: 600,
+                              letterSpacing: '0.2px',
+                            }}>
+                              <Users size={11} />
+                              Backed by {sourceCount} corroborating sources
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -2756,15 +2329,11 @@ function SituationMapWidget() {
                         <span style={{
                           fontSize: '9px',
                           fontWeight: 600,
-                          color: (tacticalMode && selectedEvent.tactical_type
-                            ? (TACTICAL_CONFIG[normalizeTacticalType(selectedEvent.tactical_type) || 'OTHER'] || TACTICAL_CONFIG.OTHER)
-                            : (CATEGORY_CONFIG[selectedEvent.category] || CATEGORY_CONFIG.GENERAL)).color,
+                          color: (CATEGORY_CONFIG[selectedEvent.category] || CATEGORY_CONFIG.GENERAL).color,
                           textTransform: 'uppercase',
                           letterSpacing: '0.5px',
                         }}>
-                          {(tacticalMode && selectedEvent.tactical_type
-                            ? (TACTICAL_CONFIG[normalizeTacticalType(selectedEvent.tactical_type) || 'OTHER'] || TACTICAL_CONFIG.OTHER)
-                            : (CATEGORY_CONFIG[selectedEvent.category] || CATEGORY_CONFIG.GENERAL)).label}
+                          {(CATEGORY_CONFIG[selectedEvent.category] || CATEGORY_CONFIG.GENERAL).label}
                         </span>
                         <span style={{
                           fontSize: '9px',
@@ -2775,6 +2344,38 @@ function SituationMapWidget() {
                       <div style={{ fontSize: '12px', fontWeight: 500, color: PRO_THEME.text.primary, lineHeight: 1.4 }}>
                         {selectedEvent.title}
                       </div>
+                      {/* Verification badges */}
+                      {selectedEventSourceCount > 1 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            padding: '3px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: 700,
+                            background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.3)',
+                            color: '#10b981',
+                          }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                            VERIFIED
+                          </span>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            padding: '3px 8px', borderRadius: '4px', fontSize: '9px', fontWeight: 700,
+                            background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)',
+                            color: '#3b82f6',
+                          }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            </svg>
+                            {selectedEventSourceCount} SOURCES
+                          </span>
+                          {selectedEvent.source_name && (
+                            <span style={{ fontSize: '9px', color: PRO_THEME.text.muted }}>
+                              via {selectedEvent.source_name}
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     {/* Detail Content */}
@@ -2832,6 +2433,12 @@ function SituationMapWidget() {
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: PRO_THEME.text.muted }}>
                             <Activity size={12} style={{ opacity: 0.7 }} />
                             <span>{selectedEvent.story_type}</span>
+                          </div>
+                        )}
+                        {selectedEvent.source_name && (selectedEvent.source_count || 1) <= 1 && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: PRO_THEME.text.muted }}>
+                            <Rss size={12} style={{ opacity: 0.7 }} />
+                            <span>{selectedEvent.source_name}</span>
                           </div>
                         )}
                       </div>
@@ -3284,9 +2891,7 @@ function SituationMapWidget() {
               {/* Event List */}
               <div style={{ flex: 1, overflowY: 'auto' }}>
                 {recentEvents.map(event => {
-              const config = tacticalMode && event.tactical_type
-                ? (TACTICAL_CONFIG[normalizeTacticalType(event.tactical_type) || 'OTHER'] || TACTICAL_CONFIG.OTHER)
-                : (CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.GENERAL);
+              const config = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.GENERAL;
               const isSelected = selectedEvent?.id === event.id;
               const severityColor = PALANTIR_COLORS.severity[event.severity.toLowerCase() as keyof typeof PALANTIR_COLORS.severity] || '#6b7280';
 

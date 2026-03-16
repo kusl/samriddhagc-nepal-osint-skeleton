@@ -6,7 +6,7 @@
  *
  * Now includes a history selector to view past assessments.
  */
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { memo, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ChevronDown,
@@ -21,50 +21,16 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
 import CountUp from 'react-countup';
 import { Widget } from '../Widget';
 import { useLatestBrief, useBriefById, useBriefHistory } from '../../../api/hooks';
 import { formatTimeAgo, WidgetError } from './shared';
-import type { BriefDetail, BriefHotspot, BriefSummary, ProvinceSitrep } from '../../../api/briefs';
-
-type BriefSelection =
-  | { kind: 'national-summary' }
-  | { kind: 'national-assessment' }
-  | { kind: 'province'; id: string };
+import type { BriefDetail, BriefHotspot, BriefSummary } from '../../../api/briefs';
 
 type SummaryStat = {
   label: string;
   value: number;
 };
-
-type InspectorModel =
-  | {
-      kind: 'national-summary';
-      title: string;
-      subtitle: string;
-      timestamp: string;
-      trend?: string;
-      copy?: string;
-      hotspots: BriefHotspot[];
-      stats: SummaryStat[];
-    }
-  | {
-      kind: 'national-assessment';
-      title: string;
-      subtitle: string;
-      timestamp: string;
-      trend?: string;
-      copy?: string;
-      hotspots: BriefHotspot[];
-    }
-  | {
-      kind: 'province';
-      title: string;
-      subtitle: string;
-      timestamp: string;
-      sitrep: ProvinceSitrep;
-    };
 
 const THREAT_BADGE: Record<string, { text: string; className: string }> = {
   critical: { text: 'CRITICAL', className: 'critical' },
@@ -78,14 +44,6 @@ const THREAT_INDICATOR: Record<string, string> = {
   elevated: 'var(--status-high)',
   guarded: 'var(--status-medium)',
   low: 'var(--status-low)',
-};
-
-const DOMAIN_SECTIONS = ['security', 'political', 'economic', 'disaster', 'election'] as const;
-
-const inspectorVariants = {
-  initial: { opacity: 0, y: 8 },
-  animate: { opacity: 1, y: 0, transition: { duration: 0.18, ease: 'easeOut' as const } },
-  exit: { opacity: 0, y: -8, transition: { duration: 0.12, ease: 'easeIn' as const } },
 };
 
 function TrendTag({ trajectory }: { trajectory?: string }) {
@@ -116,80 +74,22 @@ function normalizeTrendLabel(trend?: string) {
   return trend.replace(/_/g, ' ').replace(/-/g, ' ');
 }
 
-function getInspectorModel(
-  selection: BriefSelection,
-  brief: {
-    created_at: string;
-    national_summary?: string;
-    key_judgment?: string;
-    trend_vs_previous?: string;
-    hotspots?: BriefHotspot[];
-  },
-  provinceById: Map<string, ProvinceSitrep>,
-  stats: SummaryStat[],
-): InspectorModel {
-  if (selection.kind === 'province') {
-    const sitrep = provinceById.get(selection.id);
-    if (sitrep) {
-      return {
-        kind: 'province',
-        title: sitrep.province_name,
-        subtitle: 'National Report',
-        timestamp: sitrep.created_at || brief.created_at,
-        sitrep,
-      };
-    }
-  }
-
-  if (selection.kind === 'national-assessment') {
-    return {
-      kind: 'national-assessment',
-      title: 'National Overview',
-      subtitle: 'Key findings',
-      timestamp: brief.created_at,
-      trend: brief.trend_vs_previous,
-      copy: brief.key_judgment,
-      hotspots: brief.hotspots || [],
-    };
-  }
-
-  return {
-    kind: 'national-summary',
-    title: 'Summary',
-    subtitle: 'National context',
-    timestamp: brief.created_at,
-    trend: brief.trend_vs_previous,
-    copy: brief.national_summary,
-    hotspots: brief.hotspots || [],
-    stats,
-  };
-}
-
 function SummaryCard({
   title,
   copy,
-  selected,
   icon,
-  actionLabel,
-  onSelect,
 }: {
   title: string;
   copy?: string;
-  selected: boolean;
   icon?: ReactNode;
-  actionLabel: string;
-  onSelect: () => void;
 }) {
   return (
-    <article className={`brief-summary-card ${selected ? 'selected' : ''}`}>
+    <article className="brief-summary-card">
       <div className="brief-summary-card-title">
         {icon}
         {title}
       </div>
       <p className="brief-summary-card-copy">{copy || 'No detail available for this run.'}</p>
-      <button type="button" className="brief-inline-action" onClick={onSelect}>
-        {actionLabel}
-      </button>
     </article>
   );
 }
@@ -290,10 +190,7 @@ function SummaryBand({
   assessment,
   hotspots,
   stats,
-  selection,
   isHistorical,
-  onSelectSummary,
-  onSelectAssessment,
 }: {
   runNumber: number;
   createdAt: string;
@@ -302,18 +199,12 @@ function SummaryBand({
   assessment?: string;
   hotspots: BriefHotspot[];
   stats: SummaryStat[];
-  selection: BriefSelection;
   isHistorical: boolean;
-  onSelectSummary: () => void;
-  onSelectAssessment: () => void;
 }) {
   return (
     <section className="brief-summary-band">
       <div className="brief-section-title">
-        <div className="brief-section-heading">
-          <FileText size={12} />
-          National Assessment
-        </div>
+        <div />
         <div className="brief-heading-actions">
           {isHistorical && (
             <span className="brief-historical-badge">
@@ -329,335 +220,77 @@ function SummaryBand({
         </div>
       </div>
 
-      <div className="brief-summary-layout">
-        <div className="brief-summary-main">
-          <div className="brief-meta-row">
-            <span className="source-count-badge">{isHistorical ? 'Past report' : 'Latest report'}</span>
-            <TrendTag trajectory={trend} />
-          </div>
-
-          <SummaryCard
-            title="Summary"
-            copy={summary}
-            selected={selection.kind === 'national-summary'}
-            actionLabel="View in inspector"
-            onSelect={onSelectSummary}
-          />
-
-          <SummaryCard
-            title="Key Findings"
-            copy={assessment}
-            selected={selection.kind === 'national-assessment'}
-            icon={<ShieldAlert size={12} />}
-            actionLabel="View in inspector"
-            onSelect={onSelectAssessment}
-          />
+      <div className="brief-summary-layout brief-summary-layout-expanded">
+        <div className="brief-meta-row brief-summary-meta">
+          <span className="source-count-badge">{isHistorical ? 'Past report' : 'Latest report'}</span>
+          <TrendTag trajectory={trend} />
         </div>
 
-        <aside className="brief-summary-side">
-          <div className="brief-side-card">
-            <div className="brief-side-title">Current Status</div>
-            <div className="brief-status-list">
-              <div className="brief-status-row">
-                <span>Update freshness</span>
-                <strong>{formatTimeAgo(createdAt)}</strong>
-              </div>
-              <div className="brief-status-row">
-                <span>Trend direction</span>
-                <strong>{normalizeTrendLabel(trend)}</strong>
-              </div>
+        <SummaryCard
+          title="Summary"
+          copy={summary}
+        />
+
+        <SummaryCard
+          title="Key Findings"
+          copy={assessment}
+          icon={<ShieldAlert size={12} />}
+        />
+
+        <aside className="brief-side-card brief-status-card">
+          <div className="brief-side-title">Current Status</div>
+          <div className="brief-status-list">
+            <div className="brief-status-row">
+              <span>Update freshness</span>
+              <strong>{formatTimeAgo(createdAt)}</strong>
             </div>
-          </div>
-
-          <div className="brief-side-card">
-            <div className="brief-side-title">Areas of Concern</div>
-            {hotspots.length > 0 ? (
-              <div className="brief-hotspots">
-                {hotspots.slice(0, 4).map((hotspot, index) => (
-                  <span key={`${hotspotLabel(hotspot)}-${index}`} className="brief-hotspot-pill">
-                    <MapPin
-                      size={10}
-                      style={{
-                        color: THREAT_INDICATOR[hotspot.severity || 'low'] || THREAT_INDICATOR.low,
-                      }}
-                    />
-                    {hotspotLabel(hotspot)}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <div className="brief-empty-inline">No areas of concern identified</div>
-            )}
-          </div>
-
-          <div className="brief-metrics-grid">
-            {stats.map((stat) => (
-              <div key={stat.label} className="brief-metric">
-                <div className="brief-metric-label">{stat.label}</div>
-                <div className="brief-metric-value">
-                  <CountUp end={stat.value} duration={1.1} separator="," />
-                </div>
-              </div>
-            ))}
+            <div className="brief-status-row">
+              <span>Trend direction</span>
+              <strong>{normalizeTrendLabel(trend)}</strong>
+            </div>
+            <div className="brief-status-row">
+              <span>Brief run</span>
+              <strong>#{runNumber}</strong>
+            </div>
           </div>
         </aside>
-      </div>
-    </section>
-  );
-}
 
-function ProvinceQueueRow({
-  sitrep,
-  selected,
-  onSelect,
-}: {
-  sitrep: ProvinceSitrep;
-  selected: boolean;
-  onSelect: () => void;
-}) {
-  const badge = THREAT_BADGE[sitrep.threat_level || 'low'] || THREAT_BADGE.low;
-  const indicatorColor = THREAT_INDICATOR[sitrep.threat_level || 'low'] || THREAT_INDICATOR.low;
+        <div className="brief-side-card brief-ops-card">
+          <div className="brief-side-title">Operational Snapshot</div>
+          <div className="brief-ops-layout">
+            <div className="brief-hotspot-group">
+              <div className="brief-inline-section-label">Areas of Concern</div>
+              {hotspots.length > 0 ? (
+                <div className="brief-hotspots">
+                  {hotspots.slice(0, 4).map((hotspot, index) => (
+                    <span key={`${hotspotLabel(hotspot)}-${index}`} className="brief-hotspot-pill">
+                      <MapPin
+                        size={10}
+                        style={{
+                          color: THREAT_INDICATOR[hotspot.severity || 'low'] || THREAT_INDICATOR.low,
+                        }}
+                      />
+                      {hotspotLabel(hotspot)}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="brief-empty-inline">No areas of concern identified</div>
+              )}
+            </div>
 
-  return (
-    <button type="button" className={`feed-item brief-queue-item ${selected ? 'selected' : ''}`} onClick={onSelect}>
-      <div className="feed-indicator" style={{ background: indicatorColor }} />
-      <div className="feed-content">
-        <div className="feed-meta">
-          <span className={`feed-badge ${badge.className}`}>{badge.text}</span>
-          <TrendTag trajectory={sitrep.threat_trajectory} />
-        </div>
-        <div className="feed-title brief-queue-title">{sitrep.province_name}</div>
-        <div className="feed-time brief-queue-meta">
-          <span>{sitrep.story_count} stories</span>
-          {sitrep.hotspots && sitrep.hotspots.length > 0 && (
-            <span className="source-count-badge">{sitrep.hotspots.length} flagged areas</span>
-          )}
-        </div>
-      </div>
-    </button>
-  );
-}
-
-function BriefQueue({
-  selection,
-  provinces,
-  onSelectProvince,
-}: {
-  selection: BriefSelection;
-  provinces: ProvinceSitrep[];
-  onSelectProvince: (id: string) => void;
-}) {
-  return (
-    <section className="brief-pane brief-queue-pane">
-      <div className="brief-pane-header">
-        <div>
-          <div className="brief-pane-kicker">National Report</div>
-          <div className="brief-pane-title">National assessments</div>
-        </div>
-        <span className="brief-pane-meta-badge">
-          {provinces.length} provinces
-        </span>
-      </div>
-
-      <div className="brief-pane-scroll">
-        {provinces.length > 0 ? (
-          <div className="feed-list">
-            {provinces.map((sitrep) => (
-              <ProvinceQueueRow
-                key={sitrep.id}
-                sitrep={sitrep}
-                selected={selection.kind === 'province' && selection.id === sitrep.id}
-                onSelect={() => onSelectProvince(sitrep.id)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="brief-empty-pane">
-            <ShieldAlert size={18} />
-            <p>No province reports available.</p>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function InspectorBody({ model }: { model: InspectorModel }) {
-  if (model.kind === 'province') {
-    const badge = THREAT_BADGE[model.sitrep.threat_level || 'low'] || THREAT_BADGE.low;
-
-    return (
-      <div className="brief-inspector-stack">
-        {model.sitrep.bluf && (
-          <section className="brief-inspector-block">
-            <div className="brief-inspector-block-title">Summary</div>
-            <p className="brief-copy-full">{model.sitrep.bluf}</p>
-          </section>
-        )}
-
-        <section className="brief-inspector-block">
-          <div className="brief-inspector-block-title">Topic Analysis</div>
-          <div className="brief-domain-grid">
-            {DOMAIN_SECTIONS.map((domain) => {
-              const content = model.sitrep[domain];
-              if (!content) return null;
-              return (
-                <article key={domain} className="brief-domain-card">
-                  <div className="brief-domain-label">{domain}</div>
-                  <p className="brief-domain-copy">{content}</p>
-                </article>
-              );
-            })}
-          </div>
-        </section>
-
-        {model.sitrep.hotspots && model.sitrep.hotspots.length > 0 && (
-          <section className="brief-inspector-block">
-            <div className="brief-inspector-block-title">Areas of Concern</div>
-            <div className="brief-hotspot-list">
-              {model.sitrep.hotspots.map((hotspot, index) => (
-                <div key={`${hotspotLabel(hotspot)}-${index}`} className="brief-hotspot-row">
-                  <MapPin
-                    size={10}
-                    style={{
-                      color: THREAT_INDICATOR[hotspot.severity || 'low'] || THREAT_INDICATOR.low,
-                    }}
-                  />
-                  <span className="brief-hotspot-text">
-                    {hotspot.district || hotspot.province}: {hotspot.description}
-                  </span>
+            <div className="brief-metrics-grid brief-metrics-grid-compact">
+              {stats.map((stat) => (
+                <div key={stat.label} className="brief-metric">
+                  <div className="brief-metric-label">{stat.label}</div>
+                  <div className="brief-metric-value">
+                    <CountUp end={stat.value} duration={1.1} separator="," />
+                  </div>
                 </div>
               ))}
             </div>
-          </section>
-        )}
-
-        <section className="brief-inspector-block brief-inspector-metrics">
-          <div className="brief-inspector-meta-row">
-            <span className={`feed-badge ${badge.className}`}>{badge.text}</span>
-            <TrendTag trajectory={model.sitrep.threat_trajectory} />
-            <span className="source-count-badge">{model.sitrep.story_count} stories analyzed</span>
           </div>
-        </section>
-      </div>
-    );
-  }
-
-  if (model.kind === 'national-assessment') {
-    return (
-      <div className="brief-inspector-stack">
-        <section className="brief-inspector-block">
-          <div className="brief-inspector-meta-row">
-            <TrendTag trajectory={model.trend} />
-            <span className="source-count-badge">Key findings</span>
-          </div>
-          <p className="brief-copy-full">{model.copy || 'No analysis available for this run.'}</p>
-        </section>
-
-        {model.hotspots.length > 0 && (
-          <section className="brief-inspector-block">
-            <div className="brief-inspector-block-title">Areas of Concern</div>
-            <div className="brief-hotspots">
-              {model.hotspots.slice(0, 6).map((hotspot, index) => (
-                <span key={`${hotspotLabel(hotspot)}-${index}`} className="brief-hotspot-pill">
-                  <MapPin
-                    size={10}
-                    style={{
-                      color: THREAT_INDICATOR[hotspot.severity || 'low'] || THREAT_INDICATOR.low,
-                    }}
-                  />
-                  {hotspotLabel(hotspot)}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="brief-inspector-stack">
-      <section className="brief-inspector-block">
-        <div className="brief-inspector-meta-row">
-          <TrendTag trajectory={model.trend} />
-          <span className="source-count-badge">National view</span>
         </div>
-        <p className="brief-copy-full">{model.copy || 'No national summary available for this run.'}</p>
-      </section>
-
-      {model.hotspots.length > 0 && (
-        <section className="brief-inspector-block">
-          <div className="brief-inspector-block-title">Areas of Concern</div>
-          <div className="brief-hotspots">
-            {model.hotspots.slice(0, 6).map((hotspot, index) => (
-              <span key={`${hotspotLabel(hotspot)}-${index}`} className="brief-hotspot-pill">
-                <MapPin
-                  size={10}
-                  style={{
-                    color: THREAT_INDICATOR[hotspot.severity || 'low'] || THREAT_INDICATOR.low,
-                  }}
-                />
-                {hotspotLabel(hotspot)}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="brief-inspector-block">
-        <div className="brief-inspector-block-title">High-level Stats</div>
-        <div className="brief-metrics-grid brief-metrics-grid-wide">
-          {model.stats.map((stat) => (
-            <div key={stat.label} className="brief-metric">
-              <div className="brief-metric-label">{stat.label}</div>
-              <div className="brief-metric-value">
-                <CountUp end={stat.value} duration={1.1} separator="," />
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-function BriefInspector({ model }: { model: InspectorModel }) {
-  const inspectorBodyRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    inspectorBodyRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-  }, [model.kind, model.title]);
-
-  return (
-    <section className="brief-pane brief-inspector-pane">
-      <div className="brief-pane-header">
-        <div>
-          <div className="brief-pane-kicker">{model.subtitle}</div>
-          <div className="brief-pane-title">{model.title}</div>
-        </div>
-        <div className="brief-pane-header-meta">
-          {'trend' in model && model.trend ? <TrendTag trajectory={model.trend} /> : null}
-          <span className="brief-section-meta">
-            <Clock size={10} />
-            {formatTimeAgo(model.timestamp)}
-          </span>
-        </div>
-      </div>
-
-      <div ref={inspectorBodyRef} className="brief-pane-scroll brief-inspector-scroll">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={`${model.kind}-${model.title}`}
-            variants={inspectorVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            className="brief-inspector-motion"
-          >
-            <InspectorBody model={model} />
-          </motion.div>
-        </AnimatePresence>
       </div>
     </section>
   );
@@ -666,6 +299,10 @@ function BriefInspector({ model }: { model: InspectorModel }) {
 function SituationBriefStyles() {
   return (
     <style>{`
+      .widget.widget-command[data-widget-id="situation-brief"] {
+        grid-row: span 9;
+      }
+
       .widget[data-widget-id="situation-brief"] .widget-body {
         overflow: hidden;
       }
@@ -676,11 +313,15 @@ function SituationBriefStyles() {
         height: 100%;
         min-height: 0;
         background: var(--pro-bg-surface);
+        font-family: var(--font-widget-sans);
+        font-size: var(--widget-text-sm);
       }
 
       .brief-summary-band {
-        flex: 0 0 auto;
-        border-bottom: 1px solid var(--pro-border-subtle);
+        flex: 1 1 auto;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
       }
 
       .brief-section-title,
@@ -689,9 +330,10 @@ function SituationBriefStyles() {
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        padding: 8px 12px;
+        padding: 8px 12px 4px;
         background: var(--pro-bg-elevated);
         border-bottom: 1px solid var(--pro-border-subtle);
+        min-height: 36px;
       }
 
       .brief-section-heading,
@@ -737,21 +379,26 @@ function SituationBriefStyles() {
 
       .brief-summary-layout {
         display: grid;
-        grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
-        gap: 12px;
-        padding: 12px;
-      }
-
-      .brief-summary-main,
-      .brief-summary-side {
-        display: grid;
-        align-content: start;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
-        min-width: 0;
+        padding: 12px;
+        flex: 1 1 auto;
+        align-content: start;
       }
 
-      .brief-summary-main {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+      .brief-summary-layout-expanded {
+        grid-template-columns: minmax(0, 1.35fr) minmax(0, 1.35fr) minmax(260px, 0.9fr);
+        grid-auto-rows: minmax(0, auto);
+      }
+
+      .brief-summary-meta {
+        grid-column: 1 / -1;
+        padding: 0 2px;
+        margin-bottom: -2px;
+      }
+
+      .brief-status-card {
+        min-height: 100%;
       }
 
       .brief-meta-row {
@@ -771,16 +418,16 @@ function SituationBriefStyles() {
       .brief-summary-card,
       .brief-side-card,
       .brief-inspector-block {
-        padding: 10px 12px;
-        border: 1px solid var(--pro-border-subtle);
-        border-radius: var(--pro-radius-md);
-        background: var(--pro-bg-elevated);
+        padding: 14px;
+        border: 1px solid var(--pro-border-default);
+        border-radius: var(--pro-radius-lg);
+        background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
         min-width: 0;
       }
 
       .brief-summary-card.selected {
-        border-color: var(--pro-border-focus);
-        box-shadow: inset 0 0 0 1px var(--pro-accent-muted);
+        border-color: rgba(99, 102, 241, 0.24);
+        box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.16);
       }
 
       .brief-summary-card-title,
@@ -789,22 +436,28 @@ function SituationBriefStyles() {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        margin-bottom: 6px;
-        font-size: 10px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
+        margin-bottom: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.1em;
         text-transform: uppercase;
-        color: var(--pro-text-secondary);
+        color: #F6F7F9;
+        font-family: var(--font-widget-sans, 'IBM Plex Mono', monospace);
+      }
+
+      .brief-summary-card-title svg,
+      .brief-side-title svg {
+        display: none;
       }
 
       .brief-summary-card-copy {
         margin: 0;
         display: -webkit-box;
         -webkit-box-orient: vertical;
-        -webkit-line-clamp: 3;
+        -webkit-line-clamp: 8;
         overflow: hidden;
-        font-size: 12px;
-        line-height: 1.5;
+        font-size: var(--widget-text-md);
+        line-height: 1.6;
         color: var(--pro-text-primary);
       }
 
@@ -815,25 +468,10 @@ function SituationBriefStyles() {
         color: var(--pro-text-primary);
       }
 
-      .brief-inline-action {
-        margin-top: 8px;
-        padding: 0;
-        border: none;
-        background: transparent;
-        color: var(--pro-accent);
-        font-size: 10px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      .brief-inline-action:hover {
-        color: var(--pro-accent-hover);
-      }
-
       .brief-status-list {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 8px;
       }
 
       .brief-status-row {
@@ -841,13 +479,21 @@ function SituationBriefStyles() {
         align-items: center;
         justify-content: space-between;
         gap: 8px;
-        font-size: 11px;
+        font-size: var(--widget-text-md);
         color: var(--pro-text-secondary);
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--pro-border-subtle);
+      }
+
+      .brief-status-row:last-child {
+        padding-bottom: 0;
+        border-bottom: none;
       }
 
       .brief-status-row strong {
         color: var(--pro-text-primary);
         font-weight: 600;
+        text-transform: capitalize;
       }
 
       .brief-hotspots {
@@ -861,16 +507,40 @@ function SituationBriefStyles() {
         align-items: center;
         gap: 5px;
         padding: 3px 8px;
-        border: 1px solid var(--pro-border-subtle);
+        border: 1px solid var(--pro-border-default);
         border-radius: var(--pro-radius-sm);
-        background: var(--pro-bg-active);
+        background: rgba(255, 255, 255, 0.04);
         color: var(--pro-text-secondary);
-        font-size: 10px;
+        font-size: var(--widget-text-sm);
       }
 
       .brief-empty-inline {
-        font-size: 11px;
+        font-size: var(--widget-text-md);
         color: var(--pro-text-muted);
+      }
+
+      .brief-inline-section-label {
+        margin-bottom: 8px;
+        font-size: var(--widget-text-sm);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--pro-text-muted);
+      }
+
+      .brief-ops-card {
+        grid-column: 1 / -1;
+      }
+
+      .brief-ops-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.7fr) minmax(280px, 1fr);
+        gap: 12px;
+        align-items: start;
+      }
+
+      .brief-hotspot-group {
+        min-width: 0;
       }
 
       .brief-metrics-grid {
@@ -883,17 +553,21 @@ function SituationBriefStyles() {
         overflow: hidden;
       }
 
+      .brief-metrics-grid-compact {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
       .brief-metrics-grid-wide {
         grid-template-columns: repeat(4, minmax(0, 1fr));
       }
 
       .brief-metric {
         padding: 10px 12px;
-        background: var(--pro-bg-surface);
+        background: rgba(255,255,255,0.015);
       }
 
       .brief-metric-label {
-        font-size: 9px;
+        font-size: var(--widget-text-sm);
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
@@ -902,145 +576,10 @@ function SituationBriefStyles() {
 
       .brief-metric-value {
         margin-top: 6px;
-        font-size: 18px;
+        font-size: 16px;
         font-weight: 600;
         font-variant-numeric: tabular-nums;
         color: var(--pro-text-primary);
-      }
-
-      .brief-workspace {
-        display: grid;
-        grid-template-columns: minmax(320px, 0.95fr) minmax(0, 1.55fr);
-        flex: 1 1 auto;
-        min-height: 0;
-      }
-
-      .brief-pane {
-        display: flex;
-        flex-direction: column;
-        min-height: 0;
-      }
-
-      .brief-inspector-pane {
-        border-left: 1px solid var(--pro-border-subtle);
-      }
-
-      .brief-pane-scroll {
-        min-height: 0;
-        overflow-y: auto;
-        overflow-x: hidden;
-      }
-
-      .brief-pane-scroll::-webkit-scrollbar {
-        width: 6px;
-      }
-
-      .brief-pane-scroll::-webkit-scrollbar-thumb {
-        background: var(--pro-bg-active);
-        border-radius: 999px;
-      }
-
-      .brief-queue-item {
-        width: 100%;
-        border: none;
-        background: transparent;
-        text-align: left;
-        font: inherit;
-      }
-
-      .brief-queue-item.selected {
-        background: rgba(99, 102, 241, 0.08);
-        box-shadow: inset 2px 0 0 var(--pro-accent);
-      }
-
-      .brief-queue-item:hover {
-        background: var(--pro-bg-hover);
-      }
-
-      .brief-queue-title {
-        font-weight: 500;
-      }
-
-      .brief-queue-title-clamp {
-        display: -webkit-box;
-        -webkit-box-orient: vertical;
-        -webkit-line-clamp: 2;
-        overflow: hidden;
-      }
-
-      .brief-queue-meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      .brief-inspector-scroll {
-        padding: 12px;
-      }
-
-      .brief-inspector-motion {
-        min-height: 100%;
-      }
-
-      .brief-inspector-stack {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      .brief-inspector-meta-row {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-        margin-bottom: 8px;
-      }
-
-      .brief-domain-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-      }
-
-      .brief-domain-card {
-        padding: 8px 10px;
-        border: 1px solid var(--pro-border-subtle);
-        border-radius: var(--pro-radius-sm);
-        background: var(--pro-bg-surface);
-      }
-
-      .brief-domain-label {
-        margin-bottom: 4px;
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--pro-text-muted);
-      }
-
-      .brief-domain-copy {
-        margin: 0;
-        font-size: 11px;
-        line-height: 1.5;
-        color: var(--pro-text-secondary);
-      }
-
-      .brief-hotspot-list {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-
-      .brief-hotspot-row {
-        display: flex;
-        align-items: flex-start;
-        gap: 6px;
-        font-size: 10px;
-        color: var(--pro-text-secondary);
-      }
-
-      .brief-hotspot-text {
-        line-height: 1.45;
       }
 
       .brief-empty-pane,
@@ -1063,7 +602,7 @@ function SituationBriefStyles() {
       }
 
       .brief-empty small {
-        font-size: 10px;
+        font-size: var(--widget-text-sm);
         color: var(--pro-text-disabled);
       }
 
@@ -1168,7 +707,7 @@ function SituationBriefStyles() {
       }
 
       .brief-history-run {
-        font-size: 11px;
+        font-size: var(--widget-text-md);
         font-weight: 600;
         color: var(--pro-text-primary);
       }
@@ -1177,12 +716,12 @@ function SituationBriefStyles() {
         display: flex;
         align-items: center;
         gap: 8px;
-        font-size: 10px;
+        font-size: var(--widget-text-sm);
         color: var(--pro-text-muted);
       }
 
       .brief-history-item-summary {
-        font-size: 11px;
+        font-size: var(--widget-text-md);
         line-height: 1.4;
         color: var(--pro-text-secondary);
         display: -webkit-box;
@@ -1191,20 +730,11 @@ function SituationBriefStyles() {
         overflow: hidden;
       }
 
-      .brief-tab-strip {
-        display: none;
-      }
-
-      .brief-tab-count,
-      .brief-pane-meta-badge {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 6px;
-        border-radius: var(--pro-radius-sm);
-        background: var(--pro-bg-active);
-        color: var(--pro-text-muted);
-        font-size: 10px;
-        font-weight: 600;
+      .brief-summary-band .source-count-badge {
+        background: rgba(255,255,255,0.05);
+        color: var(--pro-text-secondary);
+        border-radius: 999px;
+        padding: 3px 8px;
       }
 
       @media (max-width: 1200px) {
@@ -1212,18 +742,8 @@ function SituationBriefStyles() {
           grid-template-columns: 1fr;
         }
 
-        .brief-summary-main {
+        .brief-ops-layout {
           grid-template-columns: 1fr;
-        }
-
-        .brief-workspace {
-          grid-template-columns: 1fr;
-          grid-template-rows: minmax(220px, 0.85fr) minmax(0, 1.15fr);
-        }
-
-        .brief-inspector-pane {
-          border-left: none;
-          border-top: 1px solid var(--pro-border-subtle);
         }
       }
 
@@ -1237,11 +757,6 @@ function SituationBriefStyles() {
         .brief-heading-actions,
         .brief-pane-header-meta {
           justify-content: flex-start;
-        }
-
-        .brief-domain-grid,
-        .brief-metrics-grid-wide {
-          grid-template-columns: 1fr;
         }
       }
     `}</style>
@@ -1258,32 +773,13 @@ export const SituationBriefWidget = memo(function SituationBriefWidget() {
   const isViewingHistory = historicalBriefId !== null;
   const brief: BriefDetail | null | undefined = isViewingHistory ? historicalBrief : latestBrief;
 
-  const [selection, setSelection] = useState<BriefSelection>({ kind: 'national-summary' });
+  const provinceCount = brief?.province_sitreps?.length || 0;
 
-  const sitreps = useMemo(
-    () =>
-      [...(brief?.province_sitreps || [])].sort((a, b) => {
-        const order: Record<string, number> = { critical: 0, elevated: 1, guarded: 2, low: 3 };
-        return (order[a.threat_level || 'low'] ?? 3) - (order[b.threat_level || 'low'] ?? 3);
-      }),
-    [brief?.province_sitreps],
-  );
-
-  const provinceById = useMemo(() => new Map(sitreps.map((sitrep) => [sitrep.id, sitrep])), [sitreps]);
-
-  const stats = useMemo<SummaryStat[]>(
-    () => [
-      { label: 'Stories', value: brief?.stories_analyzed || 0 },
-      { label: 'Clusters', value: brief?.clusters_analyzed || 0 },
-      { label: 'Provinces', value: sitreps.length },
-    ],
-    [brief?.stories_analyzed, brief?.clusters_analyzed, sitreps.length],
-  );
-
-  // Reset selection when brief changes
-  useEffect(() => {
-    setSelection({ kind: 'national-summary' });
-  }, [brief?.id]);
+  const stats: SummaryStat[] = [
+    { label: 'Stories', value: brief?.stories_analyzed || 0 },
+    { label: 'Clusters', value: brief?.clusters_analyzed || 0 },
+    { label: 'Provinces', value: provinceCount },
+  ];
 
   if (isLoading) {
     return (
@@ -1328,9 +824,6 @@ export const SituationBriefWidget = memo(function SituationBriefWidget() {
       </Widget>
     );
   }
-
-  const inspectorModel = getInspectorModel(selection, brief, provinceById, stats);
-
   return (
     <Widget
       id="situation-brief"
@@ -1360,21 +853,8 @@ export const SituationBriefWidget = memo(function SituationBriefWidget() {
           assessment={brief.key_judgment}
           hotspots={brief.hotspots || []}
           stats={stats}
-          selection={selection}
           isHistorical={isViewingHistory}
-          onSelectSummary={() => setSelection({ kind: 'national-summary' })}
-          onSelectAssessment={() => setSelection({ kind: 'national-assessment' })}
         />
-
-        <div className="brief-workspace">
-          <BriefQueue
-            selection={selection}
-            provinces={sitreps}
-            onSelectProvince={(id) => setSelection({ kind: 'province', id })}
-          />
-
-          <BriefInspector model={inspectorModel} />
-        </div>
       </div>
       <SituationBriefStyles />
     </Widget>

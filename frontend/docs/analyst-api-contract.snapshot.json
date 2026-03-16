@@ -1,0 +1,9 @@
+{
+  "files": {
+    "src/api/client.ts": "f3d96a3daf4be33bb7d1ad61d26bd7bca4d69e7b3025f509a24d98c09fa7fec1",
+    "src/api/connectedAnalyst.ts": "60c76f41d93b64f12e90e4aae8d3fc2d927f85f6320c8e685ef6632d02e9ec63",
+    "src/api/corporate.ts": "54390135861bb2d2cc5543e7116f736f9b547da5310ee28c690faa5a02387d3b",
+    "src/api/damageAssessment.ts": "e4c4d2271b59b0cc99e0c3adf1ec423d4e24df16cb5721c637a1e990d4b0b7fa",
+    "src/api/damageAssessmentV2.ts": "b9b4a8a337abb2af4db0265d2f40d1f94fef30afbbf6f0bdbc028a2af6b7c60f"
+  }
+}

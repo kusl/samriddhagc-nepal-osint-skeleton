@@ -4,7 +4,7 @@ import CountUp from 'react-countup';
 import { motion } from 'framer-motion';
 
 /* ============================================================
-   NepalOSINT UI — Shared primitives for the platform
+   NARADA UI — Shared primitives for the analyst platform
    All colors use Tailwind bp-* tokens. No inline hex.
    ============================================================ */
 

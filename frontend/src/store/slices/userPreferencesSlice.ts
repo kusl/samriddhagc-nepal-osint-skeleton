@@ -20,10 +20,32 @@ export type TopicId = typeof TOPICS[number]['id']
 // App modes
 export type AppMode = 'civilian' | 'professional'
 
+export interface DashboardOnboardingState {
+  version: number
+  welcomeDismissed: boolean
+  tourCompleted: boolean
+  tourSkipped: boolean
+  lastSeenUserKey: string | null
+  lastCompletedAt: string | null
+}
+
+const DASHBOARD_ONBOARDING_VERSION = 1
+
+const defaultDashboardOnboardingState = (): DashboardOnboardingState => ({
+  version: DASHBOARD_ONBOARDING_VERSION,
+  welcomeDismissed: false,
+  tourCompleted: false,
+  tourSkipped: false,
+  lastSeenUserKey: null,
+  lastCompletedAt: null,
+})
+
 interface UserPreferencesState {
   // Onboarding
   hasCompletedOnboarding: boolean
   onboardingStep: number
+  dashboardOnboarding: DashboardOnboardingState
+  tourReplayRequested: boolean
 
   // App mode
   appMode: AppMode
@@ -39,11 +61,21 @@ interface UserPreferencesState {
   pushNotificationsEnabled: boolean
   emailAlertsEnabled: boolean
   alertSeverityThreshold: 'all' | 'high' | 'critical'
+  includeMajorAlerts: boolean
+  notificationsPaused: boolean
 
   // Actions - Onboarding
   setOnboardingStep: (step: number) => void
   completeOnboarding: () => void
   resetOnboarding: () => void
+  shouldShowDashboardOnboarding: (userKey: string, isGuest: boolean) => boolean
+  startDashboardTour: () => void
+  completeDashboardTour: (userKey: string) => void
+  skipDashboardTour: (userKey: string) => void
+  dismissWelcome: (userKey: string) => void
+  requestTourReplay: () => void
+  clearTourReplay: () => void
+  resetDashboardOnboarding: () => void
 
   // Actions - Mode
   setAppMode: (mode: AppMode) => void
@@ -65,6 +97,16 @@ interface UserPreferencesState {
   setPushNotifications: (enabled: boolean) => void
   setEmailAlerts: (enabled: boolean) => void
   setAlertThreshold: (threshold: 'all' | 'high' | 'critical') => void
+  setIncludeMajorAlerts: (enabled: boolean) => void
+  setNotificationsPaused: (paused: boolean) => void
+  hydrateNotificationPreferences: (preferences: {
+    notifications_enabled: boolean
+    include_major_alerts: boolean
+    min_severity: 'low' | 'medium' | 'high' | 'critical'
+    home_district: string | null
+    followed_districts: string[]
+    followed_topics: string[]
+  }) => void
 
   // Helpers
   getDistrictsByProvince: () => Record<Province, DistrictInfo[]>
@@ -79,6 +121,8 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       // Initial state
       hasCompletedOnboarding: false,
       onboardingStep: 0,
+      dashboardOnboarding: defaultDashboardOnboardingState(),
+      tourReplayRequested: false,
 
       appMode: 'civilian',
 
@@ -90,6 +134,8 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       pushNotificationsEnabled: true,
       emailAlertsEnabled: false,
       alertSeverityThreshold: 'high',
+      includeMajorAlerts: true,
+      notificationsPaused: false,
 
       // Onboarding actions
       setOnboardingStep: (step) => set({ onboardingStep: step }),
@@ -105,6 +151,70 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
         selectedDistricts: [],
         homeDistrict: null,
         selectedTopics: ['disasters', 'elections'],
+      }),
+
+      shouldShowDashboardOnboarding: (userKey) => {
+        const { dashboardOnboarding, tourReplayRequested } = get()
+        if (tourReplayRequested) return true
+        if (!userKey) return false
+        if (dashboardOnboarding.version !== DASHBOARD_ONBOARDING_VERSION) return true
+        if (dashboardOnboarding.lastSeenUserKey !== userKey) return true
+        return !dashboardOnboarding.tourCompleted && !dashboardOnboarding.tourSkipped
+      },
+
+      startDashboardTour: () => set({
+        dashboardOnboarding: {
+          ...get().dashboardOnboarding,
+          welcomeDismissed: true,
+        },
+      }),
+
+      completeDashboardTour: (userKey) => set({
+        dashboardOnboarding: {
+          version: DASHBOARD_ONBOARDING_VERSION,
+          welcomeDismissed: true,
+          tourCompleted: true,
+          tourSkipped: false,
+          lastSeenUserKey: userKey,
+          lastCompletedAt: new Date().toISOString(),
+        },
+        tourReplayRequested: false,
+      }),
+
+      skipDashboardTour: (userKey) => set({
+        dashboardOnboarding: {
+          version: DASHBOARD_ONBOARDING_VERSION,
+          welcomeDismissed: true,
+          tourCompleted: false,
+          tourSkipped: true,
+          lastSeenUserKey: userKey,
+          lastCompletedAt: get().dashboardOnboarding.lastCompletedAt,
+        },
+        tourReplayRequested: false,
+      }),
+
+      dismissWelcome: (userKey) => set({
+        dashboardOnboarding: {
+          ...get().dashboardOnboarding,
+          version: DASHBOARD_ONBOARDING_VERSION,
+          welcomeDismissed: true,
+          lastSeenUserKey: userKey,
+        },
+      }),
+
+      requestTourReplay: () => set({
+        tourReplayRequested: true,
+        dashboardOnboarding: {
+          ...get().dashboardOnboarding,
+          welcomeDismissed: false,
+        },
+      }),
+
+      clearTourReplay: () => set({ tourReplayRequested: false }),
+
+      resetDashboardOnboarding: () => set({
+        dashboardOnboarding: defaultDashboardOnboardingState(),
+        tourReplayRequested: false,
       }),
 
       // Mode actions
@@ -185,6 +295,27 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       setPushNotifications: (enabled) => set({ pushNotificationsEnabled: enabled }),
       setEmailAlerts: (enabled) => set({ emailAlertsEnabled: enabled }),
       setAlertThreshold: (threshold) => set({ alertSeverityThreshold: threshold }),
+      setIncludeMajorAlerts: (enabled) => set({ includeMajorAlerts: enabled }),
+      setNotificationsPaused: (paused) => set({ notificationsPaused: paused, pushNotificationsEnabled: !paused }),
+      hydrateNotificationPreferences: (preferences) => set({
+        pushNotificationsEnabled: preferences.notifications_enabled,
+        notificationsPaused: !preferences.notifications_enabled,
+        includeMajorAlerts: preferences.include_major_alerts,
+        alertSeverityThreshold:
+          preferences.min_severity === 'critical'
+            ? 'critical'
+            : preferences.min_severity === 'high'
+              ? 'high'
+              : 'all',
+        homeDistrict: preferences.home_district,
+        selectedDistricts: preferences.followed_districts,
+        selectedTopics: (() => {
+          const filtered = preferences.followed_topics.filter((topic): topic is TopicId =>
+            TOPICS.some(({ id }) => id === topic),
+          )
+          return filtered.length > 0 ? filtered : ['disasters', 'elections']
+        })(),
+      }),
 
       // Helpers
       getDistrictsByProvince: () => {
@@ -217,12 +348,15 @@ export const useUserPreferencesStore = create<UserPreferencesState>()(
       partialize: (state) => ({
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         appMode: state.appMode,
+        dashboardOnboarding: state.dashboardOnboarding,
         selectedDistricts: state.selectedDistricts,
         homeDistrict: state.homeDistrict,
         selectedTopics: state.selectedTopics,
         pushNotificationsEnabled: state.pushNotificationsEnabled,
         emailAlertsEnabled: state.emailAlertsEnabled,
         alertSeverityThreshold: state.alertSeverityThreshold,
+        includeMajorAlerts: state.includeMajorAlerts,
+        notificationsPaused: state.notificationsPaused,
       }),
     }
   )

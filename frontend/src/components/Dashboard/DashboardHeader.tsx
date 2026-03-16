@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef, memo, useSyncExternalStore, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Grid3X3, User, LogOut, Terminal, Search } from 'lucide-react';
+import { BookOpen, Grid3X3, User, LogOut, Terminal, Search, Github } from 'lucide-react';
 import { useDashboardStore } from '../../stores/dashboardStore';
 import { useAuthStore } from '../../store/slices/authSlice';
 import { usePermissions } from '../../hooks/usePermissions';
 import { useSettingsStore } from '../../store/slices/settingsSlice';
+import { useUserPreferencesStore } from '../../store/slices/userPreferencesSlice';
+import { useNotificationStore } from '../../stores/notificationStore';
 import apiClient from '../../api/client';
 import { subscribeViewerCount, getViewerCountSnapshot, getViewerCountServerSnapshot } from '../../api/websocket';
+import { NotificationBell } from '../common/NotificationBell';
 
 const PRESET_TABS = [
   { id: 'news', label: 'News' },
-  { id: 'elections', label: 'Elections' },
   { id: 'parliament', label: 'Accountability' },
 ] as const;
 
-// Live viewer count from WebSocket
 const ViewerBadge = memo(function ViewerBadge() {
   const viewers = useSyncExternalStore(subscribeViewerCount, getViewerCountSnapshot, getViewerCountServerSnapshot);
   if (viewers <= 0) return null;
@@ -25,7 +26,6 @@ const ViewerBadge = memo(function ViewerBadge() {
   );
 });
 
-// Clock — updates every 1s in isolation
 const Clock = memo(function Clock() {
   const [time, setTime] = useState(new Date());
 
@@ -51,10 +51,11 @@ export const DashboardHeader = memo(function DashboardHeader() {
   const { setCustomizePanelOpen, customizePanelOpen, applyPreset, activePreset } = useDashboardStore();
   const { user, logout, isGuest } = useAuthStore();
   const { isDev } = usePermissions();
+  const { requestTourReplay } = useUserPreferencesStore();
+  const { setPreferencesOpen } = useNotificationStore();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Connection check
   const { getSelectedDistricts } = useSettingsStore();
   const selectedDistricts = useMemo(() => getSelectedDistricts(), [getSelectedDistricts]);
 
@@ -86,7 +87,6 @@ export const DashboardHeader = memo(function DashboardHeader() {
     };
   }, []);
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -117,9 +117,7 @@ export const DashboardHeader = memo(function DashboardHeader() {
 
   return (
     <header className="unified-navbar">
-      {/* Left: Brand + Status + Tabs */}
       <div style={{ display: 'flex', alignItems: 'center', height: '100%', gap: 0 }}>
-        {/* Brand */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '0 14px', height: '100%',
@@ -140,14 +138,20 @@ export const DashboardHeader = memo(function DashboardHeader() {
           </div>
         </div>
 
-        {/* Preset Tabs */}
-        <nav style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+        <nav style={{ display: 'flex', alignItems: 'center', height: '100%' }} data-tour-id="preset-tabs">
           {PRESET_TABS.map(tab => {
             const isActive = activePreset === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => applyPreset(tab.id)}
+                data-tour-id={
+                  tab.id === 'news'
+                    ? 'news-tab'
+                    : tab.id === 'parliament'
+                      ? 'accountability-tab'
+                      : undefined
+                }
                 style={{
                   position: 'relative',
                   height: '100%',
@@ -177,14 +181,11 @@ export const DashboardHeader = memo(function DashboardHeader() {
         </nav>
       </div>
 
-      {/* Right: Clock + Actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 2, height: '100%' }}>
         <Clock />
 
-        {/* Separator */}
         <div className="hidden sm:block" style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 6px' }} />
 
-        {/* Search */}
         <button
           className="navbar-btn hidden sm:inline-flex"
           title="Search (K)"
@@ -199,12 +200,22 @@ export const DashboardHeader = memo(function DashboardHeader() {
           }}>K</kbd>
         </button>
 
-        {/* Alerts */}
-        <button className="navbar-btn" title="Alerts">
-          <Bell size={14} />
-        </button>
+        <NotificationBell />
 
-        {/* Customize */}
+        {user?.role === 'consumer' && (
+          <button
+            className="navbar-btn"
+            title="Guide"
+            data-tour-id="help-tour"
+            onClick={() => requestTourReplay()}
+          >
+            <BookOpen size={14} />
+            <span className="hidden sm:inline" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Guide
+            </span>
+          </button>
+        )}
+
         <button
           className={`navbar-btn ${customizePanelOpen ? 'navbar-btn-active' : ''}`}
           title="Customize"
@@ -213,7 +224,6 @@ export const DashboardHeader = memo(function DashboardHeader() {
           <Grid3X3 size={14} />
         </button>
 
-        {/* Dev Console */}
         {isDev && (
           <button
             className="navbar-btn"
@@ -224,15 +234,25 @@ export const DashboardHeader = memo(function DashboardHeader() {
           </button>
         )}
 
-        {/* Separator */}
         <div className="hidden sm:block" style={{ width: 1, height: 16, background: 'var(--border-subtle)', margin: '0 4px' }} />
 
-        {/* Account */}
+        <a
+          className="navbar-btn"
+          title="GitHub Repository"
+          href="https://github.com/nlethetech/nepal-osint-skeleton"
+          target="_blank"
+          rel="noreferrer"
+          aria-label="GitHub Repository"
+        >
+          <Github size={14} />
+        </a>
+
         <div className="relative" style={{ height: '100%', display: 'flex', alignItems: 'center' }} ref={menuRef}>
           <button
             className={`navbar-btn ${accountMenuOpen ? 'navbar-btn-active' : ''}`}
             onClick={() => setAccountMenuOpen(!accountMenuOpen)}
             title="Account"
+            data-tour-id="account-menu"
           >
             <User size={14} />
             <span className="hidden sm:inline" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
@@ -248,7 +268,6 @@ export const DashboardHeader = memo(function DashboardHeader() {
               boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
               zIndex: 50, overflow: 'hidden',
             }}>
-              {/* User Info */}
               <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <div style={{
@@ -275,7 +294,6 @@ export const DashboardHeader = memo(function DashboardHeader() {
                 </div>
               </div>
 
-              {/* Actions */}
               <div style={{ padding: '4px 0' }}>
                 {isGuest ? (
                   <button
@@ -292,20 +310,38 @@ export const DashboardHeader = memo(function DashboardHeader() {
                     Sign In / Create Account
                   </button>
                 ) : (
-                  <button
-                    onClick={handleLogout}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 14px', background: 'transparent', border: 'none',
-                      fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
-                      textAlign: 'left', fontFamily: 'var(--font-sans)',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                  >
-                    <LogOut size={12} />
-                    Sign out
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        setAccountMenuOpen(false)
+                        setPreferencesOpen(true)
+                      }}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 14px', background: 'transparent', border: 'none',
+                        fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
+                        textAlign: 'left', fontFamily: 'var(--font-sans)',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >
+                      Alert preferences
+                    </button>
+                    <button
+                      onClick={handleLogout}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 14px', background: 'transparent', border: 'none',
+                        fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
+                        textAlign: 'left', fontFamily: 'var(--font-sans)',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >
+                      <LogOut size={12} />
+                      Sign out
+                    </button>
+                  </>
                 )}
               </div>
             </div>

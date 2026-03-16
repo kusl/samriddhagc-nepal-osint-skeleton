@@ -3,15 +3,27 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { CandidateDeepDive } from './components/elections/CandidateDeepDive'
 import { Dashboard as NewDashboard } from './components/Dashboard'
+import { MainLayout } from './components/layout/MainLayout'
+// MobileBottomNav removed — election season, single-page mobile experience
+import Analysis from './pages/Analysis'
+import Indices from './pages/Indices'
+import ActivityLogs from './pages/ActivityLogs'
+import ReviewQueue from './pages/ReviewQueue'
+import DisasterAlerts from './pages/DisasterAlerts'
 import Login from './pages/Login'
 import ChooseUsername from './pages/ChooseUsername'
-import DisasterAlerts from './pages/DisasterAlerts'
-import Elections from './pages/Elections'
-import MapView from './pages/MapView'
+import DevWorkstation from './pages/DevWorkstation'
+import { UITestDashboard } from './components/Dashboard/UITestDashboard'
 import { useAuthStore, User } from './store/slices/authSlice'
 import { useUserPreferencesStore } from './store/slices/userPreferencesSlice'
+import { ProtectedRoute } from './components/ProtectedRoute'
 import { usePermissions } from './hooks/usePermissions'
 import { guestLogin } from './api/auth'
+import { fetchNotificationPreferences, updateNotificationPreferences } from './api/notifications'
+import { useNotificationStore } from './stores/notificationStore'
+import { getProvinceForDistrict } from './data/districts'
+
+const BUILD_MARKER = 'aviation-v59'
 
 function toStoreUser(apiUser: {
   id: string; email: string; full_name: string | null; username: string | null;
@@ -45,15 +57,95 @@ function AnimatedRoutes({ children }: { children: React.ReactNode }) {
 
 function App() {
   const location = useLocation()
-  const { isAuthenticated, needsUsername, isGuest, login } = useAuthStore()
-  const { hasCompletedOnboarding } = useUserPreferencesStore()
+  const { isAuthenticated, needsUsername, isGuest, login, user } = useAuthStore()
+  const {
+    hasCompletedOnboarding,
+    selectedDistricts,
+    homeDistrict,
+    selectedTopics,
+    alertSeverityThreshold,
+    includeMajorAlerts,
+    pushNotificationsEnabled,
+    hydrateNotificationPreferences,
+  } = useUserPreferencesStore()
+  const { setPreferencesOpen } = useNotificationStore()
   const { isConsumer } = usePermissions()
   const [autoLoginError, setAutoLoginError] = useState(false)
   const attemptedRef = useRef(false)
+  const wasAuthenticatedRef = useRef(isAuthenticated)
+  const notificationPrefsSyncRef = useRef<string | null>(null)
+  const shouldAttemptGuestBootstrap = location.pathname !== '/login'
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-build-marker', BUILD_MARKER)
+  }, [])
+
+  useEffect(() => {
+    if (wasAuthenticatedRef.current && !isAuthenticated) {
+      attemptedRef.current = false
+      setAutoLoginError(false)
+      notificationPrefsSyncRef.current = null
+    }
+    wasAuthenticatedRef.current = isAuthenticated
+  }, [isAuthenticated])
+
+  useEffect(() => {
+    if (!isAuthenticated || isGuest || !user?.id || location.pathname === '/login') return
+    if (notificationPrefsSyncRef.current === user.id) return
+    notificationPrefsSyncRef.current = user.id
+    let cancelled = false
+
+    const syncNotificationPreferences = async () => {
+      try {
+        const serverPrefs = await fetchNotificationPreferences()
+        if (cancelled) return
+        if (serverPrefs.has_saved_preferences) {
+          hydrateNotificationPreferences(serverPrefs)
+          return
+        }
+
+        const saved = await updateNotificationPreferences({
+          notifications_enabled: pushNotificationsEnabled,
+          include_major_alerts: includeMajorAlerts,
+          min_severity: alertSeverityThreshold === 'critical' ? 'critical' : alertSeverityThreshold === 'high' ? 'high' : 'low',
+          home_district: homeDistrict,
+          followed_districts: selectedDistricts,
+          followed_provinces: Array.from(
+            new Set(selectedDistricts.map((district) => getProvinceForDistrict(district)).filter(Boolean)),
+          ) as string[],
+          followed_topics: selectedTopics,
+        })
+        if (cancelled) return
+        hydrateNotificationPreferences(saved)
+        setPreferencesOpen(true)
+      } catch (error) {
+        console.warn('Notification preference sync failed', error)
+        notificationPrefsSyncRef.current = null
+      }
+    }
+
+    void syncNotificationPreferences()
+    return () => {
+      cancelled = true
+    }
+  }, [
+    alertSeverityThreshold,
+    homeDistrict,
+    hydrateNotificationPreferences,
+    includeMajorAlerts,
+    isAuthenticated,
+    isGuest,
+    location.pathname,
+    pushNotificationsEnabled,
+    selectedDistricts,
+    selectedTopics,
+    setPreferencesOpen,
+    user?.id,
+  ])
 
   // Auto-login as guest when not authenticated
   useEffect(() => {
-    if (isAuthenticated || attemptedRef.current) return
+    if (!shouldAttemptGuestBootstrap || isAuthenticated || attemptedRef.current) return
     attemptedRef.current = true
     guestLogin()
       .then((result) => {
@@ -61,11 +153,12 @@ function App() {
       })
       .catch(() => {
         setAutoLoginError(true)
+        attemptedRef.current = false
       })
-  }, [isAuthenticated, login])
+  }, [isAuthenticated, login, shouldAttemptGuestBootstrap])
 
   // Show loading while auto-login is in progress
-  if (!isAuthenticated && !autoLoginError) {
+  if (!isAuthenticated && shouldAttemptGuestBootstrap && !autoLoginError) {
     return (
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -80,7 +173,7 @@ function App() {
   }
 
   // Fallback to manual login if auto-guest fails
-  if (!isAuthenticated && autoLoginError) {
+  if (!isAuthenticated && (!shouldAttemptGuestBootstrap || autoLoginError)) {
     return (
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -89,7 +182,7 @@ function App() {
     )
   }
 
-  // Redirect to choose-username if needed (not for guests)
+  // Redirect to choose-username if needed (not for guests — they get auto-generated usernames)
   if (needsUsername && !isGuest) {
     return (
       <Routes>
@@ -99,20 +192,93 @@ function App() {
     )
   }
 
-  // Public dashboard routes only
+  // Show onboarding if not completed (skip for consumer role and during elections)
+  // Disabled during election season — everyone goes straight to election monitor
+  // if (!hasCompletedOnboarding && !isConsumer) {
+  //   return <Onboarding />
+  // }
+
+  // ============================================
+  // UI TEST ROUTE
+  // ============================================
+
+  if (location.pathname === '/uitest' || location.pathname === '/uitest/') {
+    return (
+      <>
+        <CandidateDeepDive />
+        <AnimatedRoutes>
+          <Routes>
+            <Route path="/uitest" element={<UITestDashboard />} />
+            <Route path="/uitest/" element={<UITestDashboard />} />
+            <Route path="*" element={<Navigate to="/uitest" replace />} />
+          </Routes>
+        </AnimatedRoutes>
+      </>
+    )
+  }
+
+  // Consumer role: analyst dashboard is default landing page
+  if (isConsumer) {
+    return (
+      <>
+        <CandidateDeepDive />
+        <AnimatedRoutes>
+          <Routes>
+            <Route path="/" element={<NewDashboard />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/disasters" element={<DisasterAlerts />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AnimatedRoutes>
+        {/* MobileBottomNav removed for election season */}
+      </>
+    )
+  }
+
+  // ============================================
+  // DEV ROUTES (no analyst in consumer deployment)
+  // ============================================
+
+  // Dev Workstation (full-screen, no MainLayout)
+  if (location.pathname.startsWith('/dev')) {
+    return (
+      <>
+        <CandidateDeepDive />
+        <AnimatedRoutes>
+          <Routes>
+            <Route path="/dev" element={<Navigate to="/dev/overview" replace />} />
+            <Route path="/dev/*" element={<ProtectedRoute requiredRole="dev"><DevWorkstation /></ProtectedRoute>} />
+            <Route path="/login" element={<Login />} />
+            <Route path="*" element={<Navigate to="/dev/overview" replace />} />
+          </Routes>
+        </AnimatedRoutes>
+        {/* MobileBottomNav removed for election season */}
+      </>
+    )
+  }
+
+  // All other routes — analyst dashboard is landing page
   return (
     <>
-      <CandidateDeepDive />
+    <CandidateDeepDive />
+    <MainLayout>
       <AnimatedRoutes>
         <Routes>
           <Route path="/" element={<NewDashboard />} />
-          <Route path="/login" element={<Login />} />
           <Route path="/disasters" element={<DisasterAlerts />} />
-          <Route path="/elections" element={<Elections />} />
-          <Route path="/map" element={<MapView />} />
+
+          {/* Dev-only routes */}
+          <Route path="/analysis" element={<ProtectedRoute requiredRole="dev"><Analysis /></ProtectedRoute>} />
+          <Route path="/indices" element={<ProtectedRoute requiredRole="dev"><Indices /></ProtectedRoute>} />
+          <Route path="/activity" element={<ProtectedRoute requiredRole="dev"><ActivityLogs /></ProtectedRoute>} />
+          <Route path="/review-queue" element={<ProtectedRoute requiredRole="dev"><ReviewQueue /></ProtectedRoute>} />
+
+          <Route path="/login" element={<Login />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatedRoutes>
+    </MainLayout>
+    {/* MobileBottomNav removed for election season */}
     </>
   )
 }

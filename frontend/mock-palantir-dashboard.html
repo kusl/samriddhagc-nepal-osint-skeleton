@@ -1,0 +1,4283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NepalOSINT | Intelligence Platform</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-base: #0a0a0b;
+            --bg-surface: #111113;
+            --bg-elevated: #18181b;
+            --bg-hover: #1f1f23;
+            --bg-active: #27272a;
+            --border-subtle: #27272a;
+            --border-default: #3f3f46;
+            --border-emphasis: #52525b;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --text-disabled: #52525b;
+            --accent-primary: #3b82f6;
+            --accent-hover: #2563eb;
+            --status-critical: #ef4444;
+            --status-high: #f97316;
+            --status-medium: #eab308;
+            --status-low: #22c55e;
+            --status-info: #3b82f6;
+            --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
+            --header-height: 48px;
+            --panel-gap: 6px;
+        }
+
+        html, body {
+            height: 100%;
+            font-family: var(--font-sans);
+            background: var(--bg-base);
+            color: var(--text-primary);
+            font-size: 13px;
+            line-height: 1.5;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ============ APP LAYOUT ============ */
+        .app {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        /* ============ HEADER ============ */
+        .header {
+            height: var(--header-height);
+            background: var(--bg-surface);
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            gap: 18px;
+            flex-shrink: 0;
+            z-index: 100;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 190px;
+        }
+
+        .brand-text {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand-name {
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+        }
+
+        .brand-status {
+            font-size: 10px;
+            color: var(--status-low);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--status-low);
+            border-radius: 50%;
+        }
+
+        .header-nav {
+            display: flex;
+            gap: 6px;
+            margin-left: 8px;
+            padding: 4px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+        }
+
+        .nav-item {
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: none;
+            border-radius: 8px;
+            transition: all 0.15s;
+        }
+
+        .nav-item:hover {
+            color: var(--text-primary);
+            background: rgba(255,255,255,0.04);
+        }
+        .nav-item.active {
+            color: var(--text-primary);
+            background: rgba(59, 130, 246, 0.16);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.18);
+        }
+
+        .header-search {
+            flex: 1 1 auto;
+            max-width: 560px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            padding: 10px 42px 10px 38px;
+            font-size: 12px;
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            transition: all 0.15s;
+            border-radius: 10px;
+        }
+
+        .search-input::placeholder { color: var(--text-muted); }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: var(--bg-hover);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.10);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            min-width: 240px;
+            justify-content: flex-end;
+        }
+
+        .header-repo {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.15s;
+            border-radius: 10px;
+        }
+
+        .header-repo:hover {
+            color: var(--text-primary);
+            border-color: var(--border-default);
+            background: var(--bg-hover);
+        }
+
+        .header-repo svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .header-time {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 6px 10px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+        }
+
+        .header-btn {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            border-radius: 10px;
+        }
+
+        .header-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--border-default);
+        }
+
+        .header-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .header-btn svg { width: 16px; height: 16px; }
+
+        .mobile-menu-btn {
+            display: none;
+        }
+
+        /* ============ MAIN CONTENT ============ */
+        .main {
+            flex: 1;
+            overflow: hidden;
+            padding: var(--panel-gap);
+            background: var(--bg-base);
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-auto-rows: minmax(60px, auto);
+            gap: var(--panel-gap);
+            height: 100%;
+            overflow: auto;
+            padding-bottom: 20px;
+        }
+
+        /* ============ WIDGET/PANEL ============ */
+        .widget {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: box-shadow 0.2s, border-color 0.2s, opacity 0.2s;
+            position: relative;
+            transform-origin: top left;
+            will-change: transform;
+        }
+
+        .widget:hover {
+            border-color: var(--border-default);
+        }
+
+        .widget.dragging {
+            opacity: 0.9;
+            z-index: 1000;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            border-color: var(--accent-primary);
+        }
+
+        .widget.drop-target {
+            border: 2px dashed var(--accent-primary);
+            background: rgba(59, 130, 246, 0.05);
+        }
+
+        .widget.resizing {
+            border-color: var(--accent-primary);
+            box-shadow: 0 18px 36px rgba(0, 0, 0, 0.45);
+        }
+
+        .widget.hidden { display: none !important; }
+
+        /* Widget sizes */
+        .widget[data-size="full"] { grid-column: span 12; grid-row: span 4; }
+        .widget[data-size="hero"] { grid-column: span 12; grid-row: span 6; }
+        .widget[data-size="large"] { grid-column: span 8; grid-row: span 4; }
+        .widget[data-size="medium"] { grid-column: span 6; grid-row: span 4; }
+        .widget[data-size="small"] { grid-column: span 4; grid-row: span 4; }
+        .widget[data-size="mini"] { grid-column: span 3; grid-row: span 3; }
+        .widget[data-size="tall"] { grid-column: span 4; grid-row: span 6; }
+
+        .widget-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border-subtle);
+            min-height: 40px;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .widget-header:active { cursor: grabbing; }
+
+        .widget-drag-handle {
+            color: var(--text-disabled);
+            margin-right: 8px;
+            display: flex;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .widget:hover .widget-drag-handle { opacity: 1; }
+
+        .widget-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .widget-title svg {
+            width: 14px;
+            height: 14px;
+            color: var(--text-muted);
+        }
+
+        .widget-header-spacer {
+            flex: 1 1 auto;
+            min-width: 8px;
+        }
+
+        .widget-badge {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            background: var(--accent-primary);
+            color: white;
+            margin-left: 8px;
+        }
+
+        .widget-actions {
+            display: flex;
+            gap: 2px;
+            margin-left: 10px;
+        }
+
+        .widget-action {
+            padding: 4px 8px;
+            font-size: 10px;
+            color: var(--text-muted);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .widget-action:hover { color: var(--text-secondary); }
+        .widget-action.active {
+            color: var(--text-primary);
+            background: var(--bg-active);
+        }
+
+        .widget-close {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: var(--text-disabled);
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.15s;
+            margin-left: 10px;
+        }
+
+        .widget:hover .widget-close { opacity: 1; }
+        .widget-close:hover { color: var(--status-critical); }
+
+        .widget-fullscreen {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: var(--text-disabled);
+            cursor: pointer;
+            opacity: 0;
+            transition: all 0.15s;
+            margin-left: 8px;
+        }
+
+        .widget:hover .widget-fullscreen,
+        .widget.is-fullscreen .widget-fullscreen {
+            opacity: 1;
+        }
+
+        .widget-fullscreen:hover {
+            color: var(--text-primary);
+        }
+
+        .widget-resize-handle {
+            position: absolute;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            z-index: 5;
+        }
+
+        .widget:hover .widget-resize-handle,
+        .widget.resizing .widget-resize-handle {
+            opacity: 1;
+        }
+
+        .widget-resize-right {
+            top: 40px;
+            right: 0;
+            width: 12px;
+            bottom: 12px;
+            cursor: ew-resize;
+        }
+
+        .widget-resize-bottom {
+            left: 0;
+            right: 12px;
+            bottom: 0;
+            height: 12px;
+            cursor: ns-resize;
+        }
+
+        .widget-resize-corner {
+            width: 18px;
+            height: 18px;
+            right: 0;
+            bottom: 0;
+            cursor: nwse-resize;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 3px;
+        }
+
+        .widget-resize-corner::before {
+            content: "";
+            width: 10px;
+            height: 10px;
+            border-right: 2px solid rgba(255, 255, 255, 0.28);
+            border-bottom: 2px solid rgba(255, 255, 255, 0.28);
+        }
+
+        .widget-size-indicator {
+            position: absolute;
+            top: 10px;
+            right: 40px;
+            padding: 4px 7px;
+            background: rgba(59, 130, 246, 0.12);
+            border: 1px solid rgba(59, 130, 246, 0.35);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            pointer-events: none;
+            z-index: 6;
+        }
+
+        .widget:fullscreen,
+        .widget:-webkit-full-screen {
+            background: var(--bg-base);
+            padding: 14px;
+            overflow: auto;
+        }
+
+        .widget:fullscreen .widget-body,
+        .widget:-webkit-full-screen .widget-body {
+            min-height: calc(100vh - 92px);
+        }
+
+        .widget:fullscreen .widget-header,
+        .widget:-webkit-full-screen .widget-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            border: 1px solid var(--border-default);
+            margin-bottom: 10px;
+        }
+
+        .widget-body {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+
+        .widget-footer {
+            padding: 8px 12px;
+            background: var(--bg-elevated);
+            border-top: 1px solid var(--border-subtle);
+            font-size: 11px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* ============ MAP WIDGET ============ */
+        .map-content {
+            display: flex;
+            height: 100%;
+        }
+
+        .map-view {
+            flex: 1;
+            background: var(--bg-base);
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .map-svg {
+            width: 95%;
+            height: 90%;
+        }
+
+        .map-svg path {
+            fill: var(--bg-elevated);
+            stroke: var(--border-default);
+            stroke-width: 0.5;
+            transition: fill 0.15s;
+        }
+
+        .map-svg path:hover { fill: var(--bg-hover); }
+
+        .map-marker {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.15s;
+            box-shadow: 0 0 0 2px var(--bg-base);
+        }
+
+        .map-marker:hover { transform: scale(1.3); }
+        .map-marker.critical { background: var(--status-critical); }
+        .map-marker.high { background: var(--status-high); }
+        .map-marker.medium { background: var(--status-medium); }
+        .map-marker.low { background: var(--status-low); }
+
+        .map-stats {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .map-stat-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            padding: 8px 12px;
+            min-width: 70px;
+        }
+
+        .map-stat-value {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .map-stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .map-legend {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            display: flex;
+            gap: 16px;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .legend-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .legend-dot.critical { background: var(--status-critical); }
+        .legend-dot.high { background: var(--status-high); }
+        .legend-dot.medium { background: var(--status-medium); }
+        .legend-dot.low { background: var(--status-low); }
+
+        .map-events-panel {
+            width: 320px;
+            background: var(--bg-surface);
+            border-left: 1px solid var(--border-subtle);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .events-header {
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        .events-list {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .event-item {
+            display: flex;
+            gap: 10px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .event-item:hover { background: var(--bg-hover); }
+
+        .event-indicator {
+            width: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .event-indicator.critical { background: var(--status-critical); }
+        .event-indicator.high { background: var(--status-high); }
+        .event-indicator.medium { background: var(--status-medium); }
+
+        .event-info { flex: 1; min-width: 0; }
+
+        .event-location {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .event-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .event-time {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-disabled);
+            margin-top: 4px;
+        }
+
+        /* ============ FEED STYLES ============ */
+        .feed-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .feed-item {
+            display: flex;
+            gap: 10px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .feed-item:hover { background: var(--bg-hover); }
+
+        .feed-indicator {
+            width: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .feed-indicator.critical { background: var(--status-critical); }
+        .feed-indicator.high { background: var(--status-high); }
+        .feed-indicator.medium { background: var(--status-medium); }
+        .feed-indicator.low { background: var(--status-low); }
+
+        .feed-content { flex: 1; min-width: 0; }
+
+        .feed-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .feed-badge {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .feed-badge.critical { background: var(--status-critical); color: white; }
+        .feed-badge.high { background: var(--status-high); color: black; }
+        .feed-badge.medium { background: var(--status-medium); color: black; }
+        .feed-badge.low { background: var(--status-low); color: black; }
+
+        .feed-tag {
+            font-size: 10px;
+            color: var(--text-muted);
+            padding: 2px 6px;
+            background: var(--bg-active);
+        }
+
+        .feed-title {
+            font-size: 12px;
+            color: var(--text-primary);
+            line-height: 1.5;
+            margin-bottom: 4px;
+        }
+
+        .feed-time {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-disabled);
+        }
+
+        /* ============ SOCIAL FEED ============ */
+        .social-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            transition: background 0.15s;
+        }
+
+        .social-item:hover { background: var(--bg-hover); }
+
+        .social-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .social-avatar {
+            width: 36px;
+            height: 36px;
+            background: var(--bg-active);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .social-user { flex: 1; }
+
+        .social-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .social-verified {
+            color: var(--accent-primary);
+            margin-left: 4px;
+        }
+
+        .social-handle {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .social-body {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+
+        .social-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .social-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .social-stat svg { width: 14px; height: 14px; }
+
+        /* ============ ANNOUNCEMENT STYLES ============ */
+        .announcement-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .announcement-item:hover { background: var(--bg-hover); }
+
+        .announcement-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .announcement-ministry {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 3px 6px;
+            background: #8b5cf6;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .announcement-date {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-left: auto;
+        }
+
+        .announcement-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .announcement-excerpt {
+            font-size: 11px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* ============ THREAT MATRIX ============ */
+        .threat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: var(--border-subtle);
+            height: 100%;
+        }
+
+        .threat-cell {
+            background: var(--bg-surface);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            transition: background 0.15s;
+        }
+
+        .threat-cell:hover { background: var(--bg-hover); }
+
+        .threat-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .threat-icon {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-active);
+        }
+
+        .threat-icon svg { width: 16px; height: 16px; }
+        .threat-icon.critical { color: var(--status-critical); }
+        .threat-icon.high { color: var(--status-high); }
+        .threat-icon.medium { color: var(--status-medium); }
+        .threat-icon.low { color: var(--status-low); }
+
+        .threat-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .threat-level {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .threat-level.critical { color: var(--status-critical); }
+        .threat-level.high { color: var(--status-high); }
+        .threat-level.medium { color: var(--status-medium); }
+        .threat-level.low { color: var(--status-low); }
+
+        .threat-bar {
+            height: 4px;
+            background: var(--bg-active);
+            margin-top: auto;
+        }
+
+        .threat-bar-fill {
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        .threat-bar-fill.critical { background: var(--status-critical); }
+        .threat-bar-fill.high { background: var(--status-high); }
+        .threat-bar-fill.medium { background: var(--status-medium); }
+        .threat-bar-fill.low { background: var(--status-low); }
+
+        /* ============ KPI CARDS ============ */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border-subtle);
+            height: 100%;
+        }
+
+        .kpi-card {
+            background: var(--bg-surface);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .kpi-value {
+            font-family: var(--font-mono);
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .kpi-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .kpi-change {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .kpi-change.up { color: var(--status-low); }
+        .kpi-change.down { color: var(--status-critical); }
+        .kpi-change.neutral { color: var(--text-muted); }
+
+        /* ============ ENTITY LIST ============ */
+        .entity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .entity-item:hover { background: var(--bg-hover); }
+
+        .entity-avatar {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .entity-avatar.red { background: #ef4444; }
+        .entity-avatar.green { background: #22c55e; }
+        .entity-avatar.purple { background: #8b5cf6; }
+        .entity-avatar.orange { background: #f97316; }
+        .entity-avatar.blue { background: #3b82f6; }
+
+        .entity-info { flex: 1; min-width: 0; }
+
+        .entity-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .entity-role {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .entity-stats { text-align: right; }
+
+        .entity-mentions {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .entity-trend {
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+
+        .entity-trend.up { color: var(--status-low); }
+        .entity-trend.down { color: var(--status-critical); }
+
+        /* ============ ELECTIONS WIDGET ============ */
+        .election-header-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .election-countdown {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .countdown-label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .countdown-value {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--status-high);
+            padding: 4px 8px;
+            background: var(--bg-active);
+        }
+
+        .election-tabs {
+            display: flex;
+            gap: 4px;
+        }
+
+        .election-tab {
+            padding: 6px 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .election-tab:hover { color: var(--text-secondary); }
+        .election-tab.active {
+            color: var(--text-primary);
+            background: var(--bg-active);
+            border-color: var(--border-default);
+        }
+
+        .candidate-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .candidate-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 80px;
+            gap: 12px;
+            padding: 10px 12px;
+            align-items: center;
+            border-bottom: 1px solid var(--border-subtle);
+            transition: background 0.15s;
+        }
+
+        .candidate-row:hover { background: var(--bg-hover); }
+
+        .candidate-row.header {
+            background: var(--bg-elevated);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .candidate-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .candidate-avatar {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .candidate-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .candidate-party {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .candidate-mentions {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .sentiment-bar-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .sentiment-bar {
+            flex: 1;
+            height: 4px;
+            background: var(--bg-active);
+        }
+
+        .sentiment-fill {
+            height: 100%;
+            background: var(--status-low);
+        }
+
+        .sentiment-value {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            width: 32px;
+        }
+
+        .candidate-trend {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            text-align: right;
+        }
+
+        .candidate-trend.up { color: var(--status-low); }
+        .candidate-trend.down { color: var(--status-critical); }
+        .candidate-trend.flat { color: var(--text-muted); }
+
+        /* ============ INTEL BRIEFING ============ */
+        .briefing-content {
+            padding: 16px;
+        }
+
+        .briefing-section {
+            margin-bottom: 16px;
+        }
+
+        .briefing-label {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .judgment-card {
+            background: var(--bg-elevated);
+            border-left: 3px solid var(--status-low);
+            padding: 12px;
+        }
+
+        .judgment-card.elevated { border-left-color: var(--status-medium); }
+        .judgment-card.high { border-left-color: var(--status-high); }
+        .judgment-card.critical { border-left-color: var(--status-critical); }
+
+        .judgment-level {
+            font-size: 11px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .judgment-card .judgment-level { color: var(--status-low); }
+        .judgment-card.elevated .judgment-level { color: var(--status-medium); }
+        .judgment-card.high .judgment-level { color: var(--status-high); }
+        .judgment-card.critical .judgment-level { color: var(--status-critical); }
+
+        .judgment-text {
+            font-size: 12px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .watch-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .watch-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .watch-bullet {
+            width: 5px;
+            height: 5px;
+            background: var(--accent-primary);
+            border-radius: 50%;
+            margin-top: 6px;
+            flex-shrink: 0;
+        }
+
+        /* ============ CUSTOMIZE PANEL ============ */
+        .customize-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+
+        .customize-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .customize-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 380px;
+            height: 100vh;
+            background: var(--bg-surface);
+            border-left: 1px solid var(--border-subtle);
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.25s ease;
+        }
+
+        .customize-panel.open { transform: translateX(0); }
+
+        .customize-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .customize-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .customize-close {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .customize-close:hover {
+            color: var(--text-primary);
+            border-color: var(--border-default);
+        }
+
+        .customize-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .customize-section {
+            margin-bottom: 20px;
+        }
+
+        .customize-section-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .widget-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .widget-config-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid transparent;
+            cursor: grab;
+            transition: all 0.15s;
+        }
+
+        .widget-config-item:active { cursor: grabbing; }
+        .widget-config-item:hover { border-color: var(--border-default); }
+
+        .widget-config-item.dragging {
+            opacity: 0.6;
+            border-color: var(--accent-primary);
+        }
+
+        .config-drag-handle {
+            color: var(--text-disabled);
+            display: flex;
+        }
+
+        .config-name {
+            flex: 1;
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .config-size {
+            background: var(--bg-active);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-secondary);
+            font-size: 10px;
+            padding: 4px 8px;
+            cursor: pointer;
+        }
+
+        .config-size:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+
+        .config-toggle {
+            width: 36px;
+            height: 20px;
+            background: var(--bg-active);
+            border: none;
+            cursor: pointer;
+            position: relative;
+            transition: background 0.15s;
+        }
+
+        .config-toggle::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 14px;
+            height: 14px;
+            background: var(--text-muted);
+            transition: all 0.15s;
+        }
+
+        .config-toggle.on { background: var(--accent-primary); }
+        .config-toggle.on::after {
+            left: 19px;
+            background: white;
+        }
+
+        .customize-footer {
+            padding: 16px;
+            background: var(--bg-elevated);
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            gap: 8px;
+        }
+
+        .customize-btn {
+            flex: 1;
+            padding: 10px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            border: 1px solid var(--border-default);
+            background: var(--bg-active);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .customize-btn:hover { background: var(--bg-hover); }
+
+        .customize-btn.primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
+        }
+
+        .customize-btn.primary:hover { background: var(--accent-hover); }
+
+        /* Preset Grid */
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .preset-btn {
+            padding: 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-subtle);
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--border-default);
+            background: var(--bg-hover);
+        }
+
+        .preset-btn.active {
+            border-color: var(--accent-primary);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .preset-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+        }
+
+        .preset-desc {
+            font-size: 10px;
+            color: var(--text-muted);
+            line-height: 1.4;
+        }
+
+        /* ============ MOBILE STYLES ============ */
+        @media (max-width: 1024px) {
+            .header-nav { display: none; }
+            .header-search { max-width: 200px; }
+
+            .widget[data-size="hero"] { grid-column: span 12; grid-row: span 5; }
+            .widget[data-size="large"] { grid-column: span 12; }
+            .widget[data-size="medium"] { grid-column: span 12; }
+            .widget[data-size="small"] { grid-column: span 6; }
+            .widget[data-size="mini"] { grid-column: span 6; }
+
+            .map-events-panel { width: 200px; }
+
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+
+            .candidate-row { grid-template-columns: 1fr 80px; }
+            .candidate-row .candidate-mentions,
+            .candidate-row .sentiment-bar-container { display: none; }
+
+            .market-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --header-height: 56px;
+                --panel-gap: 4px;
+            }
+
+            .header-brand .brand-text { display: none; }
+            .header-search { display: none; }
+            .header-time { display: none; }
+
+            .mobile-menu-btn { display: flex; }
+
+            .widget[data-size="hero"] {
+                grid-column: span 12;
+                grid-row: span 4;
+            }
+
+            .widget[data-size="full"],
+            .widget[data-size="large"],
+            .widget[data-size="medium"],
+            .widget[data-size="small"],
+            .widget[data-size="mini"],
+            .widget[data-size="tall"] {
+                grid-column: span 12;
+                grid-row: span 3;
+            }
+
+            .map-events-panel { display: none; }
+
+            .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+
+            .threat-grid { grid-template-columns: 1fr; }
+
+            .market-grid { grid-template-columns: 1fr; }
+
+            .quick-stats { flex-wrap: wrap; }
+            .quick-stat { flex: 1 1 50%; }
+
+            .customize-panel { width: 100%; }
+        }
+
+        /* ============ MARKET/COMMODITIES WIDGET ============ */
+        .market-grid {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .market-card {
+            background: var(--bg-surface);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .market-card:last-child {
+            border-bottom: none;
+        }
+
+        .market-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+            margin-bottom: 0;
+        }
+
+        .market-label {
+            font-size: 15px;
+            color: var(--text-primary);
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .market-change {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .market-change.up { color: var(--status-low); }
+        .market-change.down { color: var(--status-critical); }
+
+        /* ============ DISASTER ALERTS WIDGET ============ */
+        .disaster-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .disaster-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .disaster-item:hover { background: var(--bg-hover); }
+
+        .disaster-icon {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .disaster-icon svg { width: 24px; height: 24px; }
+        .disaster-icon.flood { color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+        .disaster-icon.earthquake { color: #f97316; background: rgba(249, 115, 22, 0.1); }
+        .disaster-icon.landslide { color: #a855f7; background: rgba(168, 85, 247, 0.1); }
+        .disaster-icon.fire { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+        .disaster-icon.storm { color: #06b6d4; background: rgba(6, 182, 212, 0.1); }
+
+        .disaster-content { flex: 1; min-width: 0; }
+
+        .disaster-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .disaster-type {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .disaster-type.critical { background: var(--status-critical); color: white; }
+        .disaster-type.high { background: var(--status-high); color: black; }
+        .disaster-type.medium { background: var(--status-medium); color: black; }
+
+        .disaster-location {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .disaster-desc {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .disaster-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 10px;
+            color: var(--text-disabled);
+        }
+
+        .disaster-meta span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Quick Stats Bar */
+        .quick-stats {
+            display: flex;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .quick-stat {
+            flex: 1;
+            padding: 10px 12px;
+            text-align: center;
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .quick-stat:last-child { border-right: none; }
+
+        .quick-stat-value {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .quick-stat-value.critical { color: var(--status-critical); }
+        .quick-stat-value.high { color: var(--status-high); }
+        .quick-stat-value.medium { color: var(--status-medium); }
+
+        .quick-stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        /* ============ WEATHER WIDGET ============ */
+        .weather-content {
+            display: flex;
+            height: 100%;
+        }
+
+        .weather-main {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .weather-icon {
+            font-size: 48px;
+            margin-bottom: 8px;
+        }
+
+        .weather-temp {
+            font-family: var(--font-mono);
+            font-size: 36px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .weather-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .weather-location {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .weather-forecast {
+            width: 200px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .forecast-item {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .forecast-item:last-child { border-bottom: none; }
+
+        .forecast-day {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .forecast-icon {
+            font-size: 16px;
+        }
+
+        .forecast-temp {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .weather-alert {
+            background: rgba(239, 68, 68, 0.1);
+            border-left: 3px solid var(--status-critical);
+            padding: 8px 12px;
+            font-size: 11px;
+            color: var(--status-critical);
+        }
+
+        /* ============ RIVER LEVELS WIDGET ============ */
+        .river-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .river-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            gap: 12px;
+        }
+
+        .river-item:hover { background: var(--bg-hover); }
+
+        .river-indicator {
+            width: 8px;
+            height: 40px;
+            flex-shrink: 0;
+        }
+
+        .river-indicator.normal { background: var(--status-low); }
+        .river-indicator.warning { background: var(--status-medium); }
+        .river-indicator.danger { background: var(--status-high); }
+        .river-indicator.critical { background: var(--status-critical); }
+
+        .river-info { flex: 1; }
+
+        .river-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .river-location {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .river-level {
+            text-align: right;
+        }
+
+        .river-value {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .river-threshold {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .river-trend {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            width: 50px;
+            text-align: right;
+        }
+
+        .river-trend.rising { color: var(--status-critical); }
+        .river-trend.falling { color: var(--status-low); }
+        .river-trend.stable { color: var(--text-muted); }
+
+        /* ============ SEISMIC WIDGET ============ */
+        .seismic-summary {
+            display: flex;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .seismic-stat {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .seismic-stat:last-child { border-right: none; }
+
+        .seismic-stat-value {
+            font-family: var(--font-mono);
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .seismic-stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .quake-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .quake-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            gap: 12px;
+        }
+
+        .quake-item:hover { background: var(--bg-hover); }
+
+        .quake-magnitude {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .quake-magnitude.minor { background: var(--bg-active); color: var(--text-secondary); }
+        .quake-magnitude.light { background: rgba(234, 179, 8, 0.2); color: var(--status-medium); }
+        .quake-magnitude.moderate { background: rgba(249, 115, 22, 0.2); color: var(--status-high); }
+        .quake-magnitude.strong { background: rgba(239, 68, 68, 0.2); color: var(--status-critical); }
+
+        .quake-info { flex: 1; }
+
+        .quake-location {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .quake-details {
+            font-size: 10px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 12px;
+            margin-top: 2px;
+        }
+
+        .quake-time {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        /* ============ INFRASTRUCTURE WIDGET ============ */
+        .infra-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1px;
+            background: var(--border-subtle);
+        }
+
+        .infra-card {
+            background: var(--bg-surface);
+            padding: 12px;
+        }
+
+        .infra-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .infra-type {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .infra-type svg { width: 14px; height: 14px; }
+
+        .infra-status {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 6px;
+        }
+
+        .infra-status.operational { background: var(--status-low); color: black; }
+        .infra-status.partial { background: var(--status-medium); color: black; }
+        .infra-status.disrupted { background: var(--status-high); color: black; }
+        .infra-status.down { background: var(--status-critical); color: white; }
+
+        .infra-stats {
+            display: flex;
+            gap: 12px;
+        }
+
+        .infra-stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .infra-stat-value {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .infra-stat-label {
+            font-size: 9px;
+            color: var(--text-muted);
+        }
+
+        /* ============ EMERGENCY CONTACTS WIDGET ============ */
+        .contacts-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .contact-item:hover { background: var(--bg-hover); }
+
+        .contact-icon {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-active);
+            flex-shrink: 0;
+        }
+
+        .contact-icon svg { width: 18px; height: 18px; color: var(--text-secondary); }
+        .contact-icon.emergency { background: rgba(239, 68, 68, 0.15); }
+        .contact-icon.emergency svg { color: var(--status-critical); }
+
+        .contact-info { flex: 1; }
+
+        .contact-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .contact-desc {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .contact-number {
+            font-family: var(--font-mono);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent-primary);
+        }
+
+        /* ============ NEWS WIDGET ============ */
+        .news-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .news-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .news-item:hover { background: var(--bg-hover); }
+
+        .news-source {
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-primary);
+            margin-bottom: 4px;
+        }
+
+        .news-headline {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+
+        .news-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+            display: flex;
+            gap: 12px;
+        }
+
+        .news-tag {
+            font-size: 9px;
+            padding: 2px 6px;
+            background: var(--bg-active);
+            color: var(--text-secondary);
+        }
+
+        /* ============ AIR QUALITY WIDGET ============ */
+        .aqi-content {
+            display: flex;
+            height: 100%;
+        }
+
+        .aqi-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .aqi-value {
+            font-family: var(--font-mono);
+            font-size: 48px;
+            font-weight: 700;
+        }
+
+        .aqi-value.good { color: var(--status-low); }
+        .aqi-value.moderate { color: var(--status-medium); }
+        .aqi-value.unhealthy { color: var(--status-high); }
+        .aqi-value.hazardous { color: var(--status-critical); }
+
+        .aqi-label {
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        .aqi-label.good { color: var(--status-low); }
+        .aqi-label.moderate { color: var(--status-medium); }
+        .aqi-label.unhealthy { color: var(--status-high); }
+        .aqi-label.hazardous { color: var(--status-critical); }
+
+        .aqi-location {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        .aqi-details {
+            width: 180px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .aqi-pollutant {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .aqi-pollutant:last-child { border-bottom: none; }
+
+        .pollutant-name {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .pollutant-value {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        /* ============ POWER GRID WIDGET ============ */
+        .power-summary {
+            display: flex;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .power-stat {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border-right: 1px solid var(--border-subtle);
+        }
+
+        .power-stat:last-child { border-right: none; }
+
+        .power-stat-value {
+            font-family: var(--font-mono);
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .power-stat-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+
+        .power-schedule {
+            padding: 12px;
+        }
+
+        .schedule-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .schedule-slots {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .schedule-slot {
+            padding: 4px 8px;
+            font-size: 10px;
+            font-family: var(--font-mono);
+            background: var(--bg-active);
+            color: var(--text-secondary);
+        }
+
+        .schedule-slot.active {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--status-critical);
+        }
+
+        .outage-list {
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .outage-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            font-size: 11px;
+        }
+
+        .outage-area { color: var(--text-primary); }
+        .outage-time { color: var(--text-muted); font-family: var(--font-mono); }
+
+        /* ============ BORDER CROSSINGS WIDGET ============ */
+        .border-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .border-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+            gap: 12px;
+        }
+
+        .border-item:hover { background: var(--bg-hover); }
+
+        .border-status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .border-status-dot.open { background: var(--status-low); }
+        .border-status-dot.restricted { background: var(--status-medium); }
+        .border-status-dot.congested { background: var(--status-high); }
+        .border-status-dot.closed { background: var(--status-critical); }
+
+        .border-info { flex: 1; }
+
+        .border-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .border-route {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .border-stats {
+            text-align: right;
+        }
+
+        .border-wait {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text-primary);
+        }
+
+        .border-traffic {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        /* ============ RUMOR TRACKER WIDGET ============ */
+        .rumor-list {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .rumor-item {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .rumor-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .rumor-status {
+            font-size: 9px;
+            font-weight: 600;
+            padding: 2px 8px;
+            text-transform: uppercase;
+        }
+
+        .rumor-status.false { background: var(--status-critical); color: white; }
+        .rumor-status.unverified { background: var(--status-medium); color: black; }
+        .rumor-status.verified { background: var(--status-low); color: black; }
+        .rumor-status.misleading { background: var(--status-high); color: black; }
+
+        .rumor-source {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .rumor-claim {
+            font-size: 12px;
+            color: var(--text-primary);
+            line-height: 1.4;
+            margin-bottom: 6px;
+        }
+
+        .rumor-fact {
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding: 8px;
+            background: var(--bg-elevated);
+            border-left: 2px solid var(--accent-primary);
+        }
+
+        .rumor-meta {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            display: flex;
+            gap: 12px;
+        }
+
+        /* ============ SCROLLBAR ============ */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-surface); }
+        ::-webkit-scrollbar-thumb { background: var(--bg-active); }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-emphasis); }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <button class="header-btn mobile-menu-btn" id="mobileMenuBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
+            <div class="header-brand">
+                <div class="brand-text">
+                    <span class="brand-name">NepalOSINT</span>
+                    <span class="brand-status"><span class="status-dot"></span> Live</span>
+                </div>
+            </div>
+
+            <nav class="header-nav">
+                <div class="nav-item active">News</div>
+                <div class="nav-item">Accountability</div>
+                <div class="nav-item">Elections</div>
+            </nav>
+
+            <div class="header-search">
+                <span class="search-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </span>
+                <input type="text" class="search-input" placeholder="Search... (⌘K)">
+            </div>
+
+            <div class="header-actions">
+                <a class="header-repo" href="#" title="GitHub repository placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-4 1.5-4-2-6-2"/><path d="M15 22v-3.9a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 19 4.77 5.07 5.07 0 0 0 18.91 1S17.73.65 15 2.48a13.38 13.38 0 0 0-6 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77 5.44 5.44 0 0 0 3.5 8.5c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.1V22"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+                    GitHub Repo
+                </a>
+                <div class="header-time" id="clock">--:--:--</div>
+                <button class="header-btn" id="customizeBtn" title="Customize">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <div class="grid-container" id="grid">
+                <!-- Map Widget -->
+                <div class="widget" data-id="map" data-size="large" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 6.9 8 11.7z"/></svg>
+                            Nepal Situation Map
+                            <span class="widget-badge">LIVE</span>
+                        </span>
+                        <div class="widget-actions">
+                            <button class="widget-action active">Events</button>
+                            <button class="widget-action">Heatmap</button>
+                            <button class="widget-action">Districts</button>
+                        </div>
+                        <button class="widget-close" onclick="hideWidget('map')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="map-content">
+                            <div class="map-view">
+                                <svg class="map-svg" viewBox="0 0 800 280">
+                                    <path d="M60 140 L100 105 L160 85 L220 72 L290 62 L360 55 L430 50 L510 55 L590 72 L670 95 L740 130 L780 165 L760 205 L715 240 L645 265 L570 275 L495 272 L425 258 L355 245 L285 235 L215 228 L155 225 L105 210 L60 140 Z"/>
+                                </svg>
+                                <div class="map-marker critical" style="top: 32%; left: 25%"></div>
+                                <div class="map-marker critical" style="top: 52%; left: 48%"></div>
+                                <div class="map-marker high" style="top: 28%; left: 40%"></div>
+                                <div class="map-marker high" style="top: 58%; left: 32%"></div>
+                                <div class="map-marker high" style="top: 45%; left: 55%"></div>
+                                <div class="map-marker medium" style="top: 38%; left: 62%"></div>
+                                <div class="map-marker medium" style="top: 30%; left: 75%"></div>
+                                <div class="map-marker medium" style="top: 50%; left: 70%"></div>
+                                <div class="map-marker low" style="top: 22%; left: 58%"></div>
+                                <div class="map-marker low" style="top: 35%; left: 82%"></div>
+                                <div class="map-stats">
+                                    <div class="map-stat-card">
+                                        <div class="map-stat-value">47</div>
+                                        <div class="map-stat-label">Districts</div>
+                                    </div>
+                                    <div class="map-stat-card">
+                                        <div class="map-stat-value">156</div>
+                                        <div class="map-stat-label">Events</div>
+                                    </div>
+                                    <div class="map-stat-card">
+                                        <div class="map-stat-value">12</div>
+                                        <div class="map-stat-label">Critical</div>
+                                    </div>
+                                </div>
+                                <div class="map-legend">
+                                    <div class="legend-item"><span class="legend-dot critical"></span> Critical</div>
+                                    <div class="legend-item"><span class="legend-dot high"></span> High</div>
+                                    <div class="legend-item"><span class="legend-dot medium"></span> Medium</div>
+                                    <div class="legend-item"><span class="legend-dot low"></span> Low</div>
+                                </div>
+                            </div>
+                            <div class="map-events-panel">
+                                <div class="events-header">Recent Events</div>
+                                <div class="events-list">
+                                    <div class="event-item">
+                                        <div class="event-indicator critical"></div>
+                                        <div class="event-info">
+                                            <div class="event-location">Chitwan, Bharatpur</div>
+                                            <div class="event-desc">Flood warning issued for riverside areas</div>
+                                            <div class="event-time">5 min ago</div>
+                                        </div>
+                                    </div>
+                                    <div class="event-item">
+                                        <div class="event-indicator critical"></div>
+                                        <div class="event-info">
+                                            <div class="event-location">Kathmandu, Ratnapark</div>
+                                            <div class="event-desc">Election protest gathering reported</div>
+                                            <div class="event-time">12 min ago</div>
+                                        </div>
+                                    </div>
+                                    <div class="event-item">
+                                        <div class="event-indicator high"></div>
+                                        <div class="event-info">
+                                            <div class="event-location">Pokhara</div>
+                                            <div class="event-desc">Landslide risk elevated after rainfall</div>
+                                            <div class="event-time">28 min ago</div>
+                                        </div>
+                                    </div>
+                                    <div class="event-item">
+                                        <div class="event-indicator high"></div>
+                                        <div class="event-info">
+                                            <div class="event-location">Birgunj</div>
+                                            <div class="event-desc">Border checkpoint congestion</div>
+                                            <div class="event-time">35 min ago</div>
+                                        </div>
+                                    </div>
+                                    <div class="event-item">
+                                        <div class="event-indicator medium"></div>
+                                        <div class="event-info">
+                                            <div class="event-location">Biratnagar</div>
+                                            <div class="event-desc">Labor strike announced for tomorrow</div>
+                                            <div class="event-time">45 min ago</div>
+                                        </div>
+                                    </div>
+                                    <div class="event-item">
+                                        <div class="event-indicator medium"></div>
+                                        <div class="event-info">
+                                            <div class="event-location">Dhangadhi</div>
+                                            <div class="event-desc">Political rally scheduled</div>
+                                            <div class="event-time">1h ago</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI Cards -->
+                <div class="widget" data-id="kpi" data-size="full" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+                            Key Metrics
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('kpi')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="kpi-grid">
+                            <div class="kpi-card">
+                                <div class="kpi-value">12</div>
+                                <div class="kpi-label">Active Alerts</div>
+                                <div class="kpi-change up">↑ 3 from yesterday</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-value">440</div>
+                                <div class="kpi-label">Events Today</div>
+                                <div class="kpi-change up">↑ 12% vs avg</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-value" style="color: var(--status-medium);">ELEVATED</div>
+                                <div class="kpi-label">Threat Level</div>
+                                <div class="kpi-change neutral">→ Stable</div>
+                            </div>
+                            <div class="kpi-card">
+                                <div class="kpi-value">47</div>
+                                <div class="kpi-label">Districts Affected</div>
+                                <div class="kpi-change down">↓ 2 from peak</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Threat Matrix -->
+                <div class="widget" data-id="threats" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+                            Threat Matrix
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('threats')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="threat-grid">
+                            <div class="threat-cell">
+                                <div class="threat-header">
+                                    <div class="threat-icon critical"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div>
+                                    <div>
+                                        <div class="threat-name">Disasters</div>
+                                        <div class="threat-level critical">CRITICAL</div>
+                                    </div>
+                                </div>
+                                <div class="threat-bar"><div class="threat-bar-fill critical" style="width: 85%"></div></div>
+                            </div>
+                            <div class="threat-cell">
+                                <div class="threat-header">
+                                    <div class="threat-icon high"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+                                    <div>
+                                        <div class="threat-name">Elections</div>
+                                        <div class="threat-level high">HIGH</div>
+                                    </div>
+                                </div>
+                                <div class="threat-bar"><div class="threat-bar-fill high" style="width: 70%"></div></div>
+                            </div>
+                            <div class="threat-cell">
+                                <div class="threat-header">
+                                    <div class="threat-icon medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+                                    <div>
+                                        <div class="threat-name">Civil Unrest</div>
+                                        <div class="threat-level medium">MEDIUM</div>
+                                    </div>
+                                </div>
+                                <div class="threat-bar"><div class="threat-bar-fill medium" style="width: 55%"></div></div>
+                            </div>
+                            <div class="threat-cell">
+                                <div class="threat-header">
+                                    <div class="threat-icon low"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+                                    <div>
+                                        <div class="threat-name">Economic</div>
+                                        <div class="threat-level low">LOW</div>
+                                    </div>
+                                </div>
+                                <div class="threat-bar"><div class="threat-bar-fill low" style="width: 30%"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stories Feed -->
+                <div class="widget" data-id="stories" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+                            Stories
+                            <span class="widget-badge">440</span>
+                        </span>
+                        <div class="widget-actions">
+                            <button class="widget-action active">All</button>
+                            <button class="widget-action">Priority</button>
+                        </div>
+                        <button class="widget-close" onclick="hideWidget('stories')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="feed-list">
+                            <div class="feed-item">
+                                <div class="feed-indicator critical"></div>
+                                <div class="feed-content">
+                                    <div class="feed-meta">
+                                        <span class="feed-badge critical">CRIT</span>
+                                        <span class="feed-tag">Election</span>
+                                    </div>
+                                    <div class="feed-title">निर्वाचन आयोगद्वारा उम्मेदवारी दर्ता प्रक्रिया सुरु</div>
+                                    <div class="feed-time">15 min ago</div>
+                                </div>
+                            </div>
+                            <div class="feed-item">
+                                <div class="feed-indicator high"></div>
+                                <div class="feed-content">
+                                    <div class="feed-meta">
+                                        <span class="feed-badge high">HIGH</span>
+                                        <span class="feed-tag">Disaster</span>
+                                    </div>
+                                    <div class="feed-title">चितवनमा बाढीको उच्च जोखिम</div>
+                                    <div class="feed-time">32 min ago</div>
+                                </div>
+                            </div>
+                            <div class="feed-item">
+                                <div class="feed-indicator medium"></div>
+                                <div class="feed-content">
+                                    <div class="feed-meta">
+                                        <span class="feed-badge medium">MED</span>
+                                        <span class="feed-tag">Politics</span>
+                                    </div>
+                                    <div class="feed-title">निर्वाचन ३६ दिन बाँकी: आचारसंहिता अनुगमन</div>
+                                    <div class="feed-time">1h ago</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="widget-footer">
+                        <span>Showing 1-3 of 440</span>
+                        <span>View all →</span>
+                    </div>
+                </div>
+
+                <!-- Intel Briefing -->
+                <div class="widget" data-id="briefing" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            Intel Briefing
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('briefing')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="briefing-content">
+                            <div class="briefing-section">
+                                <div class="briefing-label">Key Judgment</div>
+                                <div class="judgment-card">
+                                    <div class="judgment-level">LOW PRIORITY</div>
+                                    <div class="judgment-text">Routine monitoring: 50 stories analyzed. No critical developments require immediate action. Situation stable across monitored districts.</div>
+                                </div>
+                            </div>
+                            <div class="briefing-section">
+                                <div class="briefing-label">Watch Items</div>
+                                <div class="watch-list">
+                                    <div class="watch-item"><div class="watch-bullet"></div> Terai election preparations</div>
+                                    <div class="watch-item"><div class="watch-bullet"></div> Monsoon flood warnings</div>
+                                    <div class="watch-item"><div class="watch-bullet"></div> UML-Congress coalition talks</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Social Feed -->
+                <div class="widget" data-id="social" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                            Social Feed
+                        </span>
+                        <div class="widget-actions">
+                            <button class="widget-action active">All</button>
+                            <button class="widget-action">Verified</button>
+                        </div>
+                        <button class="widget-close" onclick="hideWidget('social')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="social-item">
+                            <div class="social-header">
+                                <div class="social-avatar">EC</div>
+                                <div class="social-user">
+                                    <div class="social-name">Election Commission<span class="social-verified">✓</span></div>
+                                    <div class="social-handle">@ECNepal</div>
+                                </div>
+                            </div>
+                            <div class="social-body">निर्वाचन आयोगद्वारा आज उम्मेदवारी दर्ता प्रक्रिया सुरु भएको छ।</div>
+                            <div class="social-stats">
+                                <span class="social-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> 234</span>
+                                <span class="social-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg> 89</span>
+                                <span class="social-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> 412</span>
+                            </div>
+                        </div>
+                        <div class="social-item">
+                            <div class="social-header">
+                                <div class="social-avatar">NP</div>
+                                <div class="social-user">
+                                    <div class="social-name">Nepal Police<span class="social-verified">✓</span></div>
+                                    <div class="social-handle">@NepalPoliceHQ</div>
+                                </div>
+                            </div>
+                            <div class="social-body">चितवनमा बाढीको जोखिम बढेकोले सतर्क रहन अनुरोध।</div>
+                            <div class="social-stats">
+                                <span class="social-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg> 156</span>
+                                <span class="social-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/></svg> 67</span>
+                                <span class="social-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg> 289</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Govt Announcements -->
+                <div class="widget" data-id="govt" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+                            Govt Announcements
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('govt')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="announcement-item">
+                            <div class="announcement-meta">
+                                <span class="announcement-ministry">MOHA</span>
+                                <span class="announcement-date">2h ago</span>
+                            </div>
+                            <div class="announcement-title">नयाँ सुरक्षा निर्देशिका जारी</div>
+                            <div class="announcement-excerpt">निर्वाचन अवधिमा सुरक्षा व्यवस्था कडा बनाउने निर्णय।</div>
+                        </div>
+                        <div class="announcement-item">
+                            <div class="announcement-meta">
+                                <span class="announcement-ministry">MoF</span>
+                                <span class="announcement-date">5h ago</span>
+                            </div>
+                            <div class="announcement-title">बजेट विनियोजन अपडेट</div>
+                            <div class="announcement-excerpt">विपद् व्यवस्थापनका लागि थप रु २ अर्ब विनियोजन।</div>
+                        </div>
+                        <div class="announcement-item">
+                            <div class="announcement-meta">
+                                <span class="announcement-ministry">NDRRMA</span>
+                                <span class="announcement-date">8h ago</span>
+                            </div>
+                            <div class="announcement-title">मनसुन तयारी निर्देशन</div>
+                            <div class="announcement-excerpt">सबै जिल्लाहरूमा मनसुन तयारी कार्ययोजना लागू।</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Entities -->
+                <div class="widget" data-id="entities" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                            Key Entities
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('entities')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="entity-item">
+                            <div class="entity-avatar red">KO</div>
+                            <div class="entity-info">
+                                <div class="entity-name">K.P. Sharma Oli</div>
+                                <div class="entity-role">CPN-UML Chairman</div>
+                            </div>
+                            <div class="entity-stats">
+                                <div class="entity-mentions">1,247</div>
+                                <div class="entity-trend up">↑ 12%</div>
+                            </div>
+                        </div>
+                        <div class="entity-item">
+                            <div class="entity-avatar orange">RL</div>
+                            <div class="entity-info">
+                                <div class="entity-name">Rabi Lamichhane</div>
+                                <div class="entity-role">RSP Chairman</div>
+                            </div>
+                            <div class="entity-stats">
+                                <div class="entity-mentions">1,432</div>
+                                <div class="entity-trend up">↑ 28%</div>
+                            </div>
+                        </div>
+                        <div class="entity-item">
+                            <div class="entity-avatar green">SD</div>
+                            <div class="entity-info">
+                                <div class="entity-name">Sher B. Deuba</div>
+                                <div class="entity-role">NC President</div>
+                            </div>
+                            <div class="entity-stats">
+                                <div class="entity-mentions">892</div>
+                                <div class="entity-trend down">↓ 5%</div>
+                            </div>
+                        </div>
+                        <div class="entity-item">
+                            <div class="entity-avatar purple">PD</div>
+                            <div class="entity-info">
+                                <div class="entity-name">P.K. Dahal</div>
+                                <div class="entity-role">Maoist Chairman</div>
+                            </div>
+                            <div class="entity-stats">
+                                <div class="entity-mentions">756</div>
+                                <div class="entity-trend">0%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Market/Commodities Widget -->
+                <div class="widget" data-id="market" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            Commodities
+                        </span>
+                        <div class="widget-actions">
+                            <button class="widget-action active">Live</button>
+                            <button class="widget-action">24h</button>
+                        </div>
+                        <button class="widget-close" onclick="hideWidget('market')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="market-grid">
+                            <div class="market-card">
+                                <div class="market-header">
+                                    <span class="market-label">Gold</span>
+                                    <span class="market-change up">↑ 1.24%</span>
+                                </div>
+                            </div>
+                            <div class="market-card">
+                                <div class="market-header">
+                                    <span class="market-label">Silver</span>
+                                    <span class="market-change down">↓ 0.12%</span>
+                                </div>
+                            </div>
+                            <div class="market-card">
+                                <div class="market-header">
+                                    <span class="market-label">Crude Oil</span>
+                                    <span class="market-change up">↑ 0.85%</span>
+                                </div>
+                            </div>
+                            <div class="market-card">
+                                <div class="market-header">
+                                    <span class="market-label">LPG</span>
+                                    <span class="market-change up">↑ 0.42%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="widget-footer">
+                        <span>Last updated: 2 min ago</span>
+                        <span>Source: commodity watch</span>
+                    </div>
+                </div>
+
+                <!-- Disaster Alerts Widget -->
+                <div class="widget" data-id="disasters" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                            Disaster Alerts
+                            <span class="widget-badge" style="background: var(--status-critical);">3 Active</span>
+                        </span>
+                        <div class="widget-actions">
+                            <button class="widget-action active">Active</button>
+                            <button class="widget-action">All</button>
+                        </div>
+                        <button class="widget-close" onclick="hideWidget('disasters')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="quick-stats">
+                        <div class="quick-stat">
+                            <div class="quick-stat-value critical">3</div>
+                            <div class="quick-stat-label">Critical</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="quick-stat-value high">7</div>
+                            <div class="quick-stat-label">High</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="quick-stat-value medium">12</div>
+                            <div class="quick-stat-label">Warnings</div>
+                        </div>
+                        <div class="quick-stat">
+                            <div class="quick-stat-value">47</div>
+                            <div class="quick-stat-label">Districts</div>
+                        </div>
+                    </div>
+                    <div class="widget-body">
+                        <div class="disaster-list">
+                            <div class="disaster-item">
+                                <div class="disaster-icon flood">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M3 15c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2"/><path d="M3 19c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2"/></svg>
+                                </div>
+                                <div class="disaster-content">
+                                    <div class="disaster-header">
+                                        <span class="disaster-type critical">CRITICAL</span>
+                                        <span class="disaster-location">Chitwan District</span>
+                                    </div>
+                                    <div class="disaster-desc">Narayani River water level rising rapidly. Evacuation advisory issued for low-lying areas.</div>
+                                    <div class="disaster-meta">
+                                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 15 min ago</span>
+                                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> 12,000 affected</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="disaster-item">
+                                <div class="disaster-icon landslide">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                                </div>
+                                <div class="disaster-content">
+                                    <div class="disaster-header">
+                                        <span class="disaster-type critical">CRITICAL</span>
+                                        <span class="disaster-location">Sindhupalchok</span>
+                                    </div>
+                                    <div class="disaster-desc">Multiple landslides reported on Araniko Highway. Road blocked near Tatopani.</div>
+                                    <div class="disaster-meta">
+                                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 45 min ago</span>
+                                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> 500+ stranded</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="disaster-item">
+                                <div class="disaster-icon flood">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M3 15c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2"/><path d="M3 19c2.5 0 2.5 2 5 2s2.5-2 5-2 2.5 2 5 2"/></svg>
+                                </div>
+                                <div class="disaster-content">
+                                    <div class="disaster-header">
+                                        <span class="disaster-type high">HIGH</span>
+                                        <span class="disaster-location">Koshi Province</span>
+                                    </div>
+                                    <div class="disaster-desc">Flash flood warning for Sunsari and Morang districts. Heavy rainfall expected.</div>
+                                    <div class="disaster-meta">
+                                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 1h ago</span>
+                                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Watch area</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="disaster-item">
+                                <div class="disaster-icon storm">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 16.9A5 5 0 0 0 18 7h-1.26a8 8 0 1 0-11.62 9"/><polyline points="13 11 9 17 15 17 11 23"/></svg>
+                                </div>
+                                <div class="disaster-content">
+                                    <div class="disaster-header">
+                                        <span class="disaster-type medium">WARNING</span>
+                                        <span class="disaster-location">Bagmati Province</span>
+                                    </div>
+                                    <div class="disaster-desc">Thunderstorm alert for Kathmandu Valley. Strong winds expected this evening.</div>
+                                    <div class="disaster-meta">
+                                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> 2h ago</span>
+                                        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg> DHM Alert</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Elections -->
+                <div class="widget" data-id="elections" data-size="large" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                            Election Watchlist
+                            <span class="widget-badge">2082</span>
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('elections')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="election-header-bar">
+                        <div class="election-countdown">
+                            <span class="countdown-label">Election in</span>
+                            <span class="countdown-value">36 DAYS</span>
+                        </div>
+                        <div class="election-tabs">
+                            <button class="election-tab active">Candidates</button>
+                            <button class="election-tab">Parties</button>
+                            <button class="election-tab">Risk</button>
+                        </div>
+                    </div>
+                    <div class="widget-body">
+                        <div class="candidate-list">
+                            <div class="candidate-row header">
+                                <span>Candidate</span>
+                                <span>Mentions</span>
+                                <span>Sentiment</span>
+                                <span>Trend</span>
+                            </div>
+                            <div class="candidate-row">
+                                <div class="candidate-info">
+                                    <div class="candidate-avatar" style="background: #ef4444;">KO</div>
+                                    <div>
+                                        <div class="candidate-name">K.P. Sharma Oli</div>
+                                        <div class="candidate-party">CPN-UML</div>
+                                    </div>
+                                </div>
+                                <div class="candidate-mentions">1,247</div>
+                                <div class="sentiment-bar-container">
+                                    <div class="sentiment-bar"><div class="sentiment-fill" style="width: 72%"></div></div>
+                                    <span class="sentiment-value">72%</span>
+                                </div>
+                                <div class="candidate-trend up">+12%</div>
+                            </div>
+                            <div class="candidate-row">
+                                <div class="candidate-info">
+                                    <div class="candidate-avatar" style="background: #f97316;">RL</div>
+                                    <div>
+                                        <div class="candidate-name">Rabi Lamichhane</div>
+                                        <div class="candidate-party">RSP</div>
+                                    </div>
+                                </div>
+                                <div class="candidate-mentions">1,432</div>
+                                <div class="sentiment-bar-container">
+                                    <div class="sentiment-bar"><div class="sentiment-fill" style="width: 81%"></div></div>
+                                    <span class="sentiment-value">81%</span>
+                                </div>
+                                <div class="candidate-trend up">+28%</div>
+                            </div>
+                            <div class="candidate-row">
+                                <div class="candidate-info">
+                                    <div class="candidate-avatar" style="background: #22c55e;">SD</div>
+                                    <div>
+                                        <div class="candidate-name">Sher B. Deuba</div>
+                                        <div class="candidate-party">NC</div>
+                                    </div>
+                                </div>
+                                <div class="candidate-mentions">892</div>
+                                <div class="sentiment-bar-container">
+                                    <div class="sentiment-bar"><div class="sentiment-fill" style="width: 58%"></div></div>
+                                    <span class="sentiment-value">58%</span>
+                                </div>
+                                <div class="candidate-trend down">-5%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weather Widget -->
+                <div class="widget" data-id="weather" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+                            Weather
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('weather')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="weather-alert">⚠ Heavy rainfall warning: Chitwan, Nawalparasi, Rupandehi districts</div>
+                        <div class="weather-content">
+                            <div class="weather-main">
+                                <div class="weather-icon">🌧️</div>
+                                <div class="weather-temp">24°C</div>
+                                <div class="weather-desc">Heavy Rain</div>
+                                <div class="weather-location">Kathmandu Valley</div>
+                            </div>
+                            <div class="weather-forecast">
+                                <div class="forecast-item">
+                                    <span class="forecast-day">Today</span>
+                                    <span class="forecast-icon">🌧️</span>
+                                    <span class="forecast-temp">24°/18°</span>
+                                </div>
+                                <div class="forecast-item">
+                                    <span class="forecast-day">Tue</span>
+                                    <span class="forecast-icon">⛈️</span>
+                                    <span class="forecast-temp">22°/17°</span>
+                                </div>
+                                <div class="forecast-item">
+                                    <span class="forecast-day">Wed</span>
+                                    <span class="forecast-icon">🌦️</span>
+                                    <span class="forecast-temp">25°/19°</span>
+                                </div>
+                                <div class="forecast-item">
+                                    <span class="forecast-day">Thu</span>
+                                    <span class="forecast-icon">⛅</span>
+                                    <span class="forecast-temp">27°/20°</span>
+                                </div>
+                                <div class="forecast-item">
+                                    <span class="forecast-day">Fri</span>
+                                    <span class="forecast-icon">☀️</span>
+                                    <span class="forecast-temp">28°/21°</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- River Levels Widget -->
+                <div class="widget" data-id="rivers" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12h2a8 8 0 0 1 16 0h2"/><path d="M2 16h2a8 8 0 0 0 16 0h2"/></svg>
+                            River Levels
+                            <span class="widget-badge" style="background: var(--status-critical);">2 ALERT</span>
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('rivers')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="river-list">
+                            <div class="river-item">
+                                <div class="river-indicator critical"></div>
+                                <div class="river-info">
+                                    <div class="river-name">Koshi River</div>
+                                    <div class="river-location">Chatara, Sunsari</div>
+                                </div>
+                                <div class="river-level">
+                                    <div class="river-value">8.2m</div>
+                                    <div class="river-threshold">Danger: 7.5m</div>
+                                </div>
+                                <div class="river-trend rising">↑ +0.4m/h</div>
+                            </div>
+                            <div class="river-item">
+                                <div class="river-indicator danger"></div>
+                                <div class="river-info">
+                                    <div class="river-name">Narayani River</div>
+                                    <div class="river-location">Narayanghat</div>
+                                </div>
+                                <div class="river-level">
+                                    <div class="river-value">6.8m</div>
+                                    <div class="river-threshold">Danger: 7.0m</div>
+                                </div>
+                                <div class="river-trend rising">↑ +0.2m/h</div>
+                            </div>
+                            <div class="river-item">
+                                <div class="river-indicator warning"></div>
+                                <div class="river-info">
+                                    <div class="river-name">Bagmati River</div>
+                                    <div class="river-location">Sundarijal</div>
+                                </div>
+                                <div class="river-level">
+                                    <div class="river-value">3.4m</div>
+                                    <div class="river-threshold">Danger: 4.5m</div>
+                                </div>
+                                <div class="river-trend stable">→ 0.0m/h</div>
+                            </div>
+                            <div class="river-item">
+                                <div class="river-indicator normal"></div>
+                                <div class="river-info">
+                                    <div class="river-name">Karnali River</div>
+                                    <div class="river-location">Chisapani</div>
+                                </div>
+                                <div class="river-level">
+                                    <div class="river-value">5.1m</div>
+                                    <div class="river-threshold">Danger: 8.0m</div>
+                                </div>
+                                <div class="river-trend falling">↓ -0.1m/h</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seismic Activity Widget -->
+                <div class="widget" data-id="seismic" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                            Seismic Activity
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('seismic')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="seismic-summary">
+                            <div class="seismic-stat">
+                                <div class="seismic-stat-value">7</div>
+                                <div class="seismic-stat-label">24h Events</div>
+                            </div>
+                            <div class="seismic-stat">
+                                <div class="seismic-stat-value">4.2</div>
+                                <div class="seismic-stat-label">Max Magnitude</div>
+                            </div>
+                            <div class="seismic-stat">
+                                <div class="seismic-stat-value">12km</div>
+                                <div class="seismic-stat-label">Avg Depth</div>
+                            </div>
+                        </div>
+                        <div class="quake-list">
+                            <div class="quake-item">
+                                <div class="quake-magnitude moderate">4.2</div>
+                                <div class="quake-info">
+                                    <div class="quake-location">Sindhupalchok</div>
+                                    <div class="quake-details">
+                                        <span>Depth: 10km</span>
+                                        <span>28.1°N, 85.4°E</span>
+                                    </div>
+                                </div>
+                                <div class="quake-time">2h ago</div>
+                            </div>
+                            <div class="quake-item">
+                                <div class="quake-magnitude light">3.5</div>
+                                <div class="quake-info">
+                                    <div class="quake-location">Dolakha</div>
+                                    <div class="quake-details">
+                                        <span>Depth: 15km</span>
+                                        <span>27.9°N, 86.1°E</span>
+                                    </div>
+                                </div>
+                                <div class="quake-time">5h ago</div>
+                            </div>
+                            <div class="quake-item">
+                                <div class="quake-magnitude minor">2.8</div>
+                                <div class="quake-info">
+                                    <div class="quake-location">Ramechhap</div>
+                                    <div class="quake-details">
+                                        <span>Depth: 8km</span>
+                                        <span>27.5°N, 86.0°E</span>
+                                    </div>
+                                </div>
+                                <div class="quake-time">8h ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Infrastructure Status Widget -->
+                <div class="widget" data-id="infra" data-size="medium" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 14.5A2.5 2.5 0 0 1 6.5 12H20"/><rect x="2" y="2" width="20" height="8" rx="2"/></svg>
+                            Infrastructure Status
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('infra')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="infra-grid">
+                            <div class="infra-card">
+                                <div class="infra-header">
+                                    <span class="infra-type">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19h16M4 15l4-8 4 8-4 8h8l-4-8 4-8"/></svg>
+                                        Roads
+                                    </span>
+                                    <span class="infra-status partial">PARTIAL</span>
+                                </div>
+                                <div class="infra-stats">
+                                    <div class="infra-stat-item">
+                                        <span class="infra-stat-value">12</span>
+                                        <span class="infra-stat-label">Blocked</span>
+                                    </div>
+                                    <div class="infra-stat-item">
+                                        <span class="infra-stat-value">847</span>
+                                        <span class="infra-stat-label">Open</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="infra-card">
+                                <div class="infra-header">
+                                    <span class="infra-type">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8c0-4-3-5-3-5s-3 1-3 5m6 0v10M12 8v10M6 18h12"/></svg>
+                                        Bridges
+                                    </span>
+                                    <span class="infra-status operational">OPEN</span>
+                                </div>
+                                <div class="infra-stats">
+                                    <div class="infra-stat-item">
+                                        <span class="infra-stat-value">3</span>
+                                        <span class="infra-stat-label">Restricted</span>
+                                    </div>
+                                    <div class="infra-stat-item">
+                                        <span class="infra-stat-value">156</span>
+                                        <span class="infra-stat-label">Open</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="infra-card">
+                                <div class="infra-header">
+                                    <span class="infra-type">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
+                                        Airports
+                                    </span>
+                                    <span class="infra-status operational">OPEN</span>
+                                </div>
+                                <div class="infra-stats">
+                                    <div class="infra-stat-item">
+                                        <span class="infra-stat-value">1</span>
+                                        <span class="infra-stat-label">Delayed</span>
+                                    </div>
+                                    <div class="infra-stat-item">
+                                        <span class="infra-stat-value">32</span>
+                                        <span class="infra-stat-label">On Time</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="infra-card">
+                                <div class="infra-header">
+                                    <span class="infra-type">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2v10l4.5 4.5"/></svg>
+                                        Hospitals
+                                    </span>
+                                    <span class="infra-status operational">ACTIVE</span>
+                                </div>
+                                <div class="infra-stats">
+                                    <div class="infra-stat-item">
+                                        <span class="infra-stat-value">89%</span>
+                                        <span class="infra-stat-label">Capacity</span>
+                                    </div>
+                                    <div class="infra-stat-item">
+                                        <span class="infra-stat-value">124</span>
+                                        <span class="infra-stat-label">Active</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Emergency Contacts Widget -->
+                <div class="widget" data-id="contacts" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            Emergency Contacts
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('contacts')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="contacts-list">
+                            <div class="contact-item">
+                                <div class="contact-icon emergency">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/></svg>
+                                </div>
+                                <div class="contact-info">
+                                    <div class="contact-name">NEOC (Disaster)</div>
+                                    <div class="contact-desc">National Emergency Operations</div>
+                                </div>
+                                <div class="contact-number">1155</div>
+                            </div>
+                            <div class="contact-item">
+                                <div class="contact-icon emergency">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                                </div>
+                                <div class="contact-info">
+                                    <div class="contact-name">Nepal Police</div>
+                                    <div class="contact-desc">Emergency Response</div>
+                                </div>
+                                <div class="contact-number">100</div>
+                            </div>
+                            <div class="contact-item">
+                                <div class="contact-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                </div>
+                                <div class="contact-info">
+                                    <div class="contact-name">Nepal Army</div>
+                                    <div class="contact-desc">Disaster Relief</div>
+                                </div>
+                                <div class="contact-number">01-4271999</div>
+                            </div>
+                            <div class="contact-item">
+                                <div class="contact-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                                </div>
+                                <div class="contact-info">
+                                    <div class="contact-name">Ambulance</div>
+                                    <div class="contact-desc">Medical Emergency</div>
+                                </div>
+                                <div class="contact-number">102</div>
+                            </div>
+                            <div class="contact-item">
+                                <div class="contact-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                </div>
+                                <div class="contact-info">
+                                    <div class="contact-name">Red Cross Nepal</div>
+                                    <div class="contact-desc">Relief & Rescue</div>
+                                </div>
+                                <div class="contact-number">01-4270650</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- News Aggregator Widget -->
+                <div class="widget" data-id="news" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/></svg>
+                            News Feed
+                        </span>
+                        <div class="widget-actions">
+                            <button class="widget-action active">All</button>
+                            <button class="widget-action">Breaking</button>
+                        </div>
+                        <button class="widget-close" onclick="hideWidget('news')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="news-list">
+                            <div class="news-item">
+                                <div class="news-source">Kathmandu Post</div>
+                                <div class="news-headline">Government announces flood relief package for affected districts</div>
+                                <div class="news-meta">
+                                    <span>15 min ago</span>
+                                    <span class="news-tag">Politics</span>
+                                </div>
+                            </div>
+                            <div class="news-item">
+                                <div class="news-source">Republica</div>
+                                <div class="news-headline">Election Commission finalizes polling center security arrangements</div>
+                                <div class="news-meta">
+                                    <span>45 min ago</span>
+                                    <span class="news-tag">Election</span>
+                                </div>
+                            </div>
+                            <div class="news-item">
+                                <div class="news-source">Kantipur</div>
+                                <div class="news-headline">Nepal Rastra Bank maintains interest rate corridor unchanged</div>
+                                <div class="news-meta">
+                                    <span>1h ago</span>
+                                    <span class="news-tag">Economy</span>
+                                </div>
+                            </div>
+                            <div class="news-item">
+                                <div class="news-source">Online Khabar</div>
+                                <div class="news-headline">Monsoon intensifies: More rainfall expected in eastern region</div>
+                                <div class="news-meta">
+                                    <span>2h ago</span>
+                                    <span class="news-tag">Weather</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Air Quality Widget -->
+                <div class="widget" data-id="aqi" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"/></svg>
+                            Air Quality
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('aqi')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="aqi-content">
+                            <div class="aqi-main">
+                                <div class="aqi-value unhealthy">156</div>
+                                <div class="aqi-label unhealthy">Unhealthy</div>
+                                <div class="aqi-location">Ratnapark, Kathmandu</div>
+                            </div>
+                            <div class="aqi-details">
+                                <div class="aqi-pollutant">
+                                    <span class="pollutant-name">PM2.5</span>
+                                    <span class="pollutant-value">78 µg/m³</span>
+                                </div>
+                                <div class="aqi-pollutant">
+                                    <span class="pollutant-name">PM10</span>
+                                    <span class="pollutant-value">124 µg/m³</span>
+                                </div>
+                                <div class="aqi-pollutant">
+                                    <span class="pollutant-name">O₃</span>
+                                    <span class="pollutant-value">45 ppb</span>
+                                </div>
+                                <div class="aqi-pollutant">
+                                    <span class="pollutant-name">NO₂</span>
+                                    <span class="pollutant-value">32 ppb</span>
+                                </div>
+                                <div class="aqi-pollutant">
+                                    <span class="pollutant-name">CO</span>
+                                    <span class="pollutant-value">1.2 ppm</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Power Grid Widget -->
+                <div class="widget" data-id="power" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                            Power Grid
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('power')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="power-summary">
+                            <div class="power-stat">
+                                <div class="power-stat-value">1,847</div>
+                                <div class="power-stat-label">MW Demand</div>
+                            </div>
+                            <div class="power-stat">
+                                <div class="power-stat-value">2,100</div>
+                                <div class="power-stat-label">MW Available</div>
+                            </div>
+                            <div class="power-stat">
+                                <div class="power-stat-value" style="color: var(--status-low);">STABLE</div>
+                                <div class="power-stat-label">Grid Status</div>
+                            </div>
+                        </div>
+                        <div class="power-schedule">
+                            <div class="schedule-title">Load Shedding (Kathmandu)</div>
+                            <div class="schedule-slots">
+                                <div class="schedule-slot">06:00-07:00</div>
+                                <div class="schedule-slot active">10:00-11:00</div>
+                                <div class="schedule-slot">14:00-15:00</div>
+                                <div class="schedule-slot">18:00-19:00</div>
+                            </div>
+                        </div>
+                        <div class="outage-list">
+                            <div class="outage-item">
+                                <span class="outage-area">Lalitpur-3, Patan</span>
+                                <span class="outage-time">~2h remaining</span>
+                            </div>
+                            <div class="outage-item">
+                                <span class="outage-area">Bhaktapur-7</span>
+                                <span class="outage-time">Maintenance</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Border Crossings Widget -->
+                <div class="widget" data-id="borders" data-size="small" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+                            Border Crossings
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('borders')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="border-list">
+                            <div class="border-item">
+                                <div class="border-status-dot congested"></div>
+                                <div class="border-info">
+                                    <div class="border-name">Birgunj-Raxaul</div>
+                                    <div class="border-route">Nepal ↔ India (Bihar)</div>
+                                </div>
+                                <div class="border-stats">
+                                    <div class="border-wait">~3h wait</div>
+                                    <div class="border-traffic">Heavy traffic</div>
+                                </div>
+                            </div>
+                            <div class="border-item">
+                                <div class="border-status-dot open"></div>
+                                <div class="border-info">
+                                    <div class="border-name">Kakarbhitta</div>
+                                    <div class="border-route">Nepal ↔ India (WB)</div>
+                                </div>
+                                <div class="border-stats">
+                                    <div class="border-wait">~30m wait</div>
+                                    <div class="border-traffic">Normal</div>
+                                </div>
+                            </div>
+                            <div class="border-item">
+                                <div class="border-status-dot restricted"></div>
+                                <div class="border-info">
+                                    <div class="border-name">Tatopani</div>
+                                    <div class="border-route">Nepal ↔ China (Tibet)</div>
+                                </div>
+                                <div class="border-stats">
+                                    <div class="border-wait">Restricted</div>
+                                    <div class="border-traffic">Cargo only</div>
+                                </div>
+                            </div>
+                            <div class="border-item">
+                                <div class="border-status-dot open"></div>
+                                <div class="border-info">
+                                    <div class="border-name">Bhairahawa</div>
+                                    <div class="border-route">Nepal ↔ India (UP)</div>
+                                </div>
+                                <div class="border-stats">
+                                    <div class="border-wait">~45m wait</div>
+                                    <div class="border-traffic">Moderate</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Rumor Tracker Widget -->
+                <div class="widget" data-id="rumors" data-size="medium" draggable="true">
+                    <div class="widget-header">
+                        <span class="widget-drag-handle"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                        <span class="widget-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                            Rumor Tracker
+                            <span class="widget-badge" style="background: var(--status-critical);">3 FALSE</span>
+                        </span>
+                        <button class="widget-close" onclick="hideWidget('rumors')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                    </div>
+                    <div class="widget-body">
+                        <div class="rumor-list">
+                            <div class="rumor-item">
+                                <div class="rumor-header">
+                                    <span class="rumor-status false">FALSE</span>
+                                    <span class="rumor-source">Viral on Facebook</span>
+                                </div>
+                                <div class="rumor-claim">"Dam burst in Koshi, evacuate immediately"</div>
+                                <div class="rumor-fact">FACT: Koshi Barrage is operating normally. Water levels are within safe limits. DHM confirms no dam breach.</div>
+                                <div class="rumor-meta">
+                                    <span>Verified 30 min ago</span>
+                                    <span>12.4K shares</span>
+                                </div>
+                            </div>
+                            <div class="rumor-item">
+                                <div class="rumor-header">
+                                    <span class="rumor-status misleading">MISLEADING</span>
+                                    <span class="rumor-source">Twitter/X</span>
+                                </div>
+                                <div class="rumor-claim">"Election postponed due to flooding"</div>
+                                <div class="rumor-fact">CONTEXT: Only 3 polling stations in Chitwan relocated. Election schedule unchanged.</div>
+                                <div class="rumor-meta">
+                                    <span>Verified 1h ago</span>
+                                    <span>3.2K shares</span>
+                                </div>
+                            </div>
+                            <div class="rumor-item">
+                                <div class="rumor-header">
+                                    <span class="rumor-status unverified">UNVERIFIED</span>
+                                    <span class="rumor-source">WhatsApp Forward</span>
+                                </div>
+                                <div class="rumor-claim">"Major earthquake predicted for next week"</div>
+                                <div class="rumor-fact">PENDING: NSC states earthquakes cannot be predicted. Investigating source of claim.</div>
+                                <div class="rumor-meta">
+                                    <span>Under review</span>
+                                    <span>Unknown reach</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Customize Panel -->
+    <div class="customize-overlay" id="overlay"></div>
+    <div class="customize-panel" id="customizePanel">
+        <div class="customize-header">
+            <span class="customize-title">Customize Dashboard</span>
+            <button class="customize-close" id="closeCustomize"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="customize-body">
+            <div class="customize-section">
+                <div class="customize-section-title">Quick Presets</div>
+                <div class="preset-grid" id="presetGrid"></div>
+            </div>
+            <div class="customize-section">
+                <div class="customize-section-title">Widgets (Drag to Reorder)</div>
+                <div class="widget-list" id="widgetList"></div>
+            </div>
+        </div>
+        <div class="customize-footer">
+            <button class="customize-btn" id="resetBtn">Reset</button>
+            <button class="customize-btn primary" id="applyBtn">Apply & Close</button>
+        </div>
+    </div>
+
+    <script>
+        // ============ WIDGET CONFIG ============
+        const widgetMeta = {
+            map: { name: 'Situation Map' },
+            kpi: { name: 'Key Metrics' },
+            elections: { name: 'Election Watchlist' },
+            disasters: { name: 'Disaster Alerts' },
+            market: { name: 'Market & Exchange' },
+            stories: { name: 'Stories Feed' },
+            briefing: { name: 'Intel Briefing' },
+            social: { name: 'Social Feed' },
+            govt: { name: 'Govt Announcements' },
+            entities: { name: 'Key Entities' },
+            threats: { name: 'Threat Matrix' },
+            weather: { name: 'Weather & Forecast' },
+            rivers: { name: 'River Levels' },
+            seismic: { name: 'Seismic Activity' },
+            infra: { name: 'Infrastructure' },
+            contacts: { name: 'Emergency Contacts' },
+            news: { name: 'News Feed' },
+            aqi: { name: 'Air Quality' },
+            power: { name: 'Power Grid' },
+            borders: { name: 'Border Crossings' },
+            rumors: { name: 'Rumor Tracker' }
+        };
+
+        const sizes = ['hero', 'full', 'large', 'medium', 'tall', 'small', 'mini'];
+        const sizeRank = ['mini', 'small', 'medium', 'large', 'full', 'hero'];
+        const sizeIncrease = { mini: 'small', small: 'medium', medium: 'large', large: 'full', full: 'hero', tall: 'hero', hero: 'hero' };
+        const sizeDecrease = { hero: 'full', full: 'large', large: 'medium', medium: 'small', small: 'mini', mini: 'mini', tall: 'small' };
+
+        // All widget IDs for reference
+        const allWidgets = ['map', 'kpi', 'elections', 'disasters', 'market', 'stories', 'briefing', 'social', 'govt', 'entities', 'threats', 'weather', 'rivers', 'seismic', 'infra', 'contacts', 'news', 'aqi', 'power', 'borders', 'rumors'];
+
+        // Default visibility and sizes for all widgets
+        const defaultVis = {};
+        const defaultSizes = {};
+        allWidgets.forEach(w => { defaultVis[w] = false; defaultSizes[w] = 'small'; });
+
+        // Preset layouts - perfectly fitted grids (each row = 12 columns)
+        // Sizes: hero=12(6rows), full=12(4rows), large=8, medium=6, small=4, mini=3
+        const presets = {
+            analyst: {
+                name: 'Analyst View',
+                description: 'Comprehensive intelligence overview',
+                order: ['map', 'kpi', 'weather', 'rivers', 'seismic', 'infra', 'disasters', 'elections', 'market', 'news', 'stories', 'social', 'briefing', 'govt', 'entities', 'contacts', 'aqi', 'power', 'borders', 'rumors', 'threats'],
+                visibility: { ...defaultVis, map: true, kpi: true, weather: true, rivers: true, seismic: true, infra: true, disasters: true, elections: true, market: true, news: true, stories: true, social: true, briefing: true, govt: true, entities: true },
+                sizes: { ...defaultSizes, map: 'hero', kpi: 'full', weather: 'small', rivers: 'small', seismic: 'small', infra: 'medium', disasters: 'medium', elections: 'medium', market: 'medium', news: 'small', stories: 'small', social: 'small', briefing: 'small', govt: 'small', entities: 'small' }
+                // Row 1: map(12, hero) = 12
+                // Row 2: kpi(12) = 12
+                // Row 3: weather(4) + rivers(4) + seismic(4) = 12
+                // Row 4: infra(6) + disasters(6) = 12
+                // Row 5: elections(6) + market(6) = 12
+                // Row 6: news(4) + stories(4) + social(4) = 12
+                // Row 7: briefing(4) + govt(4) + entities(4) = 12
+            },
+            elections: {
+                name: 'Election Monitor',
+                description: 'Political tracking and analysis',
+                order: ['map', 'elections', 'entities', 'news', 'social', 'stories', 'briefing', 'govt', 'rumors', 'infra', 'kpi', 'disasters', 'market', 'weather', 'rivers', 'seismic', 'aqi', 'power', 'borders', 'contacts', 'threats'],
+                visibility: { ...defaultVis, map: true, elections: true, entities: true, news: true, social: true, stories: true, briefing: true, govt: true, rumors: true, infra: true },
+                sizes: { ...defaultSizes, map: 'hero', elections: 'large', entities: 'small', news: 'medium', social: 'medium', stories: 'small', briefing: 'small', govt: 'small', rumors: 'medium', infra: 'medium' }
+                // Row 1: map(12, hero) = 12
+                // Row 2: elections(8) + entities(4) = 12
+                // Row 3: news(6) + social(6) = 12
+                // Row 4: stories(4) + briefing(4) + govt(4) = 12
+                // Row 5: rumors(6) + infra(6) = 12
+            },
+            disaster: {
+                name: 'Disaster Response',
+                description: 'Emergency monitoring & alerts',
+                order: ['map', 'weather', 'rivers', 'disasters', 'seismic', 'infra', 'power', 'contacts', 'stories', 'briefing', 'news', 'govt', 'kpi', 'elections', 'market', 'social', 'entities', 'threats', 'aqi', 'borders', 'rumors'],
+                visibility: { ...defaultVis, map: true, weather: true, rivers: true, disasters: true, seismic: true, infra: true, power: true, contacts: true, stories: true, briefing: true, news: true, govt: true },
+                sizes: { ...defaultSizes, map: 'hero', weather: 'medium', rivers: 'medium', disasters: 'large', seismic: 'small', infra: 'medium', power: 'medium', contacts: 'small', stories: 'small', briefing: 'small', news: 'medium', govt: 'medium' }
+                // Row 1: map(12, hero) = 12
+                // Row 2: weather(6) + rivers(6) = 12
+                // Row 3: disasters(8) + seismic(4) = 12
+                // Row 4: infra(6) + power(6) = 12
+                // Row 5: contacts(4) + stories(4) + briefing(4) = 12
+                // Row 6: news(6) + govt(6) = 12
+            },
+            compact: {
+                name: 'Compact View',
+                description: 'Essential widgets only',
+                order: ['map', 'kpi', 'weather', 'disasters', 'news', 'elections', 'stories', 'market', 'briefing', 'social', 'govt', 'entities', 'threats', 'rivers', 'seismic', 'infra', 'contacts', 'aqi', 'power', 'borders', 'rumors'],
+                visibility: { ...defaultVis, map: true, kpi: true, weather: true, disasters: true, news: true, elections: true },
+                sizes: { ...defaultSizes, map: 'hero', kpi: 'full', weather: 'small', disasters: 'large', news: 'medium', elections: 'medium' }
+                // Row 1: map(12, hero) = 12
+                // Row 2: kpi(12) = 12
+                // Row 3: weather(4) + disasters(8) = 12
+                // Row 4: news(6) + elections(6) = 12
+            }
+        };
+
+        const defaultPreset = 'analyst';
+
+        let state = {
+            order: [...presets[defaultPreset].order],
+            visibility: { ...presets[defaultPreset].visibility },
+            sizes: { ...presets[defaultPreset].sizes },
+            activePreset: defaultPreset
+        };
+
+        // Load state
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('narada-state-v5');
+                if (saved) state = JSON.parse(saved);
+            } catch (e) {}
+            applyState(false);
+        }
+
+        // Save state
+        function saveState() {
+            localStorage.setItem('narada-state-v5', JSON.stringify(state));
+        }
+
+        // Apply state to DOM
+        function animateLayoutChange(mutator, duration = 220) {
+            const widgets = Array.from(grid.querySelectorAll('.widget'));
+            const firstRects = new Map(
+                widgets
+                    .filter(widget => !widget.classList.contains('hidden'))
+                    .map(widget => [widget.dataset.id, widget.getBoundingClientRect()])
+            );
+
+            mutator();
+
+            const nextWidgets = Array.from(grid.querySelectorAll('.widget'));
+            nextWidgets.forEach(widget => {
+                const first = firstRects.get(widget.dataset.id);
+                if (!first || widget.classList.contains('hidden')) return;
+
+                const last = widget.getBoundingClientRect();
+                const deltaX = first.left - last.left;
+                const deltaY = first.top - last.top;
+                const scaleX = first.width / Math.max(last.width, 1);
+                const scaleY = first.height / Math.max(last.height, 1);
+
+                if (Math.abs(deltaX) < 1 && Math.abs(deltaY) < 1 && Math.abs(scaleX - 1) < 0.01 && Math.abs(scaleY - 1) < 0.01) {
+                    return;
+                }
+
+                widget.style.transition = 'none';
+                widget.style.transform = `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`;
+
+                requestAnimationFrame(() => {
+                    widget.style.transition = `transform ${duration}ms cubic-bezier(0.22, 1, 0.36, 1)`;
+                    widget.style.transform = '';
+                    window.setTimeout(() => {
+                        widget.style.transition = '';
+                    }, duration + 20);
+                });
+            });
+        }
+
+        function applyState(animate = true) {
+            const commit = () => {
+                const widgets = Array.from(grid.querySelectorAll('.widget'));
+
+                widgets.sort((a, b) => {
+                    return state.order.indexOf(a.dataset.id) - state.order.indexOf(b.dataset.id);
+                });
+
+                widgets.forEach(w => {
+                    w.classList.toggle('hidden', !state.visibility[w.dataset.id]);
+                    w.dataset.size = state.sizes[w.dataset.id];
+                    grid.appendChild(w);
+                });
+            };
+
+            if (animate) {
+                animateLayoutChange(commit);
+            } else {
+                commit();
+            }
+
+            renderWidgetList();
+        }
+
+        // Hide widget
+        window.hideWidget = function(id) {
+            state.visibility[id] = false;
+            saveState();
+            applyState(true);
+        };
+
+        function enhanceWidgetChrome() {
+            document.querySelectorAll('.widget').forEach(widget => {
+                const header = widget.querySelector('.widget-header');
+                const closeBtn = widget.querySelector('.widget-close');
+                if (header && closeBtn && !header.querySelector('.widget-header-spacer')) {
+                    const spacer = document.createElement('div');
+                    spacer.className = 'widget-header-spacer';
+                    header.insertBefore(spacer, closeBtn);
+                }
+
+                if (header && closeBtn && !header.querySelector('.widget-fullscreen')) {
+                    const fullscreenBtn = document.createElement('button');
+                    fullscreenBtn.className = 'widget-fullscreen';
+                    fullscreenBtn.type = 'button';
+                    fullscreenBtn.title = 'Open fullscreen';
+                    fullscreenBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+                    fullscreenBtn.addEventListener('click', event => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toggleWidgetFullscreen(widget);
+                    });
+                    header.insertBefore(fullscreenBtn, closeBtn);
+                }
+
+                if (!widget.querySelector('.widget-resize-right')) {
+                    ['right', 'bottom', 'corner'].forEach(direction => {
+                        const handle = document.createElement('div');
+                        handle.className = `widget-resize-handle widget-resize-${direction}`;
+                        handle.dataset.direction = direction;
+                        handle.addEventListener('mousedown', startResize);
+                        widget.appendChild(handle);
+                    });
+                }
+            });
+        }
+
+        async function toggleWidgetFullscreen(widget) {
+            if (!widget) return;
+            try {
+                if (document.fullscreenElement === widget) {
+                    await document.exitFullscreen();
+                    return;
+                }
+
+                if (document.fullscreenElement) {
+                    await document.exitFullscreen();
+                }
+
+                await widget.requestFullscreen();
+            } catch (err) {}
+        }
+
+        function syncFullscreenButtons() {
+            document.querySelectorAll('.widget').forEach(widget => {
+                const isFullscreen = document.fullscreenElement === widget;
+                widget.classList.toggle('is-fullscreen', isFullscreen);
+                const btn = widget.querySelector('.widget-fullscreen');
+                if (!btn) return;
+                btn.title = isFullscreen ? 'Exit fullscreen' : 'Open fullscreen';
+                btn.innerHTML = isFullscreen
+                    ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>'
+                    : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>';
+            });
+        }
+
+        let resizeSession = null;
+
+        function stepSize(size, direction) {
+            if (direction > 0) return sizeIncrease[size] || size;
+            return sizeDecrease[size] || size;
+        }
+
+        function getResizedSize(startSize, delta, direction) {
+            if (Math.abs(delta) < 70) return startSize;
+            const steps = Math.min(3, Math.floor(Math.abs(delta) / 90));
+            let next = startSize;
+            for (let i = 0; i < steps; i += 1) {
+                next = stepSize(next, direction);
+            }
+            return next;
+        }
+
+        function updateResizeIndicator(widget, size) {
+            let badge = widget.querySelector('.widget-size-indicator');
+            if (!badge) {
+                badge = document.createElement('div');
+                badge.className = 'widget-size-indicator';
+                widget.appendChild(badge);
+            }
+            badge.textContent = size;
+        }
+
+        function clearResizeIndicator(widget) {
+            widget.querySelector('.widget-size-indicator')?.remove();
+        }
+
+        function startResize(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            const widget = e.currentTarget.closest('.widget');
+            if (!widget) return;
+
+            const id = widget.dataset.id;
+            const startSize = state.sizes[id] || widget.dataset.size || 'small';
+            resizeSession = {
+                widget,
+                id,
+                direction: e.currentTarget.dataset.direction,
+                startX: e.clientX,
+                startY: e.clientY,
+                startSize,
+            };
+
+            widget.classList.add('resizing');
+            updateResizeIndicator(widget, startSize);
+            document.addEventListener('mousemove', onResizeMove);
+            document.addEventListener('mouseup', endResize);
+        }
+
+        function onResizeMove(e) {
+            if (!resizeSession) return;
+
+            const { widget, startX, startY, startSize, direction } = resizeSession;
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            const dominantDelta = direction === 'right'
+                ? deltaX
+                : direction === 'bottom'
+                    ? deltaY
+                    : Math.abs(deltaX) > Math.abs(deltaY) ? deltaX : deltaY;
+
+            const nextSize = getResizedSize(startSize, dominantDelta, dominantDelta >= 0 ? 1 : -1);
+            if (widget.dataset.size !== nextSize) {
+                animateLayoutChange(() => {
+                    widget.dataset.size = nextSize;
+                }, 180);
+            }
+            updateResizeIndicator(widget, nextSize);
+        }
+
+        function endResize() {
+            if (!resizeSession) return;
+
+            const { widget, id } = resizeSession;
+            const finalSize = widget.dataset.size || resizeSession.startSize;
+            state.sizes[id] = finalSize;
+            widget.classList.remove('resizing');
+            clearResizeIndicator(widget);
+            saveState();
+            renderWidgetList();
+
+            resizeSession = null;
+            document.removeEventListener('mousemove', onResizeMove);
+            document.removeEventListener('mouseup', endResize);
+        }
+
+        // ============ DRAG & DROP ============
+        const grid = document.getElementById('grid');
+        let dragSrc = null;
+
+        grid.addEventListener('dragstart', e => {
+            const widget = e.target.closest('.widget');
+            if (!widget) return;
+            dragSrc = widget;
+            widget.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', widget.dataset.id);
+        });
+
+        grid.addEventListener('dragend', e => {
+            const widget = e.target.closest('.widget');
+            if (widget) widget.classList.remove('dragging');
+            document.querySelectorAll('.widget').forEach(w => w.classList.remove('drop-target'));
+
+            // Update order
+            state.order = Array.from(grid.querySelectorAll('.widget')).map(w => w.dataset.id);
+            saveState();
+            renderWidgetList();
+            dragSrc = null;
+        });
+
+        grid.addEventListener('dragover', e => {
+            e.preventDefault();
+            if (!dragSrc) return;
+
+            const target = e.target.closest('.widget');
+            if (!target || target === dragSrc) return;
+
+            document.querySelectorAll('.widget').forEach(w => w.classList.remove('drop-target'));
+            target.classList.add('drop-target');
+
+            const allWidgets = Array.from(grid.querySelectorAll('.widget:not(.hidden)'));
+            const dragIdx = allWidgets.indexOf(dragSrc);
+            const targetIdx = allWidgets.indexOf(target);
+
+            if (dragIdx < targetIdx) {
+                target.parentNode.insertBefore(dragSrc, target.nextSibling);
+            } else {
+                target.parentNode.insertBefore(dragSrc, target);
+            }
+        });
+
+        grid.addEventListener('drop', e => {
+            e.preventDefault();
+        });
+
+        // ============ CUSTOMIZE PANEL ============
+        const customizeBtn = document.getElementById('customizeBtn');
+        const customizePanel = document.getElementById('customizePanel');
+        const overlay = document.getElementById('overlay');
+        const closeCustomize = document.getElementById('closeCustomize');
+
+        function openPanel() {
+            customizePanel.classList.add('open');
+            overlay.classList.add('open');
+            customizeBtn.classList.add('active');
+            renderPresets();
+            renderWidgetList();
+        }
+
+        function closePanel() {
+            customizePanel.classList.remove('open');
+            overlay.classList.remove('open');
+            customizeBtn.classList.remove('active');
+        }
+
+        customizeBtn.addEventListener('click', openPanel);
+        closeCustomize.addEventListener('click', closePanel);
+        overlay.addEventListener('click', closePanel);
+        document.getElementById('applyBtn').addEventListener('click', () => { saveState(); closePanel(); });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            applyPreset(defaultPreset);
+        });
+
+        // Apply a preset layout
+        function applyPreset(presetId) {
+            const preset = presets[presetId];
+            if (!preset) return;
+
+            state = {
+                order: [...preset.order],
+                visibility: { ...preset.visibility },
+                sizes: { ...preset.sizes },
+                activePreset: presetId
+            };
+            localStorage.removeItem('narada-state-v5');
+            saveState();
+            applyState();
+            updatePresetButtons();
+        }
+
+        function updatePresetButtons() {
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.preset === state.activePreset);
+            });
+        }
+
+        // Render preset buttons
+        function renderPresets() {
+            const grid = document.getElementById('presetGrid');
+            grid.innerHTML = Object.entries(presets).map(([id, preset]) => `
+                <button class="preset-btn ${state.activePreset === id ? 'active' : ''}" data-preset="${id}">
+                    <div class="preset-name">${preset.name}</div>
+                    <div class="preset-desc">${preset.description}</div>
+                </button>
+            `).join('');
+
+            grid.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.onclick = () => applyPreset(btn.dataset.preset);
+            });
+        }
+
+        // Render widget list in customize panel
+        function renderWidgetList() {
+            const list = document.getElementById('widgetList');
+            list.innerHTML = state.order.map(id => `
+                <div class="widget-config-item" draggable="true" data-id="${id}">
+                    <span class="config-drag-handle"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="5" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="5" r="2"/><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="19" r="2"/><circle cx="12" cy="19" r="2"/><circle cx="19" cy="19" r="2"/></svg></span>
+                    <span class="config-name">${widgetMeta[id].name}</span>
+                    <select class="config-size" data-id="${id}">
+                        ${sizes.map(s => `<option value="${s}" ${state.sizes[id] === s ? 'selected' : ''}>${s}</option>`).join('')}
+                    </select>
+                    <button class="config-toggle ${state.visibility[id] ? 'on' : ''}" data-id="${id}"></button>
+                </div>
+            `).join('');
+
+            // Event listeners
+            list.querySelectorAll('.config-toggle').forEach(btn => {
+                btn.onclick = function() {
+                    const id = this.dataset.id;
+                    state.visibility[id] = !state.visibility[id];
+                    this.classList.toggle('on', state.visibility[id]);
+                    applyState();
+                    saveState();
+                };
+            });
+
+            list.querySelectorAll('.config-size').forEach(sel => {
+                sel.onchange = function() {
+                    state.sizes[this.dataset.id] = this.value;
+                    applyState(true);
+                    saveState();
+                };
+            });
+
+            // Drag in list
+            let listDragSrc = null;
+            list.querySelectorAll('.widget-config-item').forEach(item => {
+                item.ondragstart = function() {
+                    listDragSrc = this;
+                    this.classList.add('dragging');
+                };
+                item.ondragend = function() {
+                    this.classList.remove('dragging');
+                    state.order = Array.from(list.querySelectorAll('.widget-config-item')).map(i => i.dataset.id);
+                    applyState();
+                    saveState();
+                    listDragSrc = null;
+                };
+                item.ondragover = function(e) {
+                    e.preventDefault();
+                    if (!listDragSrc || listDragSrc === this) return;
+                    const rect = this.getBoundingClientRect();
+                    const mid = rect.top + rect.height / 2;
+                    if (e.clientY < mid) {
+                        list.insertBefore(listDragSrc, this);
+                    } else {
+                        list.insertBefore(listDragSrc, this.nextSibling);
+                    }
+                };
+            });
+        }
+
+        // ============ CLOCK ============
+        function updateClock() {
+            document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-GB');
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // ============ TAB INTERACTIONS ============
+        document.querySelectorAll('.widget-action, .election-tab, .nav-item').forEach(el => {
+            el.onclick = function() {
+                this.parentElement.querySelectorAll('.widget-action, .election-tab, .nav-item').forEach(e => e.classList.remove('active'));
+                this.classList.add('active');
+            };
+        });
+
+        // ============ KEYBOARD SHORTCUTS ============
+        document.addEventListener('keydown', e => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                e.preventDefault();
+                document.querySelector('.search-input')?.focus();
+            }
+            if (e.key === 'Escape') {
+                if (document.fullscreenElement) {
+                    document.exitFullscreen();
+                } else {
+                    closePanel();
+                }
+            }
+        });
+
+        document.addEventListener('fullscreenchange', syncFullscreenButtons);
+
+        // ============ INIT ============
+        loadState();
+        enhanceWidgetChrome();
+        syncFullscreenButtons();
+    </script>
+</body>
+</html>
