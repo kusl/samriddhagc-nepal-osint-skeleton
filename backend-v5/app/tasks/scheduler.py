@@ -11,6 +11,7 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import get_settings
 from app.core.database import AsyncSessionLocal
+from app.core.redis import get_redis
 from app.services.ingestion_service import IngestionService
 from app.services.clustering import ClusteringService
 from app.services.embeddings import EmbeddingService
@@ -24,6 +25,7 @@ from app.services.nitter_service import NitterService
 from app.services.reddit_service import RedditService
 from app.services.market_service import MarketService
 from app.services.energy_service import EnergyService
+from app.services.debt_clock_service import DebtClockService
 from app.core.realtime_bus import publish_news
 from app.ingestion.ratopati_scraper import fetch_ratopati_province
 from app.ingestion.rss_fetcher import FetchedArticle
@@ -69,6 +71,7 @@ PROVINCE_ANOMALY_INTERVAL = 43200  # 12 hours (Province Anomaly Agent)
 AVIATION_POLL_INTERVAL = 60       # 1 minute (ADS-B aircraft positions)
 OPENSKY_POLL_INTERVAL = 300       # 5 minutes (OpenSky Mode-S — conserve API credits)
 AVIATION_CLEANUP_INTERVAL = 86400 # 24 hours (delete old positions)
+DEBT_CLOCK_REFRESH_INTERVAL_DAYS = settings.debt_clock_refresh_interval_days
 
 
 async def poll_priority_sources():
@@ -228,6 +231,22 @@ async def generate_embeddings():
             )
     except Exception as e:
         logger.exception(f"Error generating embeddings: {e}")
+
+
+async def refresh_debt_clock_summary():
+    """Refresh the cached Nepal debt clock summary on a low-frequency cadence."""
+    logger.info("Refreshing Nepal debt clock summary...")
+    try:
+        redis = await get_redis()
+        service = DebtClockService(redis)
+        summary = await service.get_nepal_summary(force_refresh=True)
+        logger.info(
+            "Debt clock refresh complete: debt as of %s, fetched at %s",
+            summary.get("debt_as_of_label"),
+            summary.get("fetched_at"),
+        )
+    except Exception as e:
+        logger.exception(f"Error refreshing debt clock summary: {e}")
 
 
 async def submit_analysis_batch():
@@ -1460,6 +1479,15 @@ def start_scheduler():
     #     replace_existing=True,
     # )
 
+    scheduler.add_job(
+        refresh_debt_clock_summary,
+        trigger=IntervalTrigger(days=DEBT_CLOCK_REFRESH_INTERVAL_DAYS),
+        id="refresh_debt_clock_summary",
+        name="Refresh Nepal Debt Clock Summary",
+        replace_existing=True,
+        next_run_time=now,
+    )
+
     # VPS OpenAI briefing cycle at fixed Nepal times: 08:00 and 20:00 NPT.
     if settings.openai_briefing_enabled:
         scheduler.add_job(
@@ -1585,7 +1613,7 @@ def start_scheduler():
 
     scheduler.start()
     job_count = (
-        28
+        29
         + (1 if settings.gee_change_detection_enabled else 0)
         + (1 if settings.haiku_relevance_filter_enabled else 0)
         + (1 if settings.openai_briefing_enabled else 0)

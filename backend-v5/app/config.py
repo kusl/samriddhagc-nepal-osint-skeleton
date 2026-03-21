@@ -199,6 +199,8 @@ class Settings(BaseSettings):
 
     # Scheduler — automatically starts background jobs (RSS, scraping, clustering, etc.)
     run_scheduler: bool = True
+    debt_clock_refresh_interval_days: int = 14
+    debt_clock_cache_ttl_seconds: int = 15 * 24 * 60 * 60  # 15 days
 
     # Consumer mode — when true, analyst API routes are not loaded (lightweight deployment)
     consumer_mode: bool = False

@@ -1,0 +1,53 @@
+import apiClient from './client';
+
+export interface DebtClockSummary {
+  country: string;
+  flag: string;
+  currency_code: string;
+  source_label: string;
+  updated_at: string;
+  updated_label: string;
+  snapshot_year: number | null;
+  debt_now_npr: number;
+  debt_now_usd: number;
+  debt_nominal_npr: number;
+  debt_nominal_usd: number;
+  debt_gdp_pct: number;
+  gdp_nominal_npr: number;
+  gdp_nominal_usd: number;
+  population: number;
+  population_year: number | null;
+  interest_per_year_npr: number;
+  interest_per_year_usd: number;
+  flow_per_second_npr: number;
+  flow_per_second_usd: number;
+  debt_per_citizen_npr: number;
+  debt_per_citizen_usd: number;
+  inflation_pct: number | null;
+  inflation_year: number | null;
+  gdp_growth_pct: number | null;
+  gdp_growth_year: number | null;
+  unemployment_pct: number | null;
+  unemployment_year: number | null;
+  budget_balance_pct: number | null;
+  budget_balance_year: number | null;
+  debt_as_of_label: string | null;
+  debt_ratio_label: string | null;
+  gdp_nominal_label: string | null;
+  population_label: string | null;
+  interest_label: string | null;
+  inflation_label: string | null;
+  growth_label: string | null;
+  budget_balance_label: string | null;
+  unemployment_label: string | null;
+  methodology_note: string | null;
+  domestic_debt_npr: number | null;
+  external_debt_npr: number | null;
+  fx_usd_per_lcy: number;
+  fetched_at: string;
+}
+
+export async function getNepalDebtClock(): Promise<DebtClockSummary> {
+  const response = await apiClient.get('/debt-clock/nepal');
+  return response.data;
+}

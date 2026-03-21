@@ -11,7 +11,7 @@ CONSUMER_MODE = os.getenv("CONSUMER_MODE", "false").lower() == "true"
 from app.api.v1 import (
     stories, analytics, ingest, analysis, embeddings,
     disasters, disaster_alerts, map, kpi, weather,
-    announcements, market, infrastructure, seismic, curfew,
+    announcements, market, infrastructure, seismic, curfew, debt_clock,
     twitter, elections, energy, auth,
     # Public feed endpoints (consumer accounts)
     public_events,
@@ -108,6 +108,7 @@ router.include_router(kpi.router, dependencies=any_auth)
 router.include_router(weather.router, dependencies=any_auth)
 router.include_router(announcements.router, dependencies=any_auth)
 router.include_router(market.router, dependencies=any_auth)
+router.include_router(debt_clock.router, dependencies=any_auth)
 router.include_router(infrastructure.router, dependencies=any_auth)
 router.include_router(seismic.router, dependencies=any_auth)
 router.include_router(curfew.router, dependencies=any_auth)

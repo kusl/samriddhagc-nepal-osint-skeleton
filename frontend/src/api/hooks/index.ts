@@ -58,6 +58,12 @@ export {
   weatherKeys,
 } from './useWeather';
 
+// Debt clock hooks
+export {
+  useNepalDebtClock,
+  debtClockKeys,
+} from './useDebtClock';
+
 // Government Announcements hooks
 export {
   useAnnouncementSummary,
