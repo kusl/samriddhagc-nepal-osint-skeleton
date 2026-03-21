@@ -111,6 +111,8 @@ class Settings(BaseSettings):
     openai_clustering_model: str = "gpt-5-mini"
     openai_embedding_enabled: bool = False
     openai_clustering_enabled: bool = False
+    openai_source_reliability_enabled: bool = True
+    openai_source_reliability_story_sample_size: int = 3
     openai_agent_enabled: bool = False
     openai_agent_fast_model: str = "gpt-4.1-mini"
     openai_agent_deep_model: str = "gpt-4.1"
@@ -199,6 +201,7 @@ class Settings(BaseSettings):
 
     # Scheduler — automatically starts background jobs (RSS, scraping, clustering, etc.)
     run_scheduler: bool = True
+    source_reliability_recompute_interval: int = 43200  # 12 hours
     debt_clock_refresh_interval_days: int = 14
     debt_clock_cache_ttl_seconds: int = 15 * 24 * 60 * 60  # 15 days
 

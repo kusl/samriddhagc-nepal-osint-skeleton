@@ -10,7 +10,7 @@ import {
   getWatchlists, getWatchlistItems, createWatchlistItem,
   getActivityFeed, getMentions, getMyMetrics, getLeaderboard, getAnalystMetrics,
   getNotes, getNote, createNote, updateNote, deleteNote, togglePinNote,
-  getSources, getSource, getSourceStats, rateSource,
+  getSources, getSource, getSourceStats, rateSource, clearSourceOverride, recomputeSources,
   getCaseEvidence, addCaseEvidence, updateCaseEvidence, removeCaseEvidence,
   getCaseComments, addCaseComment, updateCaseComment, deleteCaseComment,
   CaseStatus, CasePriority, VerificationStatus, VerifiableType, WatchlistScope,
@@ -411,6 +411,28 @@ export function useRateSource() {
       rateSource(sourceId, rating),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: collaborationKeys.sourceDetail(variables.sourceId) });
+      queryClient.invalidateQueries({ queryKey: collaborationKeys.sources });
+    },
+  });
+}
+
+export function useClearSourceOverride() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sourceId: string) => clearSourceOverride(sourceId),
+    onSuccess: (_, sourceId) => {
+      queryClient.invalidateQueries({ queryKey: collaborationKeys.sourceDetail(sourceId) });
+      queryClient.invalidateQueries({ queryKey: collaborationKeys.sources });
+    },
+  });
+}
+
+export function useRecomputeSources() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params?: { source_id?: string; limit?: number; lookback_days?: number }) =>
+      recomputeSources(params),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: collaborationKeys.sources });
     },
   });

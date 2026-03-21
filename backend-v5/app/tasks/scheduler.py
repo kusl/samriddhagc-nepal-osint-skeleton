@@ -26,6 +26,7 @@ from app.services.reddit_service import RedditService
 from app.services.market_service import MarketService
 from app.services.energy_service import EnergyService
 from app.services.debt_clock_service import DebtClockService
+from app.services.source_reliability_service import SourceReliabilityScoringService
 from app.core.realtime_bus import publish_news
 from app.ingestion.ratopati_scraper import fetch_ratopati_province
 from app.ingestion.rss_fetcher import FetchedArticle
@@ -71,6 +72,7 @@ PROVINCE_ANOMALY_INTERVAL = 43200  # 12 hours (Province Anomaly Agent)
 AVIATION_POLL_INTERVAL = 60       # 1 minute (ADS-B aircraft positions)
 OPENSKY_POLL_INTERVAL = 300       # 5 minutes (OpenSky Mode-S — conserve API credits)
 AVIATION_CLEANUP_INTERVAL = 86400 # 24 hours (delete old positions)
+SOURCE_RELIABILITY_INTERVAL = settings.source_reliability_recompute_interval
 DEBT_CLOCK_REFRESH_INTERVAL_DAYS = settings.debt_clock_refresh_interval_days
 
 
@@ -247,6 +249,23 @@ async def refresh_debt_clock_summary():
         )
     except Exception as e:
         logger.exception(f"Error refreshing debt clock summary: {e}")
+
+
+async def recompute_source_reliability():
+    """Recompute dynamic source reliability profiles."""
+    logger.info("Recomputing source reliability profiles...")
+    try:
+        async with AsyncSessionLocal() as db:
+            service = SourceReliabilityScoringService(db)
+            stats = await service.recompute_active_sources(limit=50, lookback_days=90, force=False)
+            logger.info(
+                "Source reliability recompute complete: %s updated, %s skipped, %s processed",
+                stats.get("updated", 0),
+                stats.get("skipped", 0),
+                stats.get("processed", 0),
+            )
+    except Exception as e:
+        logger.exception(f"Error recomputing source reliability: {e}")
 
 
 async def submit_analysis_batch():
@@ -1488,6 +1507,15 @@ def start_scheduler():
         next_run_time=now,
     )
 
+    scheduler.add_job(
+        recompute_source_reliability,
+        trigger=IntervalTrigger(seconds=SOURCE_RELIABILITY_INTERVAL),
+        id="recompute_source_reliability",
+        name="Recompute Source Reliability",
+        replace_existing=True,
+        next_run_time=now,
+    )
+
     # VPS OpenAI briefing cycle at fixed Nepal times: 08:00 and 20:00 NPT.
     if settings.openai_briefing_enabled:
         scheduler.add_job(
@@ -1613,7 +1641,7 @@ def start_scheduler():
 
     scheduler.start()
     job_count = (
-        29
+        30
         + (1 if settings.gee_change_detection_enabled else 0)
         + (1 if settings.haiku_relevance_filter_enabled else 0)
         + (1 if settings.openai_briefing_enabled else 0)

@@ -1,6 +1,6 @@
 """Pydantic schemas for collaboration system."""
 from datetime import datetime
-from typing import Optional, List
+from typing import Any, Optional, List
 from uuid import UUID
 from enum import Enum
 
@@ -621,6 +621,12 @@ class SourceReliabilityResponse(BaseModel):
     total_ratings: int
     average_user_rating: Optional[float]
     notes: Optional[str]
+    rating_origin: str = "automated"
+    provisional: bool = False
+    sample_size: int = 0
+    confidence_band: Optional[float] = None
+    automation_updated_at: Optional[datetime] = None
+    score_breakdown: Optional[dict[str, Any]] = None
 
     class Config:
         from_attributes = True
@@ -628,8 +634,14 @@ class SourceReliabilityResponse(BaseModel):
 
 class SourceRatingCreate(BaseModel):
     reliability_rating: str = Field(..., min_length=1, max_length=1)
-    credibility_rating: int = Field(..., ge=1, le=6)
+    credibility_rating: int = Field(..., ge=1, le=4)
     notes: Optional[str] = None
+
+
+class SourceRecomputeResponse(BaseModel):
+    processed: int
+    updated: int
+    skipped: int
 
 
 # Fix forward reference

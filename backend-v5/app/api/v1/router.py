@@ -140,7 +140,7 @@ if not CONSUMER_MODE:
     router.include_router(watchlists.router, dependencies=analyst_auth)
     router.include_router(activity.router, dependencies=analyst_auth)
     router.include_router(notes.router, dependencies=analyst_auth)
-    router.include_router(sources.router, dependencies=analyst_auth)
+    router.include_router(sources.router, dependencies=any_auth)
     router.include_router(peer_reviews.router, dependencies=analyst_auth)
     router.include_router(entities.router, dependencies=analyst_auth)
     router.include_router(spatial.router, dependencies=analyst_auth)

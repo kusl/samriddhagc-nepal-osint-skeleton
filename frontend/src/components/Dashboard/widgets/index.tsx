@@ -66,8 +66,8 @@ import {
   MapPinned, AlertCircle, RefreshCw, Fuel, Hash, UserCheck,
   Search, Repeat2, Heart, MapPin, ChevronRight
 } from 'lucide-react';
-import { useMarketSummary, useSeismicStats, useTweets, useSearchTweets } from '../../../api/hooks';
-import { WidgetSkeleton, WidgetError } from './shared';
+import { useAnalyticsSummary, useMarketSummary, useSeismicStats, useTweets, useSearchTweets } from '../../../api/hooks';
+import { WidgetSkeleton, WidgetError, WidgetEmpty } from './shared';
 
 export function MarketWidget() {
   const { data, isLoading, error } = useMarketSummary();
@@ -1282,70 +1282,168 @@ export function AnalystNotesWidget() {
  * SourceReliabilityWidget - Source confidence ranking using Admiralty System
  */
 export function SourceReliabilityWidget() {
-  const { data: sourcesData, isLoading } = useSources({ sort_by: 'confidence', limit: 10 });
-
-  // Mock data fallback
-  const mockSources = [
-    { source_id: '1', source_name: 'Kathmandu Post', confidence_score: 92, admiralty_code: 'A2', total_stories: 156 },
-    { source_id: '2', source_name: 'Republica', confidence_score: 88, admiralty_code: 'B2', total_stories: 124 },
-    { source_id: '3', source_name: 'Kantipur', confidence_score: 85, admiralty_code: 'B3', total_stories: 198 },
-    { source_id: '4', source_name: 'Nepal Police Twitter', confidence_score: 78, admiralty_code: 'B4', total_stories: 42 },
-    { source_id: '5', source_name: 'Unnamed Social Media', confidence_score: 45, admiralty_code: 'D5', total_stories: 89 },
-  ];
-
-  const displaySources = sourcesData && sourcesData.length > 0 ? sourcesData : mockSources;
+  const { data: sourcesData, isLoading, error, refetch } = useSources({ sort_by: 'confidence', limit: 20 });
+  const { data: summary } = useAnalyticsSummary(72);
+  const displaySources = sourcesData ?? [];
+  const totalSourceStories = displaySources.reduce((total, source) => total + (source.total_stories || 0), 0);
+  const sourceCount = summary?.sources_breakdown
+    ? Object.keys(summary.sources_breakdown).length
+    : displaySources.length;
 
   const getGradeColor = (admiraltyCode: string) => {
     const grade = admiraltyCode?.charAt(0) || 'F';
     if (grade === 'A') return 'var(--status-low)';
     if (grade === 'B') return 'var(--status-medium)';
     if (grade === 'C') return 'var(--status-high)';
+    if (grade === 'N') return 'rgba(148, 163, 184, 0.6)';
     return 'var(--status-critical)';
   };
 
   const getGradeTextColor = (admiraltyCode: string) => {
     const grade = admiraltyCode?.charAt(0) || 'F';
     if (grade === 'A' || grade === 'B') return 'black';
+    if (grade === 'N') return 'white';
     return 'white';
   };
 
+  const getSourceContext = (source: SourceReliability) => {
+    if (source.notes?.trim()) {
+      return source.notes.trim();
+    }
+
+    if (source.rating_origin === 'manual_override') {
+      return 'Pinned manual override from dev console.';
+    }
+
+    return source.provisional
+      ? 'Automated rating from limited recent story history.'
+      : 'Automated rating from recent source behavior.';
+  };
+
+  if (isLoading) {
+    return (
+      <Widget id="source-reliability" icon={<Shield size={14} />}>
+        <WidgetSkeleton />
+      </Widget>
+    );
+  }
+
+  if (error) {
+    return (
+      <Widget id="source-reliability" icon={<Shield size={14} />}>
+        <WidgetError message="Failed to load source reliability" onRetry={() => refetch()} />
+      </Widget>
+    );
+  }
+
   return (
     <Widget id="source-reliability" icon={<Shield size={14} />}>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
           <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-            {isLoading ? 'Loading...' : 'Admiralty Rating'}
+            {displaySources.some((source) => source.admiralty_code === 'NR') ? 'Live source activity' : 'Admiralty rating'}
           </span>
-          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Confidence</span>
+          <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+            {sourceCount} sources · {totalSourceStories} stories
+          </span>
         </div>
 
         {/* Source list */}
-        {displaySources.map((source: any) => (
-          <div key={source.source_id} style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{
-                width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: '11px',
-                background: getGradeColor(source.admiralty_code),
-                color: getGradeTextColor(source.admiralty_code)
-              }}>
-                {source.admiralty_code}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: '11px', fontWeight: 500 }}>{source.source_name}</div>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{source.total_stories} stories</div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 600 }}>{source.confidence_score}%</div>
-              </div>
-            </div>
-            {/* Confidence bar */}
-            <div style={{ height: '3px', background: 'var(--bg-active)', marginTop: '8px' }}>
-              <div style={{ height: '100%', width: `${source.confidence_score}%`, background: getGradeColor(source.admiralty_code), transition: 'width 0.3s ease' }} />
-            </div>
+        {displaySources.length === 0 ? (
+          <WidgetEmpty message="No source reliability data available yet" />
+        ) : (
+          <div style={{ flex: '1 1 0', minHeight: 0, overflowY: 'auto' }}>
+            {displaySources.map((source: SourceReliability) => {
+              const hasConfidence = source.confidence_score > 0;
+              const context = getSourceContext(source);
+              return (
+                <div key={source.source_id} style={{ padding: '10px 12px', borderBottom: '1px solid var(--border-subtle)' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                    <div style={{
+                      width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 700, fontSize: '11px', flexShrink: 0,
+                      background: getGradeColor(source.admiralty_code),
+                      color: getGradeTextColor(source.admiralty_code)
+                    }}>
+                      {source.admiralty_code}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px' }}>
+                        <div style={{ fontSize: '11px', fontWeight: 600, minWidth: 0 }}>{source.source_name}</div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 600 }}>
+                            {hasConfidence ? `${source.confidence_score}%` : 'UNRATED'}
+                          </div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        {source.total_stories} stories · {source.source_type}
+                        {source.sample_size > 0 ? ` · sample ${source.sample_size}` : ''}
+                        {source.confidence_band != null ? ` · ±${source.confidence_band}%` : ''}
+                      </div>
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '5px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: '9px',
+                          padding: '2px 6px',
+                          background: source.rating_origin === 'manual_override' ? 'rgba(59, 130, 246, 0.16)' : 'var(--bg-active)',
+                          color: source.rating_origin === 'manual_override' ? '#93c5fd' : 'var(--text-muted)',
+                          textTransform: 'uppercase'
+                        }}>
+                          {source.rating_origin === 'manual_override' ? 'Pinned' : 'Auto'}
+                        </span>
+                        {source.provisional && (
+                          <span style={{
+                            fontSize: '9px',
+                            padding: '2px 6px',
+                            background: 'rgba(245, 158, 11, 0.16)',
+                            color: '#fbbf24',
+                            textTransform: 'uppercase'
+                          }}>
+                            Provisional
+                          </span>
+                        )}
+                        {source.automation_updated_at && (
+                          <span style={{
+                            fontSize: '9px',
+                            padding: '2px 6px',
+                            background: 'var(--bg-active)',
+                            color: 'var(--text-muted)',
+                            textTransform: 'uppercase'
+                          }}>
+                            {formatTimeAgo(source.automation_updated_at)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{
+                        fontSize: '10px',
+                        color: 'var(--text-muted)',
+                        marginTop: '4px',
+                        lineHeight: 1.4,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
+                        {context}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ height: '3px', background: 'var(--bg-active)', marginTop: '8px' }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        width: `${hasConfidence ? source.confidence_score : Math.min(100, source.total_stories)}%`,
+                        background: getGradeColor(source.admiralty_code),
+                        transition: 'width 0.3s ease'
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        ))}
+        )}
       </div>
     </Widget>
   );

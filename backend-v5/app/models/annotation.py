@@ -330,6 +330,48 @@ class SourceReliability(Base, TimestampMixin):
         default=50,
     )
 
+    # Automated reliability profile
+    automation_metrics: Mapped[Optional[dict]] = mapped_column(
+        JSONB,
+        nullable=True,
+        comment="Persisted automated source reliability breakdown and cached score metadata",
+    )
+    automation_updated_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
+    # Manual override (dev-pinned)
+    override_pinned: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
+    override_reliability_rating: Mapped[Optional[str]] = mapped_column(
+        String(1),
+        nullable=True,
+    )
+    override_credibility_rating: Mapped[Optional[int]] = mapped_column(
+        nullable=True,
+    )
+    override_confidence_score: Mapped[Optional[int]] = mapped_column(
+        nullable=True,
+    )
+    override_notes: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+    )
+    override_set_by_id: Mapped[Optional[UUID]] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    override_set_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
+
     # Statistics
     total_stories: Mapped[int] = mapped_column(default=0)
     verified_true: Mapped[int] = mapped_column(default=0)

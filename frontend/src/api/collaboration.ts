@@ -495,6 +495,12 @@ export interface SourceReliability {
   total_ratings: number;
   average_user_rating: number | null;
   notes: string | null;
+  rating_origin: 'automated' | 'manual_override';
+  provisional: boolean;
+  sample_size: number;
+  confidence_band: number | null;
+  automation_updated_at: string | null;
+  score_breakdown: Record<string, number | string | boolean> | null;
 }
 
 export interface SourceRatingRequest {
@@ -508,6 +514,12 @@ export interface SourceStats {
   rating_distribution: Record<string, number>;
   average_confidence: number;
   type_distribution: Record<string, number>;
+}
+
+export interface SourceRecomputeResponse {
+  processed: number;
+  updated: number;
+  skipped: number;
 }
 
 // ============================================
@@ -585,6 +597,20 @@ export async function getSourceStats(): Promise<SourceStats> {
 
 export async function rateSource(sourceId: string, rating: SourceRatingRequest): Promise<SourceReliability> {
   const { data } = await apiClient.post(`/sources/${sourceId}/rate`, rating);
+  return data;
+}
+
+export async function clearSourceOverride(sourceId: string): Promise<SourceReliability> {
+  const { data } = await apiClient.delete(`/sources/${sourceId}/override`);
+  return data;
+}
+
+export async function recomputeSources(params?: {
+  source_id?: string;
+  limit?: number;
+  lookback_days?: number;
+}): Promise<SourceRecomputeResponse> {
+  const { data } = await apiClient.post('/sources/recompute', null, { params });
   return data;
 }
 
