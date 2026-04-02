@@ -71,6 +71,8 @@ interface NewsStory {
   story_type?: string
   source_count?: number
   timestamp: string
+  districts_affected: string[]
+  provinces_affected: string[]
   source_links?: Array<{ source_id: string; url: string; title?: string }>
 }
 
@@ -85,22 +87,26 @@ function safeFormatTimeAgo(timestamp: string | null | undefined): string {
   }
 }
 
-// Check if a news item is from Gandaki sources or mentions Gandaki content
+function normalizeGeoToken(value: string): string {
+  return value.trim().toLowerCase().replace(/_/g, ' ')
+}
+
+const GANDAKI_DISTRICT_SET = new Set(GANDAKI_DISTRICTS.map(normalizeGeoToken))
+
+// Check if a news item is genuinely Gandaki-related.
 function isGandakiRelated(story: NewsStory): boolean {
+  const storyDistricts = (story.districts_affected || []).map(normalizeGeoToken)
+  if (storyDistricts.some((district) => GANDAKI_DISTRICT_SET.has(district))) {
+    return true
+  }
+
+  const storyProvinces = (story.provinces_affected || []).map(normalizeGeoToken)
+  if (storyProvinces.includes('gandaki')) {
+    return true
+  }
+
   const sourceId = (story.source_id || '').toLowerCase()
   const sourceName = (story.source_name || '').toLowerCase()
-
-  // Check exact source ID match
-  if (GANDAKI_SOURCE_IDS.some(id => sourceId === id)) {
-    return true
-  }
-
-  // Check source ID/name contains Gandaki patterns
-  if (GANDAKI_SOURCE_PATTERNS.some(pattern =>
-    sourceId.includes(pattern) || sourceName.includes(pattern)
-  )) {
-    return true
-  }
 
   // Check content for Gandaki keywords
   const titleLower = (story.title || '').toLowerCase()
@@ -108,6 +114,17 @@ function isGandakiRelated(story: NewsStory): boolean {
     if (titleLower.includes(keyword)) {
       return true
     }
+  }
+
+  // Source identity alone is not enough. Only use it as a weak fallback when
+  // the title also carries a Gandaki signal.
+  const sourceLooksGandaki =
+    GANDAKI_SOURCE_IDS.some(id => sourceId === id) ||
+    GANDAKI_SOURCE_PATTERNS.some(pattern =>
+      sourceId.includes(pattern) || sourceName.includes(pattern)
+    )
+  if (sourceLooksGandaki && GANDAKI_KEYWORDS.some(keyword => titleLower.includes(keyword))) {
+    return true
   }
 
   return false
@@ -174,6 +191,9 @@ export function GandakiNewsFeed({ onNewsCountChange }: GandakiNewsFeedProps) {
         params: {
           hours,
           limit: 150,
+          districts: viewScope === 'gandaki'
+            ? GANDAKI_DISTRICTS.join(',')
+            : undefined,
         },
         timeout: 15000, // 15 second timeout
       })
@@ -206,6 +226,12 @@ export function GandakiNewsFeed({ onNewsCountChange }: GandakiNewsFeedProps) {
             story_type: story.story_type as string | undefined,
             source_count: (story.source_count as number) || 1,
             timestamp: timestamp as string,
+            districts_affected: Array.isArray(story.districts_affected)
+              ? (story.districts_affected as string[])
+              : [],
+            provinces_affected: Array.isArray(story.provinces_affected)
+              ? (story.provinces_affected as string[])
+              : [],
             source_links: sourceLinks,
           }
         })
@@ -249,7 +275,7 @@ export function GandakiNewsFeed({ onNewsCountChange }: GandakiNewsFeedProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [hours, isLoading, token, errorType, retryCount])
+  }, [hours, isLoading, token, errorType, retryCount, viewScope])
 
   // Initial fetch and polling
   useEffect(() => {
@@ -258,12 +284,7 @@ export function GandakiNewsFeed({ onNewsCountChange }: GandakiNewsFeedProps) {
     // Poll every 60 seconds
     const interval = setInterval(fetchStories, 60 * 1000)
     return () => clearInterval(interval)
-  }, []) // Only run once on mount
-
-  // Re-fetch when time range changes
-  useEffect(() => {
-    fetchStories()
-  }, [hours])
+  }, [fetchStories])
 
   // Filter stories based on scope and district selection
   const filteredStories = useMemo(() => {
@@ -276,11 +297,16 @@ export function GandakiNewsFeed({ onNewsCountChange }: GandakiNewsFeedProps) {
 
     // Further filter by selected district
     if (selectedDistrict) {
-      const districtLower = selectedDistrict.toLowerCase()
+      const districtLower = normalizeGeoToken(selectedDistrict)
       const aliases = DISTRICT_ALIASES[districtLower] || []
       const searchTerms = [districtLower, ...aliases]
 
       filtered = filtered.filter(story => {
+        const storyDistricts = (story.districts_affected || []).map(normalizeGeoToken)
+        if (storyDistricts.includes(districtLower)) {
+          return true
+        }
+
         const titleLower = (story.title || '').toLowerCase()
         return searchTerms.some(term => titleLower.includes(term))
       })

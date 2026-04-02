@@ -1,10 +1,6 @@
-"""Prompt for the Province Anomaly Agent.
+"""Prompt for the Province Anomaly Agent."""
 
-Single Sonnet call analyses all 7 provinces at once.
-Uses `claude -p --model sonnet` subprocess (covered by Claude Max — $0 cost).
-"""
-
-PROVINCE_ANOMALY_PROMPT = """You are a Nepal intelligence analyst. Analyze the following news stories and social media posts from each of Nepal's 7 provinces collected in the last 6 hours.
+PROVINCE_ANOMALY_PROMPT = """You are a Nepal intelligence analyst. Analyze the following news stories and social media posts from each of Nepal's 7 provinces collected in the last 8 hours.
 
 For EACH province, provide:
 1. **threat_level**: One of LOW, GUARDED, ELEVATED, CRITICAL
@@ -55,7 +51,7 @@ def build_prompt(province_contexts: dict[int, dict]) -> str:
         province_contexts: {province_id: {name, stories: [...], tweets: [...]}}
 
     Returns:
-        Full prompt string for Sonnet.
+        Full prompt string for structured model analysis.
     """
     sections = []
     for pid in sorted(province_contexts.keys()):

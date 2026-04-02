@@ -14,10 +14,10 @@ Prerequisites:
   - Set OSINT_PASSWORD env var
 
 Usage:
-  OSINT_PASSWORD=your-osint-password python run_local_api.py analyst
-  OSINT_PASSWORD=your-osint-password python run_local_api.py analyst --hours 6
-  OSINT_PASSWORD=your-osint-password python run_local_api.py province
-  OSINT_PASSWORD=your-osint-password python run_local_api.py province --hours 6
+  OSINT_PASSWORD=devpassword123 python run_local_api.py analyst
+  OSINT_PASSWORD=devpassword123 python run_local_api.py analyst --hours 6
+  OSINT_PASSWORD=devpassword123 python run_local_api.py province
+  OSINT_PASSWORD=devpassword123 python run_local_api.py province --hours 6
 """
 import asyncio
 import json
@@ -2315,7 +2315,7 @@ def main():
 
     if not PASSWORD:
         print("Error: OSINT_PASSWORD env var not set")
-        print("  export OSINT_PASSWORD='your-osint-password'")
+        print("  export OSINT_PASSWORD='devpassword123'")
         sys.exit(1)
 
     logger.info("Running %s (API mode, no SSH tunnels)", args.job)

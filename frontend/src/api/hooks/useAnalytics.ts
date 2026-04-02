@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import {
   getAnalyticsSummary,
   getThreatMatrix,
@@ -27,6 +27,10 @@ export function useAnalyticsSummary(hours: number = 72) {
     queryKey: analyticsKeys.summary(hours),
     queryFn: () => getAnalyticsSummary(hours),
     staleTime: 30 * 1000, // 30 seconds
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -38,6 +42,10 @@ export function useThreatMatrix(hours: number = 24) {
     queryKey: analyticsKeys.threatMatrix(hours),
     queryFn: () => getThreatMatrix(hours),
     staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 15 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -49,6 +57,10 @@ export function useKeyActors(hours: number = 24, limit: number = 10) {
     queryKey: analyticsKeys.keyActors(hours, limit),
     queryFn: () => getKeyActors(hours, undefined, limit),
     staleTime: 60 * 1000, // 1 minute
+    gcTime: 15 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -60,5 +72,9 @@ export function useExecutiveSummary(hours: number = 6) {
     queryKey: analyticsKeys.executiveSummary(hours),
     queryFn: () => getExecutiveSummary(hours),
     staleTime: 30 * 60 * 1000, // 30 minutes (cached on backend for 6 hours)
+    gcTime: 60 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }

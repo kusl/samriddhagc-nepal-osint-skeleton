@@ -215,6 +215,7 @@ export const ParliamentaryActivityWidget = memo(function ParliamentaryActivityWi
             display: 'flex', gap: 4, padding: '4px 8px',
             borderBottom: '1px solid var(--border-primary)',
             background: 'var(--bg-surface)',
+            justifyContent: activeTab === 'scoreboard' ? 'center' : 'flex-start',
           }}>
             {[
               { value: '', label: 'All Chambers' },
@@ -225,7 +226,9 @@ export const ParliamentaryActivityWidget = memo(function ParliamentaryActivityWi
                 key={opt.value}
                 onClick={() => setChamberFilter(opt.value)}
                 style={{
-                  flex: 1, padding: '3px 0', fontSize: 9, fontWeight: chamberFilter === opt.value ? 600 : 400,
+                  flex: activeTab === 'scoreboard' ? '0 0 180px' : 1,
+                  padding: activeTab === 'scoreboard' ? '5px 10px' : '3px 0',
+                  fontSize: 9, fontWeight: chamberFilter === opt.value ? 600 : 400,
                   background: chamberFilter === opt.value ? 'rgba(45,114,210,0.12)' : 'transparent',
                   border: chamberFilter === opt.value ? '1px solid rgba(45,114,210,0.3)' : '1px solid transparent',
                   borderRadius: 4, cursor: 'pointer',
@@ -420,68 +423,114 @@ export const ParliamentaryActivityWidget = memo(function ParliamentaryActivityWi
               {scoreboard.length === 0 ? (
                 <EmptyState sessions={totalSessions} />
               ) : (
-                scoreboard.map((mp, i) => {
-                  const color = pc(mp.party_en, mp.party_ne);
-                  return (
-                    <div key={i} style={{
-                      padding: '8px 12px', borderBottom: '1px solid var(--border-primary)',
-                      display: 'flex', alignItems: 'center', gap: 10,
-                    }}>
-                      <div style={{
-                        width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                        background: i < 3 ? `${['#FFD700', '#C0C0C0', '#CD7F32'][i]}22` : 'var(--bg-surface)',
-                        border: i < 3 ? `1px solid ${['#FFD700', '#C0C0C0', '#CD7F32'][i]}44` : '1px solid var(--border-primary)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: 10, fontWeight: 700,
-                        color: i < 3 ? ['#FFD700', '#999', '#CD7F32'][i] : 'var(--text-muted)',
+                <div style={{ padding: '8px 10px 10px', display: 'grid', gap: 6 }}>
+                  {scoreboard.map((mp, i) => {
+                    const color = pc(mp.party_en, mp.party_ne);
+                    const medalTone = i < 3 ? ['#FFD700', '#C0C0C0', '#CD7F32'][i] : null;
+                    return (
+                      <div key={i} style={{
+                        border: '1px solid var(--border-primary)',
+                        background: 'var(--bg-surface)',
+                        padding: '8px 10px',
+                        display: 'grid',
+                        gridTemplateColumns: '34px minmax(0, 1fr) auto',
+                        gap: 10,
+                        alignItems: 'center',
                       }}>
-                        {i + 1}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                          <span style={{
-                            fontSize: 12, fontWeight: 600, color: 'var(--text-primary)',
-                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                          }}>
-                            {mp.name_ne || '—'}
-                          </span>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: '#2D72D2', flexShrink: 0, marginLeft: 6 }}>
-                            {mp.overall_score.toFixed(0)}
-                          </span>
+                        <div style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 10,
+                          flexShrink: 0,
+                          background: medalTone ? `${medalTone}20` : 'rgba(255,255,255,0.03)',
+                          border: medalTone ? `1px solid ${medalTone}55` : '1px solid var(--border-primary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: medalTone || 'var(--text-muted)',
+                        }}>
+                          {i + 1}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                          <span style={{
-                            width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0,
-                          }} />
-                          <span style={{ fontSize: 9, color, fontWeight: 500 }}>
-                            {mp.party_ne || mp.party_en || '—'}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, marginTop: 3, fontSize: 8, color: 'var(--text-muted)' }}>
-                          <span>{mp.total_speeches} speeches</span>
-                          <span>{mp.sessions_active} sessions</span>
-                          <span>~{Math.round(mp.avg_words_per_speech)} words/speech</span>
-                        </div>
-                        {/* Score breakdown bars */}
-                        <div style={{ marginTop: 4, display: 'flex', gap: 4 }}>
-                          <ScoreChip label="PAR" value={mp.participation_rate} color="#2D72D2" tip="Participation — % of sessions attended" />
-                          <ScoreChip label="ACT" value={mp.activity_score} color="#238551" tip="Activity — how often they speak in parliament" />
-                          <ScoreChip label="QTY" value={mp.quality_score} color={mp.quality_source === 'ai' ? '#9179F2' : '#5C7080'} tip={`Quality — substance of contributions (${mp.quality_source === 'ai' ? 'AI-scored' : 'data-based'})`} />
-                        </div>
-                        {mp.key_contributions?.[0] && (
-                          <div style={{
-                            marginTop: 4, fontSize: 8, color: 'var(--text-muted)',
-                            fontStyle: 'italic', lineHeight: 1.4,
-                            overflow: 'hidden', textOverflow: 'ellipsis',
-                            display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                          }}>
-                            {mp.key_contributions[0]}
+
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+                            <span style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: 'var(--text-primary)',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {mp.name_ne || '—'}
+                            </span>
                           </div>
-                        )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, minWidth: 0 }}>
+                            <span style={{
+                              width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0,
+                            }} />
+                            <span style={{
+                              fontSize: 8,
+                              color,
+                              fontWeight: 600,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}>
+                              {mp.party_ne || mp.party_en || '—'}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 8, color: 'var(--text-muted)', marginBottom: 5 }}>
+                            <span>{mp.total_speeches} speeches</span>
+                            <span>{mp.sessions_active} sessions</span>
+                            <span>{Math.round(mp.avg_words_per_speech)} words/speech</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                            <ScoreChip label="PAR" value={mp.participation_rate} color="#2D72D2" tip="Participation — % of sessions attended" />
+                            <ScoreChip label="ACT" value={mp.activity_score} color="#238551" tip="Activity — how often they speak in parliament" />
+                            <ScoreChip label="QTY" value={mp.quality_score} color={mp.quality_source === 'ai' ? '#9179F2' : '#5C7080'} tip={`Quality — substance of contributions (${mp.quality_source === 'ai' ? 'AI-scored' : 'data-based'})`} />
+                          </div>
+                          {mp.key_contributions?.[0] && (
+                            <div style={{
+                              marginTop: 5,
+                              fontSize: 8,
+                              color: 'var(--text-muted)',
+                              fontStyle: 'italic',
+                              lineHeight: 1.35,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: 'vertical',
+                            }}>
+                              {mp.key_contributions[0]}
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{
+                          minWidth: 54,
+                          textAlign: 'right',
+                          alignSelf: 'stretch',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          borderLeft: '1px solid rgba(255,255,255,0.06)',
+                          paddingLeft: 10,
+                        }}>
+                          <div style={{ fontSize: 8, color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                            Score
+                          </div>
+                          <div style={{ fontSize: 24, lineHeight: 1, fontWeight: 800, color: '#2D72D2', fontFamily: 'var(--font-mono)', marginTop: 4 }}>
+                            {mp.overall_score.toFixed(0)}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </>
           )}
@@ -578,12 +627,12 @@ function ScoreChip({ label, value, color, tip }: { label: string; value: number;
   return (
     <div title={tip} style={{
       display: 'flex', alignItems: 'center', gap: 3,
-      padding: '2px 6px', borderRadius: 3,
+      padding: '2px 5px', borderRadius: 4,
       background: `${color}15`,
       cursor: tip ? 'help' : 'default',
     }}>
-      <span style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 600 }}>{label}</span>
-      <div style={{ width: 30, height: 3, borderRadius: 2, background: 'var(--border-primary)' }}>
+      <span style={{ fontSize: 7, color: 'var(--text-muted)', fontWeight: 700 }}>{label}</span>
+      <div style={{ width: 24, height: 3, borderRadius: 2, background: 'var(--border-primary)' }}>
         <div style={{
           height: '100%', borderRadius: 2,
           width: `${Math.min(value, 100)}%`,

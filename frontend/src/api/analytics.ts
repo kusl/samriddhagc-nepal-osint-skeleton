@@ -727,6 +727,7 @@ export interface ConsolidatedStory {
   first_reported_at?: string
   last_updated_at?: string
   districts_affected: string[]
+  provinces_affected: string[]
   key_entities: Array<{
     name: string
     name_ne?: string

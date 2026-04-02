@@ -1,6 +1,7 @@
 """Automated source reliability scoring from story history."""
 from __future__ import annotations
 
+from collections import Counter
 import hashlib
 import logging
 import math
@@ -11,6 +12,7 @@ from typing import Any, Optional
 
 from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.config import get_settings
 from app.models.annotation import SourceReliability
@@ -48,9 +50,42 @@ PRIMARY_SOURCE_TERMS = (
     "communique", "transcript", "verdict", "gazette", "board decision", "says ministry",
     "विज्ञप्ति", "निर्णय", "सूचना", "पत्र", "आदेश", "प्रतिवेदन",
 )
+ATTRIBUTION_TERMS = (
+    "said", "stated", "told", "according to officials", "according to police", "according to the ministry",
+    "according to the court", "confirmed by", "announced by", "quoted", "spokesperson said",
+    "बताए", "भने", "जनायो", "जानकारी दियो", "पुष्टि गर्‍यो", "अनुसार", "उल्लेख गरेको",
+)
+NAMED_SOURCE_TERMS = (
+    "minister", "prime minister", "home minister", "finance minister", "secretary", "spokesperson",
+    "chief district officer", "mayor", "judge", "police chief", "court", "commission", "board",
+    "president", "chairman", "director", "official", "सचिव", "मन्त्री", "प्रधानमन्त्री", "प्रवक्ता",
+    "मेयर", "अध्यक्ष", "निर्देशक", "अधिकारी", "प्रमुख", "न्यायाधीश", "आयुक्त",
+)
+ACCUSATORY_TERMS = (
+    "accused", "blamed", "corrupt", "cover-up", "exposed", "scandal", "fraud", "criminal",
+    "traitor", "lies", "lying", "rigged", "conspiracy", "गम्भीर आरोप", "भ्रष्ट", "घोटाला",
+    "षड्यन्त्र", "दोषी", "ठगी", "झूट", "आरोप",
+)
 CLICKBAIT_TERMS = (
     "you won't believe", "what happened next", "watch", "must see", "viral", "here is why",
     "किन ?", "हेर्नुहोस्", "यस्तो भयो", "भिडियो",
+)
+GENERIC_SOURCE_TERMS = (
+    "sources said", "official sources", "according to sources", "informed sources",
+    "according to reports", "a source said", "sources claim", "sources told", "source said",
+    "officials said", "an official said", "according to an official",
+    "स्रोतका अनुसार", "स्रोतले भन्यो", "स्रोतका भनाइमा", "अधिकृत स्रोत", "जानकार स्रोत",
+)
+NATIONAL_LEGACY_OUTLETS = (
+    "the kathmandu post", "kathmandu post", "the himalayan times", "himalayan times",
+    "gorkhapatra", "the rising nepal", "rising nepal", "annapurna post", "himal press", "bbc nepali",
+)
+NATIONAL_DIGITAL_OUTLETS = (
+    "onlinekhabar", "setopati", "nagarik", "ratopati", "khabarhub", "spotlight nepal", "share sansar",
+)
+REGIONAL_OUTLET_TERMS = (
+    "bagmati", "koshi", "karnali", "madhesh", "lumbini", "sudurpashchim", "gandaki",
+    "biratnagar", "mission", "pokhara", "janakpur", "butwal", "dhangadhi",
 )
 
 
@@ -92,6 +127,40 @@ class SourceReliabilityScoringService:
         return "rss"
 
     @staticmethod
+    def classify_outlet_profile(source_id: str, source_name: str) -> str:
+        text = f"{source_id} {source_name}".lower()
+        if ".gov.np" in text or "ministry" in text or "department" in text or "municipality" in text:
+            return "government"
+        if "twitter" in text or "facebook" in text or "youtube" in text or "tiktok" in text:
+            return "social"
+        if any(token in text for token in ("reuters", "associated press", "afp", "ani", "xinhua", "ap ")):
+            return "wire"
+        if any(token in text for token in ("tv", "television", "channel", "image channel", "kantipur tv")):
+            return "broadcaster"
+        if any(token in text for token in REGIONAL_OUTLET_TERMS):
+            return "regional_local"
+        if any(token in text for token in NATIONAL_LEGACY_OUTLETS):
+            return "national_legacy"
+        if any(token in text for token in NATIONAL_DIGITAL_OUTLETS):
+            return "national_digital"
+        if "press" in text or "post" in text or "times" in text:
+            return "national_legacy"
+        return "national_digital"
+
+    @staticmethod
+    def outlet_profile_baseline(profile: str) -> tuple[float, float]:
+        baselines = {
+            "government": (0.12, 0.14),
+            "wire": (0.08, 0.06),
+            "broadcaster": (0.03, 0.02),
+            "national_legacy": (0.11, 0.1),
+            "national_digital": (0.08, 0.06),
+            "regional_local": (0.03, 0.02),
+            "social": (-0.08, -0.1),
+        }
+        return baselines.get(profile, (0.0, 0.0))
+
+    @staticmethod
     def _clip(value: float, low: float = 0.0, high: float = 1.0) -> float:
         return max(low, min(high, value))
 
@@ -103,6 +172,33 @@ class SourceReliabilityScoringService:
     @staticmethod
     def _effective_dt(row: Any) -> datetime:
         return row.published_at or row.created_at or datetime.now(timezone.utc)
+
+    @classmethod
+    def estimate_first_mover_signal(cls, row: Any) -> float:
+        if not getattr(row, "cluster_id", None):
+            return 0.0
+        source_count = int(getattr(row, "source_count", 0) or 0)
+        if source_count <= 1:
+            return 0.0
+        first_seen = getattr(row, "cluster_first_seen_at", None)
+        if not first_seen:
+            return 0.0
+        current_dt = cls._effective_dt(row)
+        delta_hours = max(0.0, (current_dt - first_seen).total_seconds() / 3600.0)
+        earlier_sources = int(getattr(row, "earlier_source_count", 0) or 0)
+        if earlier_sources <= 0:
+            if delta_hours <= 2:
+                return 0.95
+            if delta_hours <= 6:
+                return 0.82
+            if delta_hours <= 12:
+                return 0.68
+            return 0.55
+        if earlier_sources == 1 and delta_hours <= 6:
+            return 0.34
+        if earlier_sources <= 2 and delta_hours <= 12:
+            return 0.2
+        return 0.0
 
     @classmethod
     def _recency_weight(cls, timestamp: datetime, lookback_days: int) -> float:
@@ -138,9 +234,22 @@ class SourceReliabilityScoringService:
         uncertain_hits = cls._count_hits(text, UNCERTAIN_TERMS)
         loaded_hits = cls._count_hits(text, LOADED_TERMS)
         clickbait_hits = cls._count_hits(title, CLICKBAIT_TERMS)
+        attribution_hits = cls._count_hits(text, ATTRIBUTION_TERMS)
+        named_term_hits = cls._count_hits(text, NAMED_SOURCE_TERMS)
+        generic_source_hits = cls._count_hits(text, GENERIC_SOURCE_TERMS)
+        accusatory_hits = cls._count_hits(text, ACCUSATORY_TERMS)
         quote_hits = text.count('"') + text.count("“") + text.count("”")
         numeric_hits = len(re.findall(r"\b\d[\d,./:-]*\b", text))
-        named_source_hits = len(re.findall(r"\b(?:Minister|Prime Minister|Spokesperson|Mayor|Secretary|Chief|Court|Commission)\b", text, flags=re.I))
+        named_source_hits = len(re.findall(r"\b(?:Minister|Prime Minister|Spokesperson|Mayor|Secretary|Chief|Court|Commission|President|Chairman|Director|Official)\b", text, flags=re.I))
+        named_source_signal = cls._clip(
+            0.08
+            + min(0.2, named_source_hits * 0.05)
+            + min(0.18, named_term_hits * 0.03)
+            + min(0.08, quote_hits * 0.015)
+            + min(0.06, attribution_hits * 0.02)
+            + min(0.08, official_hits * 0.02)
+            - min(0.12, generic_source_hits * 0.03)
+        )
         uppercase_ratio = 0.0
         alpha_chars = [char for char in title if char.isalpha()]
         if alpha_chars:
@@ -179,9 +288,12 @@ class SourceReliabilityScoringService:
             + min(0.12, primary_hits * 0.04)
             + min(0.1, numeric_hits * 0.01)
             + min(0.1, quote_hits * 0.02)
-            + min(0.08, named_source_hits * 0.03)
+            + min(0.12, named_source_hits * 0.04)
+            + min(0.1, named_term_hits * 0.02)
+            + min(0.08, attribution_hits * 0.02)
             + corroboration_strength * 0.18
             - aggregation_penalty * 0.18
+            - min(0.1, generic_source_hits * 0.025)
         )
 
         primary_proximity = cls._clip(
@@ -189,9 +301,22 @@ class SourceReliabilityScoringService:
             + min(0.25, primary_hits * 0.08)
             + min(0.18, official_hits * 0.04)
             + min(0.16, document_hits * 0.04)
-            + min(0.12, named_source_hits * 0.05)
+            + min(0.16, named_source_hits * 0.06)
+            + min(0.12, named_term_hits * 0.03)
             + min(0.08, quote_hits * 0.02)
             - aggregation_penalty * 0.15
+            - min(0.08, generic_source_hits * 0.02)
+        )
+
+        attribution_quality = cls._clip(
+            0.14
+            + min(0.22, attribution_hits * 0.04)
+            + min(0.2, named_source_hits * 0.06)
+            + min(0.14, named_term_hits * 0.03)
+            + min(0.12, quote_hits * 0.02)
+            + min(0.1, official_hits * 0.03)
+            - aggregation_penalty * 0.18
+            - min(0.16, generic_source_hits * 0.035)
         )
 
         uncertainty_hygiene = 0.58
@@ -200,34 +325,51 @@ class SourceReliabilityScoringService:
         elif sensationalism_penalty > 0.35 and source_count <= 1:
             uncertainty_hygiene = 0.34
 
+        accusatory_framing = cls._clip(
+            0.06
+            + min(0.28, accusatory_hits * 0.08)
+            + min(0.16, loaded_hits * 0.05)
+            + (0.08 if quote_hits == 0 and named_source_hits == 0 and attribution_hits == 0 else 0.0)
+            + max(0.0, sensationalism_penalty - 0.24) * 0.6
+            - min(0.1, uncertainty_hygiene * 0.08)
+        )
+
         discipline_signal = cls._clip(
-            0.34 * corroboration_strength
-            + 0.24 * evidence_quality
-            + 0.16 * primary_proximity
+            0.3 * corroboration_strength
+            + 0.22 * evidence_quality
+            + 0.14 * primary_proximity
+            + 0.14 * attribution_quality
+            + 0.08 * named_source_signal
             + 0.14 * (1.0 - aggregation_penalty)
-            + 0.06 * (1.0 - sensationalism_penalty)
+            + 0.02 * (1.0 - sensationalism_penalty)
             + 0.06 * uncertainty_hygiene
+            - 0.04 * accusatory_framing
+            - 0.04 * cls._clip(generic_source_hits * 0.08)
         )
 
         return {
             "corroboration_strength": round(corroboration_strength, 4),
             "evidence_quality": round(evidence_quality, 4),
             "primary_proximity": round(primary_proximity, 4),
+            "attribution_quality": round(attribution_quality, 4),
+            "named_source_signal": round(named_source_signal, 4),
+            "generic_source_penalty": round(cls._clip(generic_source_hits * 0.08), 4),
             "aggregation_penalty": round(aggregation_penalty, 4),
             "sensationalism_penalty": round(sensationalism_penalty, 4),
             "uncertainty_hygiene": round(uncertainty_hygiene, 4),
+            "accusatory_framing": round(accusatory_framing, 4),
             "discipline_signal": round(discipline_signal, 4),
         }
 
     @staticmethod
     def map_reliability_letter(score: float, *, provisional: bool) -> str:
-        if score >= 0.86:
+        if score >= 0.82:
             letter = "A"
-        elif score >= 0.72:
+        elif score >= 0.66:
             letter = "B"
-        elif score >= 0.56:
+        elif score >= 0.5:
             letter = "C"
-        elif score >= 0.44:
+        elif score >= 0.36:
             letter = "D"
         else:
             letter = "E"
@@ -252,44 +394,121 @@ class SourceReliabilityScoringService:
         return round(max(3.0, min(18.0, 18.0 / math.sqrt(sample_size))), 1)
 
     @staticmethod
+    def compute_maturity_score(sample_size: int, max_sample: int = 200) -> float:
+        if sample_size <= 0:
+            return 0.0
+        return min(1.0, math.log1p(sample_size) / math.log1p(max_sample))
+
+    @staticmethod
+    def _describe_band(
+        value: float,
+        *,
+        high: float,
+        moderate: float,
+        high_text: str,
+        moderate_text: str,
+        low_text: str,
+    ) -> str:
+        if value >= high:
+            return high_text
+        if value >= moderate:
+            return moderate_text
+        return low_text
+
+    @classmethod
     def build_reason_line(
+        cls,
         *,
         corroboration_strength: float,
         evidence_quality: float,
         primary_proximity: float,
+        attribution_quality: float,
+        named_source_signal: float,
+        first_mover_score: float,
+        continued_coverage: float,
         aggregation_penalty: float,
         sensationalism_penalty: float,
+        uncertainty_hygiene: float,
+        accusatory_framing: float,
         provisional: bool,
         openai_partial: bool,
     ) -> str:
         strengths: list[str] = []
-        cautions: list[str] = []
+        cautions: list[tuple[int, str]] = []
 
-        if corroboration_strength >= 0.72:
-            strengths.append("strong multi-source corroboration")
-        elif corroboration_strength >= 0.55:
-            strengths.append("moderate corroboration")
+        if corroboration_strength >= 0.74:
+            strengths.append("many stories match what other news outlets reported")
+        elif corroboration_strength >= 0.56:
+            strengths.append("some stories match what other outlets reported")
+        else:
+            cautions.append((3, "not many stories are confirmed by other outlets"))
 
-        if evidence_quality >= 0.7:
-            strengths.append("solid evidence cues")
-        elif primary_proximity >= 0.65:
-            strengths.append("frequent primary-source references")
+        if first_mover_score >= 0.46:
+            strengths.append("it is often early when a big story first appears")
+        elif first_mover_score >= 0.24:
+            strengths.append("it is sometimes early on important stories")
 
-        if aggregation_penalty >= 0.55:
-            cautions.append("high aggregation dependence")
+        if continued_coverage >= 0.46:
+            strengths.append("it follows the same important story more than once")
+        elif continued_coverage >= 0.24:
+            strengths.append("it sometimes comes back to important stories with updates")
+
+        if evidence_quality >= 0.72:
+            strengths.append("it often uses official papers, notices, or records")
+        elif evidence_quality >= 0.54:
+            strengths.append("it sometimes uses official papers or notices")
+        else:
+            cautions.append((3, "it rarely shows papers, notices, or other hard proof"))
+
+        if primary_proximity >= 0.7:
+            strengths.append("it often gets information close to the original source")
+        elif primary_proximity <= 0.42:
+            cautions.append((2, "it does not often reach the original source"))
+
+        if named_source_signal >= 0.64:
+            strengths.append("it often names the person or office behind the information")
+        elif named_source_signal >= 0.46:
+            strengths.append("it often tells readers who is giving the information")
+        elif named_source_signal <= 0.28:
+            cautions.append((2, "it does not often name the people behind the information"))
+
+        if attribution_quality >= 0.68:
+            strengths.append("it usually says who gave the information")
+        elif attribution_quality >= 0.5:
+            strengths.append("it sometimes says who gave the information")
+        else:
+            cautions.append((2, "it often does not clearly say where the information came from"))
+
+        if accusatory_framing >= 0.46 or (sensationalism_penalty >= 0.42 and uncertainty_hygiene <= 0.48):
+            cautions.append((0, "some stories sound accusatory before enough proof is shown"))
+        elif sensationalism_penalty >= 0.34:
+            cautions.append((1, "some headlines sound stronger than the proof in the story"))
+        elif sensationalism_penalty <= 0.16:
+            strengths.append("its headlines are usually calm and not exaggerated")
+
+        if aggregation_penalty >= 0.58:
+            cautions.append((1, "it often rewrites what others already reported"))
         elif aggregation_penalty >= 0.4:
-            cautions.append("moderate pickup/rewrite behavior")
+            cautions.append((1, "it depends a fair amount on other outlets' reporting"))
+        elif aggregation_penalty <= 0.22:
+            strengths.append("there are signs of original reporting" if provisional else "it does original reporting fairly often")
 
-        if sensationalism_penalty >= 0.42:
-            cautions.append("headline inflation risk")
+        if uncertainty_hygiene >= 0.7:
+            strengths.append("it is usually careful when facts are still developing")
+        elif uncertainty_hygiene <= 0.44:
+            cautions.append((2, "some stories sound more certain than the evidence"))
 
-        text = ", ".join(strengths) if strengths else "recent newsroom behavior is mixed"
+        if not strengths:
+            strengths.append("it is active, but the reporting signals are still limited")
+
+        text = ", ".join(strengths[:2])
         if cautions:
-            text = f"{text}; caution: {', '.join(cautions)}"
+            ordered_cautions = [text for _priority, text in sorted(cautions, key=lambda item: item[0])]
+            text = f"{text}; caution: {', '.join(ordered_cautions[:3])}"
         if provisional:
-            text = f"{text}. Provisional due to limited recent sample."
+            text = f"{text}. Small recent sample, so this score can change fast."
         elif openai_partial:
-            text = f"{text}. Automated rating used heuristics-first scoring."
+            text = f"{text}. Score used automated checks first."
         return text[:280]
 
     async def _fetch_candidates(
@@ -382,6 +601,28 @@ class SourceReliabilityScoringService:
     async def _fetch_source_stories(self, source_id: str, lookback_days: int, limit: int = 200) -> list[Any]:
         cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
         effective_ts = func.coalesce(Story.published_at, Story.created_at)
+        prior_story = aliased(Story)
+        prior_effective_ts = func.coalesce(prior_story.published_at, prior_story.created_at)
+        cluster_first_seen_at = (
+            select(func.min(prior_effective_ts))
+            .where(prior_story.cluster_id == Story.cluster_id)
+            .correlate(Story)
+            .scalar_subquery()
+            .label("cluster_first_seen_at")
+        )
+        earlier_source_count = (
+            select(func.count(func.distinct(prior_story.source_id)))
+            .where(
+                prior_story.cluster_id == Story.cluster_id,
+                or_(
+                    prior_effective_ts < effective_ts,
+                    and_(prior_effective_ts == effective_ts, prior_story.id < Story.id),
+                ),
+            )
+            .correlate(Story)
+            .scalar_subquery()
+            .label("earlier_source_count")
+        )
         query = (
             select(
                 Story.id,
@@ -397,6 +638,8 @@ class SourceReliabilityScoringService:
                 StoryCluster.source_count,
                 StoryCluster.story_count,
                 StoryCluster.confidence_level,
+                cluster_first_seen_at,
+                earlier_source_count,
             )
             .outerjoin(StoryCluster, Story.cluster_id == StoryCluster.id)
             .where(
@@ -489,12 +732,14 @@ class SourceReliabilityScoringService:
                 blended[key] = round((heuristic[key] * 0.65) + (self._clip(float(result[key])) * 0.35), 4)
         blended["discipline_signal"] = round(
             self._clip(
-                0.34 * blended["corroboration_strength"]
-                + 0.24 * blended["evidence_quality"]
-                + 0.16 * blended["primary_proximity"]
+                0.3 * blended["corroboration_strength"]
+                + 0.22 * blended["evidence_quality"]
+                + 0.14 * blended["primary_proximity"]
+                + 0.14 * blended["attribution_quality"]
                 + 0.14 * (1.0 - blended["aggregation_penalty"])
-                + 0.06 * (1.0 - blended["sensationalism_penalty"])
+                + 0.04 * (1.0 - blended["sensationalism_penalty"])
                 + 0.06 * blended["uncertainty_hygiene"]
+                - 0.04 * blended["accusatory_framing"]
             ),
             4,
         )
@@ -510,14 +755,20 @@ class SourceReliabilityScoringService:
         weighted_corroboration = 0.0
         weighted_evidence = 0.0
         weighted_primary = 0.0
+        weighted_attribution = 0.0
+        weighted_named_source = 0.0
+        weighted_first_mover = 0.0
+        weighted_continued_coverage = 0.0
         weighted_aggregation = 0.0
         weighted_sensationalism = 0.0
         weighted_uncertainty = 0.0
+        weighted_accusatory = 0.0
         openai_used = 0
         openai_partial = False
         story_samples: list[dict[str, Any]] = []
 
         ambiguous_budget = self.openai.settings.openai_source_reliability_story_sample_size
+        cluster_counts = Counter(str(row.cluster_id) for row in story_rows if getattr(row, "cluster_id", None))
 
         for row in story_rows:
             heuristic = self.estimate_story_signals(row, candidate.source_type)
@@ -545,9 +796,16 @@ class SourceReliabilityScoringService:
             weighted_corroboration += weight * story_signal["corroboration_strength"]
             weighted_evidence += weight * story_signal["evidence_quality"]
             weighted_primary += weight * story_signal["primary_proximity"]
+            weighted_attribution += weight * story_signal["attribution_quality"]
+            weighted_named_source += weight * story_signal["named_source_signal"]
+            weighted_first_mover += weight * self.estimate_first_mover_signal(row)
+            cluster_repeat_count = cluster_counts.get(str(row.cluster_id), 0) if getattr(row, "cluster_id", None) else 0
+            continued_coverage_signal = self._clip((cluster_repeat_count - 1) / 3.0) if cluster_repeat_count >= 2 else 0.0
+            weighted_continued_coverage += weight * continued_coverage_signal
             weighted_aggregation += weight * story_signal["aggregation_penalty"]
             weighted_sensationalism += weight * story_signal["sensationalism_penalty"]
             weighted_uncertainty += weight * story_signal["uncertainty_hygiene"]
+            weighted_accusatory += weight * story_signal["accusatory_framing"]
 
             if len(story_samples) < 5:
                 story_samples.append(
@@ -563,21 +821,59 @@ class SourceReliabilityScoringService:
         if total_weight <= 0:
             return None
 
-        prior_mean = 0.78
-        prior_weight = 8.0
+        prior_mean = 0.69
+        prior_weight = 2.8
         sample_size = len(story_rows)
+        maturity_score = self.compute_maturity_score(sample_size)
         discipline_score = ((prior_weight * prior_mean) + weighted_discipline) / (prior_weight + total_weight)
         evidence_score = weighted_evidence / total_weight
         primary_score = weighted_primary / total_weight
+        attribution_score = weighted_attribution / total_weight
+        named_source_score = weighted_named_source / total_weight
+        first_mover_score = weighted_first_mover / total_weight
+        continued_coverage_score = weighted_continued_coverage / total_weight
         aggregation_score = weighted_aggregation / total_weight
         sensationalism_score = weighted_sensationalism / total_weight
         uncertainty_score = weighted_uncertainty / total_weight
-        reliability_effective = self._clip(0.35 + (0.55 * discipline_score))
+        accusatory_score = weighted_accusatory / total_weight
+        outlet_profile = self.classify_outlet_profile(candidate.source_id, candidate.source_name)
+        reliability_baseline, sourcing_baseline = self.outlet_profile_baseline(outlet_profile)
+        raw_reliability_effective = self._clip(
+            (0.82 * discipline_score)
+            + (0.08 * (weighted_corroboration / total_weight))
+            + (0.05 * uncertainty_score)
+            + (0.1 * named_source_score)
+            + (0.08 * first_mover_score)
+            + (0.07 * continued_coverage_score)
+            - (0.14 * aggregation_score)
+            - (0.08 * sensationalism_score)
+            - (0.06 * accusatory_score)
+        )
+        raw_sourcing_score = self._clip(
+            (0.38 * evidence_score)
+            + (0.22 * primary_score)
+            + (0.22 * attribution_score)
+            + (0.18 * named_source_score)
+            + (0.06 * first_mover_score)
+            + (0.05 * continued_coverage_score)
+            - (0.22 * aggregation_score)
+            - (0.04 * sensationalism_score)
+        )
+        reliability_effective = self._clip(
+            0.24
+            + (0.6 * raw_reliability_effective)
+            + (0.08 * maturity_score)
+            + (0.06 * first_mover_score)
+            + (0.06 * continued_coverage_score)
+            + reliability_baseline
+        )
         sourcing_score = self._clip(
-            0.50
-            + (0.35 * evidence_score)
-            + (0.25 * primary_score)
-            - (0.08 * aggregation_score)
+            0.26
+            + (0.58 * raw_sourcing_score)
+            + (0.08 * maturity_score)
+            + (0.04 * first_mover_score)
+            + (0.04 * continued_coverage_score)
+            + sourcing_baseline
         )
         effective_score = self._clip(
             (0.58 * reliability_effective)
@@ -593,8 +889,14 @@ class SourceReliabilityScoringService:
             corroboration_strength=weighted_corroboration / total_weight if total_weight else 0.0,
             evidence_quality=evidence_score,
             primary_proximity=primary_score,
+            attribution_quality=attribution_score,
+            named_source_signal=named_source_score,
+            first_mover_score=first_mover_score,
+            continued_coverage=continued_coverage_score,
             aggregation_penalty=aggregation_score,
             sensationalism_penalty=sensationalism_score,
+            uncertainty_hygiene=uncertainty_score,
+            accusatory_framing=accusatory_score,
             provisional=provisional,
             openai_partial=openai_partial and openai_used == 0,
         )
@@ -611,14 +913,25 @@ class SourceReliabilityScoringService:
             "confidence_band": confidence_band,
             "score_breakdown": {
                 "discipline": round(discipline_score, 4),
+                "maturity_score": round(maturity_score, 4),
+                "raw_reliability_effective": round(raw_reliability_effective, 4),
                 "reliability_effective": round(reliability_effective, 4),
+                "raw_sourcing_quality": round(raw_sourcing_score, 4),
                 "sourcing_quality": round(sourcing_score, 4),
                 "corroboration_strength": round(weighted_corroboration / total_weight, 4),
                 "evidence_quality": round(evidence_score, 4),
                 "primary_proximity": round(primary_score, 4),
+                "attribution_quality": round(attribution_score, 4),
+                "named_source_signal": round(named_source_score, 4),
+                "first_mover_score": round(first_mover_score, 4),
+                "continued_coverage": round(continued_coverage_score, 4),
                 "aggregation_penalty": round(aggregation_score, 4),
                 "sensationalism_penalty": round(sensationalism_score, 4),
                 "uncertainty_hygiene": round(uncertainty_score, 4),
+                "accusatory_framing": round(accusatory_score, 4),
+                "outlet_profile": outlet_profile,
+                "reliability_baseline": round(reliability_baseline, 4),
+                "sourcing_baseline": round(sourcing_baseline, 4),
             },
             "openai": {
                 "enabled": await self._openai_enrichment_enabled(),

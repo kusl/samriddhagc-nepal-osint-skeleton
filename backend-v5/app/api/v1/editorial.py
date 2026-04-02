@@ -14,10 +14,16 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import get_db, require_dev
 from app.config import get_settings
+from app.core.response_cache import invalidate_response_cache
+from app.core.redis import get_redis
 from app.core.database import AsyncSessionLocal
 from app.models.admin_audit import AdminAuditLog
 from app.models.fact_check import FactCheckResult
 from app.models.fact_check_review import FactCheckReview
+from app.models.cabinet_action import CabinetActionItem, CabinetActionReview, CabinetActionMilestone
+from app.models.govt_decision import GovtDecisionItem
+from app.models.govt_decision_review import GovtDecisionReview
+from app.models.promise import ManifestoPromise
 from app.models.story import Story
 from app.models.story_cluster import StoryCluster
 from app.models.story_embedding import StoryEmbedding
@@ -29,6 +35,8 @@ from app.services.editorial_control_service import (
     serialize_control,
 )
 from app.services.story_products_service import DevelopingStoriesService, StoryTrackerService
+from app.services.cabinet_action_service import CabinetActionService
+from app.services.govt_decision_service import GovtDecisionService
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/admin/editorial", tags=["editorial"])
@@ -71,6 +79,59 @@ class ClusterPatchBody(BaseModel):
     reason: str = Field(..., min_length=3, max_length=1000)
 
 
+class GovtDecisionPatchBody(BaseModel):
+    final_office: Optional[str] = None
+    final_implementing_ministry: Optional[str] = None
+    final_decision_type: Optional[str] = None
+    final_decision_title: Optional[str] = None
+    final_decision_summary: Optional[str] = None
+    final_status: Optional[str] = None
+    final_source_url: Optional[str] = None
+    final_evidence_note: Optional[str] = None
+    final_confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    reviewer_note: Optional[str] = None
+    reason: str = Field(..., min_length=3, max_length=1000)
+
+
+class CabinetActionMilestonePatchBody(BaseModel):
+    milestone_order: int = Field(..., ge=1)
+    title_en: Optional[str] = None
+    summary_en: Optional[str] = None
+    status: Optional[str] = None
+
+
+class CabinetActionPatchBody(BaseModel):
+    final_section_key: Optional[str] = None
+    final_section_title_en: Optional[str] = None
+    final_title_en: Optional[str] = None
+    final_summary_en: Optional[str] = None
+    final_lead_institution: Optional[str] = None
+    final_supporting_institutions: Optional[list[str]] = None
+    final_action_type: Optional[str] = None
+    final_trackability_class: Optional[str] = None
+    final_status: Optional[str] = None
+    final_evidence_note: Optional[str] = None
+    final_confidence: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    final_is_public: Optional[bool] = None
+    final_manifesto_promise_ids: Optional[list[str]] = None
+    milestone_overrides: Optional[list[CabinetActionMilestonePatchBody]] = None
+    reviewer_note: Optional[str] = None
+    reason: str = Field(..., min_length=3, max_length=1000)
+
+
+class CabinetActionSeedBody(BaseModel):
+    pdf_path: str = Field(..., min_length=3, max_length=2000)
+    program_key: Optional[str] = None
+    auto_approve: bool = True
+
+
+class CabinetActionQuickUpdateBody(BaseModel):
+    status: str = Field(..., min_length=3, max_length=40)
+    evidence_note: Optional[str] = None
+    reviewer_note: Optional[str] = None
+    is_public: Optional[bool] = None
+
+
 async def _run_analyst_agent_job(hours: int = 4) -> None:
     from app.services.analyst_agent.agent import NaradaAnalystAgent
 
@@ -111,6 +172,32 @@ async def _run_haiku_borderline_review() -> None:
         except Exception as exc:
             await control_service.mark_run_finished("haiku_relevance", success=False, error=str(exc))
             logger.exception("Haiku relevance rerun failed: %s", exc)
+
+
+async def _run_govt_decision_generation() -> None:
+    async with AsyncSessionLocal() as db:
+        control_service = EditorialControlService(db)
+        await control_service.mark_run_started("govt_decision_generation")
+        try:
+            service = GovtDecisionService(db)
+            await service.run_generation(force=True)
+            await control_service.mark_run_finished("govt_decision_generation", success=True)
+        except Exception as exc:
+            await control_service.mark_run_finished("govt_decision_generation", success=False, error=str(exc))
+            logger.exception("Government decision rerun failed: %s", exc)
+
+
+async def _run_cabinet_action_tracking() -> None:
+    async with AsyncSessionLocal() as db:
+        control_service = EditorialControlService(db)
+        await control_service.mark_run_started("cabinet_action_tracking")
+        try:
+            service = CabinetActionService(db)
+            await service.run_tracking(force=True)
+            await control_service.mark_run_finished("cabinet_action_tracking", success=True)
+        except Exception as exc:
+            await control_service.mark_run_finished("cabinet_action_tracking", success=False, error=str(exc))
+            logger.exception("Cabinet action rerun failed: %s", exc)
 
 
 def _client_meta(request: Request) -> tuple[Optional[str], Optional[str]]:
@@ -386,7 +473,10 @@ async def get_automation_controls(
             "agent_fast_model": settings.openai_agent_fast_model,
             "agent_deep_model": settings.openai_agent_deep_model,
             "usage_limit_enabled": settings.openai_usage_limit_enabled,
-            "local_embeddings_active": not settings.embedding_model_key.startswith("openai-3-"),
+            "local_embeddings_active": not (
+                settings.openai_embedding_enabled
+                and settings.embedding_model_key.startswith("openai-3-")
+            ),
         },
         "telemetry": {
             "embeddings": {
@@ -496,6 +586,10 @@ async def rerun_automation(
         background_tasks.add_task(_run_analyst_agent_job)
     elif automation_key == "haiku_relevance":
         background_tasks.add_task(_run_haiku_borderline_review)
+    elif automation_key == "govt_decision_generation":
+        background_tasks.add_task(_run_govt_decision_generation)
+    elif automation_key == "cabinet_action_tracking":
+        background_tasks.add_task(_run_cabinet_action_tracking)
 
     await _audit(
         db,
@@ -752,6 +846,637 @@ async def rerun_fact_check(
         details={"reason": body.reason},
     )
     return _fact_check_payload(result)
+
+
+@router.get("/govt-decisions/inbox")
+async def get_govt_decision_inbox(
+    workflow_status: Optional[str] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=40, ge=1, le=200),
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    service = GovtDecisionService(db)
+    statuses = [part.strip() for part in (workflow_status or "").split(",") if part.strip()] or None
+    return await service.list_inbox(workflow_statuses=statuses, page=page, per_page=per_page)
+
+
+@router.get("/govt-decisions/{item_id}")
+async def get_govt_decision_detail(
+    item_id: UUID,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    service = GovtDecisionService(db)
+    item = await service.get_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Government decision item not found")
+    return service.serialize_editorial_item(item)
+
+
+@router.patch("/govt-decisions/{item_id}")
+async def patch_govt_decision(
+    item_id: UUID,
+    body: GovtDecisionPatchBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(GovtDecisionItem)
+            .options(selectinload(GovtDecisionItem.review))
+            .where(GovtDecisionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Government decision item not found")
+
+    review = item.review or GovtDecisionReview(govt_decision_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+    before = {
+        "workflow_status": review.workflow_status,
+        "final_office": review.final_office,
+        "final_implementing_ministry": review.final_implementing_ministry,
+        "final_decision_type": review.final_decision_type,
+        "final_decision_title": review.final_decision_title,
+        "final_decision_summary": review.final_decision_summary,
+        "final_status": review.final_status,
+        "final_source_url": review.final_source_url,
+        "final_evidence_note": review.final_evidence_note,
+        "final_confidence": review.final_confidence,
+        "reviewer_note": review.reviewer_note,
+    }
+    review.final_office = body.final_office
+    review.final_implementing_ministry = body.final_implementing_ministry
+    review.final_decision_type = body.final_decision_type
+    review.final_decision_title = body.final_decision_title
+    review.final_decision_summary = body.final_decision_summary
+    review.final_status = body.final_status
+    review.final_source_url = body.final_source_url
+    review.final_evidence_note = body.final_evidence_note
+    review.final_confidence = body.final_confidence
+    review.reviewer_note = body.reviewer_note
+    review.workflow_status = "draft"
+    review.needs_rerun = False
+    await db.commit()
+    await db.refresh(item)
+    service = GovtDecisionService(db)
+    after = service.serialize_editorial_item(item)["review"]
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="update",
+        target_type="govt_decision_review",
+        target_id=str(item.id),
+        details={"reason": body.reason, "before": before, "after": after},
+    )
+    return service.serialize_editorial_item(item)
+
+
+@router.post("/govt-decisions/{item_id}/approve")
+async def approve_govt_decision(
+    item_id: UUID,
+    body: ReasonBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(GovtDecisionItem)
+            .options(selectinload(GovtDecisionItem.review))
+            .where(GovtDecisionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Government decision item not found")
+    review = item.review or GovtDecisionReview(govt_decision_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+    review.workflow_status = "approved"
+    review.final_office = review.final_office or item.office
+    review.final_implementing_ministry = review.final_implementing_ministry or item.implementing_ministry
+    review.final_decision_type = review.final_decision_type or item.decision_type
+    review.final_decision_title = review.final_decision_title or item.decision_title
+    review.final_decision_summary = review.final_decision_summary or item.decision_summary
+    review.final_status = review.final_status or item.status
+    review.final_source_url = review.final_source_url or item.representative_url
+    review.final_evidence_note = review.final_evidence_note or item.evidence_summary
+    review.final_confidence = item.confidence if review.final_confidence is None else review.final_confidence
+    review.approved_by_id = user.id
+    review.approved_at = datetime.now(timezone.utc)
+    review.rejected_at = None
+    review.rejected_by_id = None
+    review.rejection_reason = None
+    review.needs_rerun = False
+    await db.commit()
+    service = GovtDecisionService(db)
+    await service._supersede_older_items(item)
+    await db.commit()
+    await db.refresh(item)
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="approve",
+        target_type="govt_decision_review",
+        target_id=str(item.id),
+        details={"reason": body.reason, "workflow_status": "approved"},
+    )
+    return service.serialize_editorial_item(item)
+
+
+@router.post("/govt-decisions/{item_id}/reject")
+async def reject_govt_decision(
+    item_id: UUID,
+    body: ReasonBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(GovtDecisionItem)
+            .options(selectinload(GovtDecisionItem.review))
+            .where(GovtDecisionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Government decision item not found")
+    review = item.review or GovtDecisionReview(govt_decision_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+    review.workflow_status = "rejected"
+    review.rejected_by_id = user.id
+    review.rejected_at = datetime.now(timezone.utc)
+    review.rejection_reason = body.reason
+    review.approved_by_id = None
+    review.approved_at = None
+    await db.commit()
+    service = GovtDecisionService(db)
+    await db.refresh(item)
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="reject",
+        target_type="govt_decision_review",
+        target_id=str(item.id),
+        details={"reason": body.reason, "workflow_status": "rejected"},
+    )
+    return service.serialize_editorial_item(item)
+
+
+@router.post("/govt-decisions/{item_id}/rerun")
+async def rerun_govt_decision(
+    item_id: UUID,
+    body: ReasonBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(GovtDecisionItem)
+            .options(selectinload(GovtDecisionItem.review))
+            .where(GovtDecisionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Government decision item not found")
+    review = item.review or GovtDecisionReview(govt_decision_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+    review.needs_rerun = True
+    review.rerun_requested_at = datetime.now(timezone.utc)
+    review.rerun_requested_by_id = user.id
+    review.workflow_status = "draft"
+    await db.commit()
+    service = EditorialControlService(db)
+    await service.mark_rerun_requested(
+        automation_key="govt_decision_generation",
+        changed_by=user,
+        reason=body.reason,
+    )
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="rerun",
+        target_type="govt_decision_review",
+        target_id=str(item.id),
+        details={"reason": body.reason},
+    )
+    return GovtDecisionService(db).serialize_editorial_item(item)
+
+
+@router.post("/govt-decisions/{item_id}/supersede")
+async def supersede_govt_decision(
+    item_id: UUID,
+    body: ReasonBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(GovtDecisionItem)
+            .options(selectinload(GovtDecisionItem.review))
+            .where(GovtDecisionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Government decision item not found")
+    review = item.review or GovtDecisionReview(govt_decision_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+    review.workflow_status = "superseded"
+    review.reviewer_note = body.reason
+    review.approved_at = None
+    review.approved_by_id = None
+    await db.commit()
+    service = GovtDecisionService(db)
+    await db.refresh(item)
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="supersede",
+        target_type="govt_decision_review",
+        target_id=str(item.id),
+        details={"reason": body.reason, "workflow_status": "superseded"},
+    )
+    return service.serialize_editorial_item(item)
+
+
+@router.post("/cabinet-actions/seed")
+async def seed_cabinet_actions(
+    body: CabinetActionSeedBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    service = CabinetActionService(db)
+    result = await service.seed_from_pdf(
+        pdf_path=body.pdf_path,
+        program_key=body.program_key,
+        auto_approve=body.auto_approve,
+    )
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="seed",
+        target_type="cabinet_action_program",
+        target_id=result["program_id"],
+        details={"pdf_path": body.pdf_path, "result": result},
+    )
+    return result
+
+
+@router.get("/cabinet-actions/inbox")
+async def get_cabinet_action_inbox(
+    workflow_status: Optional[str] = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    per_page: int = Query(default=40, ge=1, le=200),
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    service = CabinetActionService(db)
+    statuses = [part.strip() for part in (workflow_status or "").split(",") if part.strip()] or None
+    return await service.list_inbox(workflow_statuses=statuses, page=page, per_page=per_page)
+
+
+@router.get("/cabinet-actions/{item_id}")
+async def get_cabinet_action_detail(
+    item_id: UUID,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    service = CabinetActionService(db)
+    item = await service.get_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Cabinet action item not found")
+    return service.serialize_editorial_item(item)
+
+
+@router.put("/cabinet-actions/{item_id}/quick-update")
+async def quick_update_cabinet_action(
+    item_id: UUID,
+    body: CabinetActionQuickUpdateBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(CabinetActionItem)
+            .options(
+                selectinload(CabinetActionItem.review),
+                selectinload(CabinetActionItem.promise_links),
+            )
+            .where(CabinetActionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Cabinet action item not found")
+
+    review = item.review or CabinetActionReview(cabinet_action_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+        item.review = review
+
+    before = {
+        "item_status": item.status,
+        "item_is_public": item.is_public,
+        "workflow_status": review.workflow_status,
+        "final_status": review.final_status,
+        "final_is_public": review.final_is_public,
+        "final_evidence_note": review.final_evidence_note,
+        "reviewer_note": review.reviewer_note,
+    }
+
+    now = datetime.now(timezone.utc)
+    item.status = body.status
+    item.last_checked_at = now
+    if body.is_public is not None:
+        item.is_public = body.is_public
+
+    review.workflow_status = "approved"
+    review.final_section_key = review.final_section_key or item.section_key
+    review.final_section_title_en = review.final_section_title_en or item.section_title_en
+    review.final_title_en = review.final_title_en or item.title_en
+    review.final_summary_en = review.final_summary_en or item.summary_en
+    review.final_lead_institution = review.final_lead_institution or item.lead_institution
+    review.final_supporting_institutions = review.final_supporting_institutions or item.supporting_institutions
+    review.final_action_type = review.final_action_type or item.action_type
+    review.final_trackability_class = review.final_trackability_class or item.trackability_class
+    review.final_status = body.status
+    if body.evidence_note is not None:
+        review.final_evidence_note = body.evidence_note
+    if body.reviewer_note is not None:
+        review.reviewer_note = body.reviewer_note
+    review.final_is_public = item.is_public if body.is_public is not None else (
+        item.is_public if review.final_is_public is None else review.final_is_public
+    )
+    review.approved_by_id = user.id
+    review.approved_at = now
+    review.rejected_at = None
+    review.rejected_by_id = None
+    review.rejection_reason = None
+    review.needs_rerun = False
+
+    if review.final_manifesto_promise_ids:
+        await CabinetActionService(db)._sync_promise_links(item, list(review.final_manifesto_promise_ids))
+
+    await db.commit()
+    await db.refresh(item)
+    await invalidate_response_cache(get_redis)
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="quick_update",
+        target_type="cabinet_action_review",
+        target_id=str(item.id),
+        details={
+            "before": before,
+            "after": {
+                "item_status": item.status,
+                "item_is_public": item.is_public,
+                "workflow_status": review.workflow_status,
+                "final_status": review.final_status,
+                "final_is_public": review.final_is_public,
+                "final_evidence_note": review.final_evidence_note,
+                "reviewer_note": review.reviewer_note,
+            },
+        },
+    )
+    return CabinetActionService(db).serialize_editorial_item(item)
+
+
+@router.patch("/cabinet-actions/{item_id}")
+async def patch_cabinet_action(
+    item_id: UUID,
+    body: CabinetActionPatchBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(CabinetActionItem)
+            .options(
+                selectinload(CabinetActionItem.review),
+                selectinload(CabinetActionItem.milestones),
+                selectinload(CabinetActionItem.promise_links),
+            )
+            .where(CabinetActionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Cabinet action item not found")
+
+    review = item.review or CabinetActionReview(cabinet_action_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+        item.review = review
+
+    before = {
+        "workflow_status": review.workflow_status,
+        "final_title_en": review.final_title_en,
+        "final_summary_en": review.final_summary_en,
+        "final_status": review.final_status,
+        "final_manifesto_promise_ids": review.final_manifesto_promise_ids,
+    }
+    review.final_section_key = body.final_section_key
+    review.final_section_title_en = body.final_section_title_en
+    review.final_title_en = body.final_title_en
+    review.final_summary_en = body.final_summary_en
+    review.final_lead_institution = body.final_lead_institution
+    review.final_supporting_institutions = body.final_supporting_institutions
+    review.final_action_type = body.final_action_type
+    review.final_trackability_class = body.final_trackability_class
+    review.final_status = body.final_status
+    review.final_evidence_note = body.final_evidence_note
+    review.final_confidence = body.final_confidence
+    review.final_is_public = body.final_is_public
+    review.final_manifesto_promise_ids = body.final_manifesto_promise_ids
+    review.reviewer_note = body.reviewer_note
+    if body.milestone_overrides is not None:
+        review.milestone_overrides = [entry.model_dump() for entry in body.milestone_overrides]
+        by_order = {milestone.milestone_order: milestone for milestone in item.milestones}
+        for override in body.milestone_overrides:
+            milestone = by_order.get(override.milestone_order)
+            if not milestone:
+                continue
+            if override.title_en is not None:
+                milestone.title_en = override.title_en
+            if override.summary_en is not None:
+                milestone.summary_en = override.summary_en
+            if override.status is not None:
+                milestone.status = override.status
+    review.workflow_status = "draft"
+    review.needs_rerun = False
+    await db.commit()
+    await db.refresh(item)
+    service = CabinetActionService(db)
+    after = service.serialize_editorial_item(item)["review"]
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="update",
+        target_type="cabinet_action_review",
+        target_id=str(item.id),
+        details={"reason": body.reason, "before": before, "after": after},
+    )
+    return service.serialize_editorial_item(item)
+
+
+@router.post("/cabinet-actions/{item_id}/approve")
+async def approve_cabinet_action(
+    item_id: UUID,
+    body: ReasonBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(CabinetActionItem)
+            .options(
+                selectinload(CabinetActionItem.review),
+                selectinload(CabinetActionItem.promise_links),
+            )
+            .where(CabinetActionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Cabinet action item not found")
+    review = item.review or CabinetActionReview(cabinet_action_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+        item.review = review
+    review.workflow_status = "approved"
+    review.final_section_key = review.final_section_key or item.section_key
+    review.final_section_title_en = review.final_section_title_en or item.section_title_en
+    review.final_title_en = review.final_title_en or item.title_en
+    review.final_summary_en = review.final_summary_en or item.summary_en
+    review.final_lead_institution = review.final_lead_institution or item.lead_institution
+    review.final_supporting_institutions = review.final_supporting_institutions or item.supporting_institutions
+    review.final_action_type = review.final_action_type or item.action_type
+    review.final_trackability_class = review.final_trackability_class or item.trackability_class
+    review.final_status = review.final_status or item.status
+    review.final_is_public = item.is_public if review.final_is_public is None else review.final_is_public
+    review.approved_by_id = user.id
+    review.approved_at = datetime.now(timezone.utc)
+    review.rejected_at = None
+    review.rejected_by_id = None
+    review.rejection_reason = None
+    review.needs_rerun = False
+    if review.final_manifesto_promise_ids:
+        await CabinetActionService(db)._sync_promise_links(item, list(review.final_manifesto_promise_ids))
+    await db.commit()
+    await db.refresh(item)
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="approve",
+        target_type="cabinet_action_review",
+        target_id=str(item.id),
+        details={"reason": body.reason, "workflow_status": "approved"},
+    )
+    return CabinetActionService(db).serialize_editorial_item(item)
+
+
+@router.post("/cabinet-actions/{item_id}/reject")
+async def reject_cabinet_action(
+    item_id: UUID,
+    body: ReasonBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(CabinetActionItem)
+            .options(selectinload(CabinetActionItem.review))
+            .where(CabinetActionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Cabinet action item not found")
+    review = item.review or CabinetActionReview(cabinet_action_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+        item.review = review
+    review.workflow_status = "rejected"
+    review.rejected_by_id = user.id
+    review.rejected_at = datetime.now(timezone.utc)
+    review.rejection_reason = body.reason
+    review.approved_at = None
+    review.approved_by_id = None
+    await db.commit()
+    await db.refresh(item)
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="reject",
+        target_type="cabinet_action_review",
+        target_id=str(item.id),
+        details={"reason": body.reason, "workflow_status": "rejected"},
+    )
+    return CabinetActionService(db).serialize_editorial_item(item)
+
+
+@router.post("/cabinet-actions/{item_id}/rerun")
+async def rerun_cabinet_action(
+    item_id: UUID,
+    body: ReasonBody,
+    request: Request,
+    user: User = Depends(require_dev),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (
+        await db.execute(
+            select(CabinetActionItem)
+            .options(selectinload(CabinetActionItem.review))
+            .where(CabinetActionItem.id == item_id)
+        )
+    ).scalar_one_or_none()
+    if not item:
+        raise HTTPException(status_code=404, detail="Cabinet action item not found")
+    review = item.review or CabinetActionReview(cabinet_action_item_id=item.id)
+    if item.review is None:
+        db.add(review)
+        item.review = review
+    review.needs_rerun = True
+    review.rerun_requested_at = datetime.now(timezone.utc)
+    review.rerun_requested_by_id = user.id
+    review.workflow_status = "draft"
+    await db.commit()
+    service = EditorialControlService(db)
+    await service.mark_rerun_requested(
+        automation_key="cabinet_action_tracking",
+        changed_by=user,
+        reason=body.reason,
+    )
+    await _audit(
+        db,
+        user=user,
+        request=request,
+        action="rerun",
+        target_type="cabinet_action_review",
+        target_id=str(item.id),
+        details={"reason": body.reason},
+    )
+    return CabinetActionService(db).serialize_editorial_item(item)
 
 
 @router.get("/developing-stories/inbox")

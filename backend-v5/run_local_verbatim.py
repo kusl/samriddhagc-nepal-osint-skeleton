@@ -7,8 +7,8 @@ ONE Haiku call per session — sends all speeches as batch, gets back:
 - Per-speaker scoreboard (engagement, relevance scores)
 
 Usage:
-    OSINT_PASSWORD=your-osint-password python3 run_local_verbatim.py --once
-    OSINT_PASSWORD=your-osint-password python3 run_local_verbatim.py --loop 300
+    OSINT_PASSWORD=devpassword123 python3 run_local_verbatim.py --once
+    OSINT_PASSWORD=devpassword123 python3 run_local_verbatim.py --loop 300
 """
 import argparse
 import json

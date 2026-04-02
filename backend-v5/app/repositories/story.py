@@ -3,7 +3,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, desc
+from sqlalchemy import select, func, and_, desc, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.story import Story
@@ -37,12 +37,27 @@ class StoryRepository:
         )
         return (result.scalar() or 0) > 0
 
+    async def get_by_url(self, url: str) -> Optional[Story]:
+        """Get story by URL."""
+        result = await self.db.execute(
+            select(Story).where(Story.url == url)
+        )
+        return result.scalar_one_or_none()
+
     async def exists_by_url(self, url: str) -> bool:
         """Check if story exists by URL."""
         result = await self.db.execute(
             select(func.count(Story.id)).where(Story.url == url)
         )
         return (result.scalar() or 0) > 0
+
+    async def touch_scraped_at(self, story_id: UUID) -> None:
+        """Refresh the scrape heartbeat for an existing story."""
+        await self.db.execute(
+            update(Story)
+            .where(Story.id == story_id)
+            .values(scraped_at=datetime.now(timezone.utc))
+        )
 
     async def create(self, story: Story) -> Story:
         """Create a new story."""

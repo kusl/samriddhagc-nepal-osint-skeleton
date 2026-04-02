@@ -44,6 +44,17 @@ const ARCHIVED_ELECTION_WIDGET_IDS = new Set([
   'election-live',
 ]);
 
+function moveBottomWidgetsToEnd(order: string[]): string[] {
+  const pinnedBottomWidgets = ['disasters', 'govt'];
+  const filtered = order.filter((id) => !pinnedBottomWidgets.includes(id));
+  for (const widgetId of pinnedBottomWidgets) {
+    if (order.includes(widgetId)) {
+      filtered.push(widgetId);
+    }
+  }
+  return filtered;
+}
+
 export const WIDGET_META: Record<string, {
   name: string;
   category: string;
@@ -67,10 +78,10 @@ export const WIDGET_META: Record<string, {
   'verification-queue': { name: 'Verification Queue', category: 'collaboration', minRole: 'analyst', wip: true },
   'analyst-leaderboard': { name: 'Leaderboard', category: 'collaboration', minRole: 'analyst', wip: true },
 
-  // Research widgets - analyst only (WIP - no backend yet)
+  // Research widgets
   'entity-watchlist': { name: 'Entity Watchlist', category: 'research', minRole: 'analyst', wip: true },
   'analyst-notes': { name: 'Research Notes', category: 'research', minRole: 'analyst', wip: true },
-  'source-reliability': { name: 'Source Reliability', category: 'research', minRole: 'analyst', wip: true },
+  'source-reliability': { name: 'Source Reliability', category: 'research', consumerName: 'Source Reliability' },
 
   // Politics & elections - available to all (ECN data)
   elections: { name: 'Election Watchlist', category: 'politics', consumerName: 'Elections' },
@@ -78,17 +89,29 @@ export const WIDGET_META: Record<string, {
 
   // Economy - available to all (REAL DATA - NEPSE, forex, gold/silver)
   market: { name: 'Market & Exchange', category: 'economy', consumerName: 'Markets' },
+  'economic-news': { name: 'Economic News', category: 'economy', consumerName: 'Economic News' },
+  'price-watch': { name: 'Price Watch', category: 'economy', consumerName: 'Price Watch' },
+  'trade-customs': { name: 'Trade & Customs', category: 'economy', consumerName: 'Trade & Customs' },
+  'public-spending': { name: 'Public Spending', category: 'economy', consumerName: 'Public Spending' },
+  'nrb-macro': { name: 'NRB Macro Monitor', category: 'economy', consumerName: 'NRB Macro Monitor' },
+  'nrb-prices': { name: 'NRB Prices & Flows', category: 'economy', consumerName: 'NRB Prices & Flows' },
+  'nrb-banking': { name: 'Banking & Liquidity', category: 'economy', consumerName: 'Banking & Liquidity' },
+  'fiscal-position': { name: 'Fiscal Position', category: 'economy', consumerName: 'Fiscal Position' },
+  'external-sector': { name: 'External Sector', category: 'economy', consumerName: 'External Sector' },
+  'monetary-conditions': { name: 'Monetary Conditions', category: 'economy', consumerName: 'Monetary Conditions' },
+  'prices-cost-pressure': { name: 'Prices & Cost Pressure', category: 'economy', consumerName: 'Prices & Cost Pressure' },
 
-  // Security - analyst only (REAL DATA)
-  threats: { name: 'Risk Matrix', category: 'security', minRole: 'analyst' },
+  // Security - available to all (REAL DATA)
+  threats: { name: 'Risk Matrix', category: 'security', consumerName: 'Risk Matrix' },
 
   // Media - available to all
   social: { name: 'Social Feed', category: 'media' },  // Uses Twitter API
 
   // Disasters & environment - REAL DATA from APIs
   disasters: { name: 'Disaster Alerts', category: 'disasters', consumerName: 'Alerts' },
+  rivers: { name: 'River Monitoring', category: 'disasters', consumerName: 'River Monitoring' },
   weather: { name: 'Weather & Forecast', category: 'disasters', consumerName: 'Weather' },
-  seismic: { name: 'Seismic Activity', category: 'disasters', consumerName: 'Earthquakes', wip: true },  // BIPAD API — hidden for production
+  seismic: { name: 'Seismic Activity', category: 'disasters', consumerName: 'Earthquakes' },
 
   // Election Monitor Widgets - ECN data (result.election.gov.np)
   'election-pr': { name: 'PR Seat Projection', category: 'elections' },
@@ -118,7 +141,9 @@ export const WIDGET_META: Record<string, {
   'promise-tracker': { name: 'Promise Tracker', category: 'parliament', consumerName: 'Manifesto Tracker' },
   'parliament-session': { name: 'Parliamentary Summary', category: 'parliament', consumerName: 'Parliament Summary' },
   'govt-decisions': { name: 'Government Decisions', category: 'parliament', consumerName: 'Govt Decisions' },
-  'govt-loan-tracker': { name: 'Government Loan Tracker', category: 'parliament', consumerName: 'Govt Loan Tracker' },
+  'govt-loan-tracker': { name: 'Nepal Debt Clock', category: 'parliament', consumerName: 'Debt Clock' },
+  'debt-tracker': { name: 'Debt Tracker', category: 'parliament', consumerName: 'Debt Tracker' },
+  'govt-contracts': { name: 'Govt Contracts', category: 'parliament', consumerName: 'Govt Contracts' },
   'bill-tracker': { name: 'Bills Tracker', category: 'parliament', consumerName: 'Parliamentary Bills' },
   'parliament-activity': { name: 'Parliamentary Activity', category: 'parliament', consumerName: 'MP Activity' },
 };
@@ -161,20 +186,21 @@ export const PRESETS: Record<string, Preset> = {
   news: {
     id: 'news',
     name: 'News Dashboard',
-    description: 'News Map with stats, assessment, live feed, fact-check, clusters, provinces, social and markets',
+    description: 'News Map with stats, assessment, live feed, fact-check, clusters, provinces, markets, alerts and govt updates',
     order: [
       'map', 'kpi', 'situation-brief', 'newsfeed', 'developing-stories',
-      'fact-check', 'stories', 'social', 'narrative-tracker', 'province-monitor', 'market'
+      'fact-check', 'stories', 'social', 'narrative-tracker', 'province-monitor', 'market',
+      'weather', 'source-reliability', 'disasters', 'govt'
     ],
     visibility: {
       map: true, 'election-live': false, kpi: true, 'situation-brief': true, newsfeed: true,
       'developing-stories': true, 'fact-check': true, stories: true, social: true,
       'narrative-tracker': true, 'province-monitor': true, market: true,
-      weather: false, govt: false,
+      disasters: true, govt: true, weather: true, 'source-reliability': true,
       // Hidden
       'election-map': false, 'election-status': false,
       'political-pulse': false, briefing: false, entities: false,
-      seismic: false, elections: false, disasters: false,
+      seismic: false, elections: false,
       threats: false,      neta: false, 'intel-brief-hero': false,
     },
     sizes: {
@@ -190,6 +216,10 @@ export const PRESETS: Record<string, Preset> = {
       'narrative-tracker': 'medium',  // Row 6: 6 cols (6+6=12)
       'province-monitor': 'large',    // Row 7: 8 cols
       market: 'small',                // Row 7: 4 cols (8+4=12)
+      weather: 'medium',              // Row 8: 6 cols
+      'source-reliability': 'medium', // Row 8: 6 cols (6+6=12)
+      disasters: 'medium',            // Row 9: 6 cols
+      govt: 'medium',                 // Row 9: 6 cols (6+6=12)
     }
   },
 
@@ -295,18 +325,22 @@ export const PRESETS: Record<string, Preset> = {
     name: 'Accountability',
     description: 'Track government promises, bills, parliamentary speeches & elected leaders',
     order: [
-      'promise-tracker', 'bill-tracker', 'parliament-activity',
-      'govt-loan-tracker', 'govt-decisions', 'parliament-session', 'neta',
+      'promise-tracker',
+      'bill-tracker', 'parliament-activity',
+      'govt-decisions', 'neta',
+      'parliament-session',
     ],
     visibility: {
       'promise-tracker': true, 'bill-tracker': true, 'parliament-activity': true,
-      'govt-loan-tracker': true, 'govt-decisions': true, 'parliament-session': true, neta: true,
+      'govt-decisions': true, 'parliament-session': true, neta: true,
       // Hidden
       'political-pulse': false,
       'election-seats': false, newsfeed: false, social: false, 'fact-check': false,
       map: false, kpi: false, 'situation-brief': false, stories: false,
       'election-map': false, 'election-status': false, 'election-live': false, 'election-pr': false,
       weather: false, disasters: false, elections: false, market: false, govt: false,
+      'economic-news': false, 'price-watch': false, 'trade-customs': false, 'public-spending': false, 'nrb-macro': false,
+      'govt-loan-tracker': false, 'debt-tracker': false, 'govt-contracts': false,
       threats: false, briefing: false, entities: false, seismic: false,
       'swing-analysis': false, 'close-races': false, 'incumbency': false,
       'candidates': false, 'party-switch': false,
@@ -317,35 +351,93 @@ export const PRESETS: Record<string, Preset> = {
       'promise-tracker': 'hero',              // Row 1: 12 cols, ~6-7 rows tall (manifesto tracker)
       'bill-tracker': 'half',                 // Row 2: 6 cols (bills pipeline)
       'parliament-activity': 'half',          // Row 2: 6 cols (verbatim speech activity)
-      'govt-loan-tracker': 'half',            // Row 3: 6 cols
       'govt-decisions': 'half',               // Row 3: 6 cols
-      'parliament-session': 'half',           // Row 4: 6 cols
-      neta: 'half',                           // Row 4: 6 cols
+      neta: 'half',                           // Row 3: 6 cols
+      'parliament-session': 'full',           // Row 4: 12 cols
     }
+  },
+
+  economy: {
+    id: 'economy',
+    name: 'Economy',
+    description: 'Economic news, markets, customs flow, central bank data and public contracts',
+    order: [
+      'economic-news',
+      'market',
+      'trade-customs',
+      'fiscal-position', 'external-sector',
+      'monetary-conditions', 'prices-cost-pressure',
+      'govt-loan-tracker', 'govt-contracts',
+      'debt-tracker',
+    ],
+    visibility: {
+      'economic-news': true,
+      market: true,
+      'price-watch': false,
+      'trade-customs': true,
+      'nrb-macro': false,
+      'nrb-prices': false,
+      'nrb-banking': false,
+      'fiscal-position': true,
+      'external-sector': true,
+      'monetary-conditions': true,
+      'prices-cost-pressure': true,
+      'govt-loan-tracker': true,
+      'public-spending': false,
+      'govt-contracts': true,
+      'debt-tracker': true,
+      // Hidden
+      map: false, 'election-map': false, kpi: false, stories: false, newsfeed: false,
+      weather: false, disasters: false, elections: false, entities: false,
+      briefing: false, social: false, govt: false, threats: false, seismic: false,
+      'election-pr': false, 'election-seats': false, 'election-status': false,
+      'swing-analysis': false, 'close-races': false, 'incumbency': false, 'candidates': false,
+      'party-switch': false, neta: false, 'election-live': false,
+      'intel-brief-hero': false, 'political-pulse': false, 'province-monitor': false,
+      'narrative-tracker': false, 'developing-stories': false, 'fact-check': false,
+      'promise-tracker': false, 'parliament-session': false, 'govt-decisions': false,
+      'bill-tracker': false, 'parliament-activity': false,
+      'situation-brief': false, 'source-reliability': false,
+      'cases-active': false, 'collab-feed': false, 'verification-queue': false,
+      'entity-watchlist': false, 'analyst-notes': false, 'analyst-leaderboard': false,
+      rivers: false,
+    },
+    sizes: {
+      'economic-news': 'hero',
+      market: 'half',
+      'trade-customs': 'half',
+      'fiscal-position': 'half',
+      'external-sector': 'half',
+      'monetary-conditions': 'half',
+      'prices-cost-pressure': 'half',
+      'govt-loan-tracker': 'half',
+      'govt-contracts': 'half',
+      'debt-tracker': 'hero',
+    },
   },
 
   disaster: {
     id: 'disaster',
     name: 'Disaster Response',
     description: 'Emergency monitoring & alerts',
-    // Layout: hero(12) -> medium+medium(6+6=12) -> large+small(8+4=12) -> medium+medium(6+6=12) x2
+    // Layout: situation(12) -> medium+medium(6+6) -> full(12) -> medium+medium(6+6)
     order: [
-      'map', 'weather', 'disasters',
-      'newsfeed', 'govt', 'stories'
+      'map', 'weather', 'newsfeed',
+      'rivers', 'disasters', 'govt'
     ],
     visibility: {
-      map: true, weather: true, disasters: true, seismic: false,
-      stories: true, briefing: false, newsfeed: true, govt: true,
+      map: true, weather: true, rivers: true, disasters: true, seismic: false,
+      stories: false, briefing: false, newsfeed: true, govt: true,
       kpi: false, elections: false, market: false, social: false, entities: false,
       threats: false
     },
     sizes: {
       map: 'situation',    // Row 1: 12 cols, double height
       weather: 'medium',   // Row 2: 6 cols
-      disasters: 'large',  // Row 3: 8 cols
-      newsfeed: 'medium',  // Row 4: 6 cols
-      govt: 'medium',      // Row 5: 6 cols
-      stories: 'medium'    // Row 5: 6 cols (6+6=12)
+      newsfeed: 'medium',  // Row 2: 6 cols (6+6=12)
+      rivers: 'medium',    // Row 3: 6 cols
+      disasters: 'medium', // Row 3: 6 cols (6+6=12)
+      govt: 'full',        // Row 4: 12 cols
     }
   },
 
@@ -625,14 +717,188 @@ export const useDashboardStore = create<DashboardState>()(
         })),
     }),
     {
-      name: 'rta-dashboard-v14',  // v45: archive elections from main shell, add govt loan tracker
-      version: 45,
+      name: 'rta-dashboard-v14',  // v59: replace legacy NRB panels with workbook-backed economy widgets
+      version: 59,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as DashboardState;
         }
 
         const state = persistedState as DashboardState;
+
+        if (version < 59 && state.activePreset === 'economy') {
+          const preset = PRESETS.economy;
+          return {
+            ...state,
+            activePreset: 'economy',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 57 && state.activePreset === 'economy') {
+          const preset = PRESETS.economy;
+          return {
+            ...state,
+            activePreset: 'economy',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 56 && state.activePreset === 'economy') {
+          const preset = PRESETS.economy;
+          return {
+            ...state,
+            activePreset: 'economy',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 55 && state.activePreset === 'parliament') {
+          const preset = PRESETS.parliament;
+          return {
+            ...state,
+            activePreset: 'parliament',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 54 && state.activePreset === 'parliament') {
+          const preset = PRESETS.parliament;
+          return {
+            ...state,
+            activePreset: 'parliament',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 53 && state.activePreset === 'parliament') {
+          const preset = PRESETS.parliament;
+          return {
+            ...state,
+            activePreset: 'parliament',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 52 && state.activePreset === 'parliament') {
+          const preset = PRESETS.parliament;
+          return {
+            ...state,
+            activePreset: 'parliament',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 51 && state.activePreset === 'parliament') {
+          const preset = PRESETS.parliament;
+          return {
+            ...state,
+            activePreset: 'parliament',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 50 && state.activePreset === 'parliament') {
+          const preset = PRESETS.parliament;
+          return {
+            ...state,
+            activePreset: 'parliament',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 49 && state.activePreset === 'parliament') {
+          const preset = PRESETS.parliament;
+          return {
+            ...state,
+            activePreset: 'parliament',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 48 && state.activePreset === 'news') {
+          const preset = PRESETS.news;
+          return {
+            ...state,
+            activePreset: 'news',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 47 && state.activePreset === 'news') {
+          const preset = PRESETS.news;
+          return {
+            ...state,
+            activePreset: 'news',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 46) {
+          const nextOrder = Array.isArray(state.widgetOrder)
+            ? moveBottomWidgetsToEnd(state.widgetOrder)
+            : state.widgetOrder;
+          const nextSizes = {
+            ...(state.widgetSizes || {}),
+            ...(nextOrder.includes('disasters') ? { disasters: 'medium' as WidgetSize } : {}),
+            ...(nextOrder.includes('govt') ? { govt: 'medium' as WidgetSize } : {}),
+          };
+
+          if (state.activePreset === 'disaster') {
+            const preset = PRESETS.disaster;
+            return {
+              ...state,
+              activePreset: 'disaster',
+              widgetOrder: [...preset.order],
+              widgetVisibility: { ...preset.visibility },
+              widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+              widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+            };
+          }
+
+          return {
+            ...state,
+            widgetOrder: nextOrder,
+            widgetSizes: nextSizes,
+            widgetDimensions: dimensionsFromSizes(nextSizes as Record<string, WidgetSize>),
+          };
+        }
 
         // v45: Archive elections from main shell and add loan tracker to accountability
         if (version < 45) {

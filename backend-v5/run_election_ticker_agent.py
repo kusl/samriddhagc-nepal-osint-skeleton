@@ -10,7 +10,7 @@ Architecture:
   3. POST /election-results/ticker/ingest with structured alerts
 
 Usage:
-  OSINT_PASSWORD=your-osint-password python run_election_ticker_agent.py
+  OSINT_PASSWORD=devpassword123 python run_election_ticker_agent.py
 """
 import asyncio
 import hashlib

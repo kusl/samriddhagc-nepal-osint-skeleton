@@ -160,6 +160,8 @@ class TokenPayload(BaseModel):
     exp: int  # expiration timestamp
     iat: int  # issued at timestamp
     type: str = "access"  # "access" or "refresh"
+    auth_provider: Optional[str] = None
+    public_consumer: bool = False
 
 
 class UserCreate(BaseModel):

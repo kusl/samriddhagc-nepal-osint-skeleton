@@ -19,6 +19,12 @@ from app.schemas.auth import TokenPayload, UserCreate, UserUpdate
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+PUBLIC_CONSUMER_ID = uuid_mod.uuid5(uuid_mod.NAMESPACE_DNS, "narada.public.consumer")
+PUBLIC_CONSUMER_EMAIL = "public@consumer.narada.dev"
+PUBLIC_CONSUMER_USERNAME = "public_consumer"
+PUBLIC_CONSUMER_FULL_NAME = "Public Dashboard"
+PUBLIC_CONSUMER_CREATED_AT = datetime(2026, 1, 1, tzinfo=timezone.utc)
+
 
 class AuthService:
     """Service for authentication operations."""
@@ -63,6 +69,7 @@ class AuthService:
             "exp": int(expire.timestamp()),
             "iat": int(now.timestamp()),
             "type": "access",
+            "auth_provider": user.auth_provider,
         }
 
         return jwt.encode(
@@ -84,6 +91,69 @@ class AuthService:
             "exp": int(expire.timestamp()),
             "iat": int(now.timestamp()),
             "type": "refresh",
+            "auth_provider": user.auth_provider,
+        }
+
+        return jwt.encode(
+            payload,
+            settings.jwt_secret_key,
+            algorithm=settings.jwt_algorithm,
+        )
+
+    @staticmethod
+    def build_public_consumer_user() -> User:
+        """Build a synthetic public consumer user without touching the database."""
+        return User(
+            id=PUBLIC_CONSUMER_ID,
+            email=PUBLIC_CONSUMER_EMAIL,
+            full_name=PUBLIC_CONSUMER_FULL_NAME,
+            username=PUBLIC_CONSUMER_USERNAME,
+            auth_provider="public",
+            role=UserRole.CONSUMER,
+            is_active=True,
+            created_at=PUBLIC_CONSUMER_CREATED_AT,
+            last_login_at=datetime.now(timezone.utc),
+        )
+
+    @staticmethod
+    def create_public_access_token(expires_minutes: Optional[int] = None) -> str:
+        """Create a stateless access token for the public dashboard consumer."""
+        now = datetime.now(timezone.utc)
+        minutes = expires_minutes or max(settings.guest_token_expire_hours * 60, 7 * 24 * 60)
+        expire = now + timedelta(minutes=minutes)
+
+        payload = {
+            "sub": str(PUBLIC_CONSUMER_ID),
+            "email": PUBLIC_CONSUMER_EMAIL,
+            "role": UserRole.CONSUMER.value,
+            "exp": int(expire.timestamp()),
+            "iat": int(now.timestamp()),
+            "type": "access",
+            "auth_provider": "public",
+            "public_consumer": True,
+        }
+
+        return jwt.encode(
+            payload,
+            settings.jwt_secret_key,
+            algorithm=settings.jwt_algorithm,
+        )
+
+    @staticmethod
+    def create_public_refresh_token() -> str:
+        """Create a stateless refresh token for the public dashboard consumer."""
+        now = datetime.now(timezone.utc)
+        expire = now + timedelta(days=max(settings.jwt_refresh_token_expire_days, 30))
+
+        payload = {
+            "sub": str(PUBLIC_CONSUMER_ID),
+            "email": PUBLIC_CONSUMER_EMAIL,
+            "role": UserRole.CONSUMER.value,
+            "exp": int(expire.timestamp()),
+            "iat": int(now.timestamp()),
+            "type": "refresh",
+            "auth_provider": "public",
+            "public_consumer": True,
         }
 
         return jwt.encode(
@@ -478,6 +548,9 @@ class AuthService:
         if payload.type != "refresh":
             logger.warning("Attempted to refresh with non-refresh token")
             return None
+
+        if payload.public_consumer or payload.auth_provider == "public":
+            return self.create_public_access_token(), self.build_public_consumer_user()
 
         user = await self.get_user_by_id(UUID(payload.sub))
         if not user or not user.is_active:

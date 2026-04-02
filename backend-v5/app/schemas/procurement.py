@@ -12,6 +12,8 @@ class ContractResponse(BaseModel):
     ifb_number: str
     project_name: str
     procuring_entity: str
+    entity_bucket: str
+    entity_bucket_label: str
     procurement_type: str
     contract_award_date: Optional[date] = None
     contract_amount_npr: Optional[float] = None
@@ -47,12 +49,22 @@ class FiscalYearStats(BaseModel):
     total_value: float
 
 
+class EntityBucketStats(BaseModel):
+    """Aggregate stats for one entity bucket."""
+    bucket: str
+    label: str
+    count: int
+    total_value: float
+    entity_count: int
+
+
 class ProcurementStatsResponse(BaseModel):
     """Aggregate procurement statistics."""
     total_contracts: int
     total_value_npr: float
     by_procurement_type: List[ProcurementTypeStats]
     by_fiscal_year: List[FiscalYearStats]
+    by_entity_bucket: List[EntityBucketStats] = Field(default_factory=list)
 
 
 class TopContractorResponse(BaseModel):
@@ -65,8 +77,28 @@ class TopContractorResponse(BaseModel):
 class TopEntityResponse(BaseModel):
     """Top procuring entity by value."""
     procuring_entity: str
+    entity_bucket: str
+    entity_bucket_label: str
     contract_count: int
     total_value: float
+
+
+class ProcurementSummaryCard(BaseModel):
+    """Compact widget summary card."""
+    label: str
+    value: str
+    meta: str
+
+
+class ProcurementWidgetSummaryResponse(BaseModel):
+    """Single assembled procurement payload for dashboard widgets."""
+    generated_at: datetime
+    total: int
+    cards: List[ProcurementSummaryCard]
+    stats: ProcurementStatsResponse
+    entity_buckets: List[EntityBucketStats]
+    top_entities: List[TopEntityResponse]
+    contracts: List[ContractResponse]
 
 
 class ProcurementIngestionStats(BaseModel):

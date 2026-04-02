@@ -43,6 +43,13 @@ for dist in NEPAL_DISTRICTS:
 _SORTED_KEYWORDS = sorted(_KEYWORD_TO_PROVINCE.keys(), key=len, reverse=True)
 
 PROVINCE_NAMES = {p["id"]: p["name_en"] for p in NEPAL_PROVINCES}
+_PROVINCE_NAME_TO_ID = {name.lower(): pid for pid, name in PROVINCE_NAMES.items()}
+_DISTRICT_NAME_TO_PROVINCE_ID = {dist["name_en"].lower(): dist["province_id"] for dist in NEPAL_DISTRICTS}
+for dist in NEPAL_DISTRICTS:
+    for alias in dist.get("aliases", []):
+        alias_lower = alias.lower()
+        if len(alias_lower) >= 3:
+            _DISTRICT_NAME_TO_PROVINCE_ID[alias_lower] = dist["province_id"]
 
 
 @dataclass
@@ -94,6 +101,28 @@ def classify_province(text: str) -> int | None:
     return max(hits, key=hits.get)
 
 
+def classify_story_to_province_ids(story: Story) -> list[int]:
+    """Prefer structured geography over keyword matching for story province assignment."""
+    province_ids: set[int] = set()
+
+    for province in story.provinces or []:
+        normalized = (province or "").strip().lower()
+        if normalized in _PROVINCE_NAME_TO_ID:
+            province_ids.add(_PROVINCE_NAME_TO_ID[normalized])
+
+    for district in story.districts or []:
+        normalized = (district or "").strip().lower().replace("_", " ")
+        if normalized in _DISTRICT_NAME_TO_PROVINCE_ID:
+            province_ids.add(_DISTRICT_NAME_TO_PROVINCE_ID[normalized])
+
+    if province_ids:
+        return sorted(province_ids)
+
+    search_text = f"{story.title or ''} {story.summary or ''}"
+    pid = classify_province(search_text)
+    return [pid] if pid else []
+
+
 async def collect_province_data(
     db: AsyncSession,
     hours: int = 6,
@@ -125,16 +154,16 @@ async def collect_province_data(
 
     total_stories = 0
     for story in stories:
-        search_text = f"{story.title or ''} {story.summary or ''}"
-        pid = classify_province(search_text)
-        if pid and pid in provinces:
-            provinces[pid].stories.append(ClassifiedItem(
-                title=story.title or "Untitled",
-                snippet=(story.summary or "")[:200],
-                source=story.source_name or "Unknown",
-                published_at=story.published_at.isoformat() if story.published_at else None,
-            ))
-            total_stories += 1
+        province_ids = classify_story_to_province_ids(story)
+        for pid in province_ids:
+            if pid in provinces:
+                provinces[pid].stories.append(ClassifiedItem(
+                    title=story.title or "Untitled",
+                    snippet=(story.summary or "")[:200],
+                    source=story.source_name or "Unknown",
+                    published_at=story.published_at.isoformat() if story.published_at else None,
+                ))
+                total_stories += 1
 
     # Fetch recent tweets
     tweet_result = await db.execute(

@@ -1,14 +1,8 @@
-/**
- * GovtDecisionsWidget — Government Decisions Tracker
- *
- * Shows recent cabinet decisions, government orders, and policy announcements.
- * Sources from the announcements/govt API (OPMCM, MoHA, etc.)
- */
 import { memo, useMemo, useState } from 'react';
-import { Widget } from '../Widget';
 import { Gavel, Clock, ExternalLink, ChevronDown, ChevronUp, Building2 } from 'lucide-react';
-import { useAnnouncementSummary } from '../../../api/hooks/useAnnouncements';
-import { WidgetSkeleton, WidgetError } from './shared';
+import { useLatestGovtDecisions } from '../../../api/hooks';
+import { Widget } from '../Widget';
+import { WidgetError, WidgetSkeleton } from './shared';
 
 function getTimeAgo(dateString: string): string {
   const date = new Date(dateString);
@@ -23,21 +17,37 @@ function getTimeAgo(dateString: string): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-const SOURCE_LABELS: Record<string, string> = {
-  opmcm: 'Cabinet / OPMCM',
-  moha: 'Home Ministry',
-  mofa: 'Foreign Ministry',
-  mof: 'Finance Ministry',
-};
+function getStatusStyles(status?: string | null) {
+  switch (status) {
+    case 'Active':
+      return {
+        color: 'var(--status-low)',
+        background: 'rgba(16, 185, 129, 0.12)',
+        border: '1px solid rgba(16, 185, 129, 0.28)',
+      };
+    case 'Under Review':
+      return {
+        color: 'var(--status-high)',
+        background: 'rgba(245, 158, 11, 0.12)',
+        border: '1px solid rgba(245, 158, 11, 0.28)',
+      };
+    default:
+      return {
+        color: 'var(--text-muted)',
+        background: 'var(--bg-elevated)',
+        border: '1px solid var(--border-subtle)',
+      };
+  }
+}
 
 export const GovtDecisionsWidget = memo(function GovtDecisionsWidget() {
-  const { data, isLoading, error, refetch } = useAnnouncementSummary(30);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const { data, isLoading, error, refetch } = useLatestGovtDecisions(500, false);
 
-  const announcements = useMemo(() => {
-    if (!data?.latest) return [];
-    return data.latest.slice(0, 30);
-  }, [data]);
+  const decisions = useMemo(
+    () => [...(data?.items || [])].sort((a, b) => Date.parse(b.publishedAt || '') - Date.parse(a.publishedAt || '')),
+    [data?.items],
+  );
 
   if (isLoading) {
     return (
@@ -47,52 +57,34 @@ export const GovtDecisionsWidget = memo(function GovtDecisionsWidget() {
     );
   }
 
-  if (error || (!isLoading && announcements.length === 0)) {
+  if (error) {
     return (
       <Widget id="govt-decisions" icon={<Gavel size={14} />}>
-        <div style={{
-          height: '100%', display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          padding: 24, textAlign: 'center', gap: 10,
-        }}>
-          <Gavel size={20} style={{ color: 'var(--text-muted)' }} />
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
-            New Government Forming
-          </div>
-          <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.5, maxWidth: 240 }}>
-            The newly elected government has not yet been formed. Cabinet decisions and government orders will appear here once the new administration begins operations.
-          </div>
-        </div>
+        <WidgetError message="Failed to load government decisions" onRetry={() => refetch()} />
       </Widget>
     );
   }
 
   return (
-    <Widget id="govt-decisions" icon={<Gavel size={14} />} badge={announcements.length}>
+    <Widget id="govt-decisions" icon={<Gavel size={14} />} badge={decisions.length}>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {/* Header */}
         <div style={{
-          padding: '8px 12px',
+          padding: '6px 12px',
           borderBottom: '1px solid var(--border-subtle)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          fontSize: 9,
+          color: 'var(--text-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.05em',
         }}>
-          <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Latest Government Actions
-          </span>
-          <span style={{ fontSize: 9, color: 'var(--text-disabled)', fontFamily: 'var(--font-mono)' }}>
-            {announcements.length} items
-          </span>
+          {decisions.length} approved decisions in archive
         </div>
-
-        {/* List */}
         <div style={{ flex: 1, overflow: 'auto' }}>
-          {announcements.length === 0 ? (
+          {decisions.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
               No recent government decisions
             </div>
-          ) : announcements.map((item) => {
+          ) : decisions.map((item) => {
             const expanded = expandedId === item.id;
-            const sourceLabel = SOURCE_LABELS[item.source?.toLowerCase()] || item.source_name || item.source || '';
             return (
               <div
                 key={item.id}
@@ -109,35 +101,82 @@ export const GovtDecisionsWidget = memo(function GovtDecisionsWidget() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   <Building2 size={12} style={{ color: 'var(--text-disabled)', marginTop: 2, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--text-primary)', lineHeight: 1.4 }}>
-                      {item.title || 'Untitled'}
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>
+                      {item.title}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
-                      {sourceLabel && (
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', lineHeight: 1.45, marginTop: 4 }}>
+                      {item.decision}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3, flexWrap: 'wrap' }}>
+                      {item.office && (
+                        <span style={{
+                          fontSize: 8, fontWeight: 600, padding: '1px 5px',
+                          background: 'rgba(45, 114, 210, 0.12)', color: 'var(--accent-primary)',
+                          border: '1px solid rgba(45, 114, 210, 0.24)',
+                          textTransform: 'uppercase', letterSpacing: '0.03em',
+                        }}>
+                          {item.office}
+                        </span>
+                      )}
+                      {item.implementingMinistry && (
                         <span style={{
                           fontSize: 8, fontWeight: 600, padding: '1px 5px',
                           background: 'var(--bg-elevated)', color: 'var(--text-muted)',
                           border: '1px solid var(--border-subtle)',
                           textTransform: 'uppercase', letterSpacing: '0.03em',
                         }}>
-                          {sourceLabel}
+                          {item.implementingMinistry}
                         </span>
                       )}
-                      {(item.published_at || item.created_at) && (
+                      {item.decisionType && (
+                        <span style={{
+                          fontSize: 8, fontWeight: 600, padding: '1px 5px',
+                          background: 'rgba(168, 85, 247, 0.12)', color: '#c084fc',
+                          border: '1px solid rgba(168, 85, 247, 0.28)',
+                          textTransform: 'uppercase', letterSpacing: '0.03em',
+                        }}>
+                          {item.decisionType}
+                        </span>
+                      )}
+                      {item.status && (
+                        <span style={{
+                          fontSize: 8, fontWeight: 700, padding: '1px 5px',
+                          textTransform: 'uppercase', letterSpacing: '0.03em',
+                          ...getStatusStyles(item.status),
+                        }}>
+                          {item.status}
+                        </span>
+                      )}
+                      {item.publishedAt && (
                         <span style={{ fontSize: 9, color: 'var(--text-disabled)', display: 'flex', alignItems: 'center', gap: 3 }}>
                           <Clock size={8} />
-                          {getTimeAgo(item.published_at || item.created_at)}
+                          {getTimeAgo(item.publishedAt)}
                         </span>
                       )}
                     </div>
-                    {expanded && item.content && (
+                    {expanded && (
                       <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 6, lineHeight: 1.5 }}>
-                        {item.content}
+                        <div style={{ marginBottom: 6 }}>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Implementing ministry: </span>
+                          {item.implementingMinistry || 'Not set'}
+                        </div>
+                        <div style={{ marginBottom: 6 }}>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Decision type: </span>
+                          {item.decisionType || 'Not set'}
+                        </div>
+                        <div style={{ marginBottom: 6 }}>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Status: </span>
+                          {item.status || 'Not set'}
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>Evidence note: </span>
+                          {item.evidenceNote || 'No evidence note'}
+                        </div>
                       </div>
                     )}
-                    {expanded && item.url && (
+                    {expanded && item.sourceUrl && (
                       <a
-                        href={item.url}
+                        href={item.sourceUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={e => e.stopPropagation()}
@@ -147,14 +186,13 @@ export const GovtDecisionsWidget = memo(function GovtDecisionsWidget() {
                           textDecoration: 'none',
                         }}
                       >
-                        View source <ExternalLink size={8} />
+                        {item.sourceName || 'Source'} <ExternalLink size={8} />
                       </a>
                     )}
                   </div>
                   {expanded
                     ? <ChevronUp size={12} style={{ color: 'var(--text-disabled)', flexShrink: 0, marginTop: 2 }} />
-                    : <ChevronDown size={12} style={{ color: 'var(--text-disabled)', flexShrink: 0, marginTop: 2 }} />
-                  }
+                    : <ChevronDown size={12} style={{ color: 'var(--text-disabled)', flexShrink: 0, marginTop: 2 }} />}
                 </div>
               </div>
             );

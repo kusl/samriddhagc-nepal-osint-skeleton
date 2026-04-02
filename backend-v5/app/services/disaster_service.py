@@ -45,8 +45,10 @@ class DisasterIngestionService:
         incident_limit: int = 100,
         earthquake_limit: int = 50,
         fire_limit: int = 50,
+        alert_limit: int = 200,
         incident_days_back: int = 30,
         earthquake_days_back: int = 7,
+        alert_days_back: int = 7,
         min_earthquake_magnitude: float = 4.0,
         filter_insignificant: bool = False,  # Changed to False to capture fire incidents
     ) -> dict:
@@ -85,8 +87,10 @@ class DisasterIngestionService:
                 incident_limit=incident_limit,
                 earthquake_limit=earthquake_limit,
                 fire_limit=fire_limit,
+                alert_limit=alert_limit,
                 incident_days_back=incident_days_back,
                 earthquake_days_back=earthquake_days_back,
+                alert_days_back=alert_days_back,
                 min_earthquake_magnitude=min_earthquake_magnitude,
             )
 
@@ -210,9 +214,10 @@ class DisasterIngestionService:
             latitude=fetched.latitude,
             location_name=fetched.location_name,
             district=fetched.district,
+            province=fetched.province,
             magnitude=fetched.magnitude,
             depth_km=fetched.depth_km,
-            is_active=True,
+            is_active=(fetched.expires_at is None or fetched.expires_at > datetime.now(timezone.utc)),
             expires_at=fetched.expires_at,
             issued_at=fetched.issued_at or datetime.now(timezone.utc),
             raw_data=fetched.raw_data,

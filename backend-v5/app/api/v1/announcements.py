@@ -20,8 +20,9 @@ router = APIRouter(prefix="/announcements", tags=["Government Announcements"])
 
 @router.get("/summary", response_model=AnnouncementSummary)
 async def get_announcements_summary(
-    limit: int = Query(default=5, ge=1, le=20, description="Number of latest announcements"),
+    limit: int = Query(default=5, ge=1, le=100, description="Number of latest announcements"),
     hours: Optional[int] = Query(default=None, ge=1, le=168, description="Filter by hours (1=24h, 72=3d, 168=7d)"),
+    scope: Optional[str] = Query(default=None, description="Optional scope filter. Use federal_ministries for cabinet/federal ministry announcements only."),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -31,7 +32,7 @@ async def get_announcements_summary(
     and the latest announcements.
     """
     service = AnnouncementService(db)
-    return await service.get_summary(limit=limit, hours=hours)
+    return await service.get_summary(limit=limit, hours=hours, scope=scope)
 
 
 @router.get("/list", response_model=AnnouncementListResponse)

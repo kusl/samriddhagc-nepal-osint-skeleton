@@ -140,6 +140,11 @@ class PerformanceScorer:
         has_speeches = any(mp.speeches_count > 0 for mp in all_mps)
         has_committees = await self.committee_repo.has_any_data()
         has_attendance = await self.attendance_repo.has_any_data()
+        if not has_attendance:
+            seeded = await self.attendance_repo.seed_swearing_in_baseline_for_current_members()
+            if seeded:
+                logger.info("Seeded inaugural attendance baseline for %s current MPs", seeded)
+                has_attendance = True
         has_questions = await self.question_repo.has_any_data()
 
         self._data_availability = {
@@ -210,6 +215,11 @@ class PerformanceScorer:
         has_speeches = any(m.speeches_count > 0 for m in all_mps)
         has_committees = await self.committee_repo.has_any_data()
         has_attendance = await self.attendance_repo.has_any_data()
+        if not has_attendance:
+            seeded = await self.attendance_repo.seed_swearing_in_baseline_for_current_members()
+            if seeded:
+                logger.info("Seeded inaugural attendance baseline for %s current MPs", seeded)
+                has_attendance = True
         has_questions = await self.question_repo.has_any_data()
 
         self._data_availability = {
@@ -460,13 +470,18 @@ class PerformanceScorer:
         if session_pct is None and (committee_pct is None or committee_pct == 0):
             return 0.0
 
-        # Session attendance (70% of score)
-        session = (session_pct or 0) * 0.7
+        components: list[tuple[float, float]] = []
+        if session_pct is not None:
+            components.append((float(session_pct), 0.7))
+        if committee_pct is not None:
+            components.append((float(committee_pct), 0.3))
 
-        # Committee attendance (30% of score)
-        committee = (committee_pct or 0) * 0.3
+        if not components:
+            return 0.0
 
-        return min(100.0, session + committee)
+        total_weight = sum(weight for _, weight in components)
+        weighted = sum(value * weight for value, weight in components) / total_weight
+        return min(100.0, weighted)
 
     def _calc_accountability(self, mp) -> float:
         """

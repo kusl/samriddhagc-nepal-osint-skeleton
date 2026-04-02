@@ -5,9 +5,9 @@ Polls VPS for stories needing Haiku processing, runs them through `claude` CLI
 with Haiku model, and POSTs results back.
 
 Usage:
-    OSINT_PASSWORD=your-osint-password python3 run_local_haiku.py --loop 120
-    OSINT_PASSWORD=your-osint-password python3 run_local_haiku.py --once
-    OSINT_PASSWORD=your-osint-password python3 run_local_haiku.py --once --task summary
+    OSINT_PASSWORD=devpassword123 python3 run_local_haiku.py --loop 120
+    OSINT_PASSWORD=devpassword123 python3 run_local_haiku.py --once
+    OSINT_PASSWORD=devpassword123 python3 run_local_haiku.py --once --task summary
 """
 import argparse
 import json

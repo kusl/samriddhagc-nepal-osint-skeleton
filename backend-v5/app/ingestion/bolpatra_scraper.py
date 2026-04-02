@@ -53,7 +53,12 @@ class BolpatraScraper:
     # Step 2: POST AJAX to this endpoint to fetch contract data
     SEARCH_URL = f"{BASE_URL}/getNextContractListToView"
 
-    def __init__(self, delay: float = 0.5):
+    def __init__(
+        self,
+        delay: float = 0.5,
+        connect_timeout: float = 15.0,
+        read_timeout: float = 45.0,
+    ):
         self.session = requests.Session()
         self.session.verify = False
         self.session.headers.update({
@@ -62,6 +67,7 @@ class BolpatraScraper:
             'Accept-Language': 'en-US,en;q=0.9,ne;q=0.8',
         })
         self.delay = delay
+        self.timeout = (connect_timeout, read_timeout)
 
     def scrape_contracts(self, page_size: int = 5000) -> List[BolpatraContract]:
         """
@@ -82,7 +88,7 @@ class BolpatraScraper:
         try:
             # Step 1: Establish session by visiting the e-Contract search page
             time.sleep(self.delay)
-            self.session.get(self.SESSION_URL, timeout=60)
+            self.session.get(self.SESSION_URL, timeout=self.timeout)
 
             # Step 2: AJAX POST to fetch contract list (empty filters = all records)
             time.sleep(self.delay)
@@ -104,7 +110,7 @@ class BolpatraScraper:
                     "pageActionInput": "first",
                 },
                 headers={"X-Requested-With": "XMLHttpRequest"},
-                timeout=120,
+                timeout=self.timeout,
             )
             response.raise_for_status()
         except requests.RequestException as e:

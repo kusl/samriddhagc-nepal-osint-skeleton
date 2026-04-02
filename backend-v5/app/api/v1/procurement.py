@@ -6,14 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_analyst, require_dev
 from app.core.database import get_db
+from app.core.redis import get_redis
 from app.services.procurement_service import ProcurementService
 from app.schemas.procurement import (
     ContractResponse,
     ContractListResponse,
+    EntityBucketStats,
     ProcurementStatsResponse,
     TopContractorResponse,
     TopEntityResponse,
     ProcurementIngestionStats,
+    ProcurementWidgetSummaryResponse,
 )
 
 router = APIRouter(prefix="/procurement", tags=["Government Procurement"])
@@ -22,6 +25,7 @@ router = APIRouter(prefix="/procurement", tags=["Government Procurement"])
 @router.get("/contracts", response_model=ContractListResponse)
 async def list_contracts(
     procuring_entity: Optional[str] = Query(default=None, description="Filter by procuring entity (partial match)"),
+    entity_bucket: Optional[str] = Query(default=None, description="Filter by entity type: ministry, organization, security_agency, local_government, provincial_government, department_or_office, constitutional_body, other"),
     procurement_type: Optional[str] = Query(default=None, description="Filter by type (NCB, ICB, Sealed Quotation, etc.)"),
     contractor_name: Optional[str] = Query(default=None, description="Filter by contractor name (partial match)"),
     district: Optional[str] = Query(default=None, description="Filter by district"),
@@ -41,6 +45,7 @@ async def list_contracts(
     service = ProcurementService(db)
     result = await service.list_contracts(
         procuring_entity=procuring_entity,
+        entity_bucket=entity_bucket,
         procurement_type=procurement_type,
         contractor_name=contractor_name,
         district=district,
@@ -103,11 +108,41 @@ async def get_top_contractors(
 @router.get("/top-entities", response_model=List[TopEntityResponse])
 async def get_top_procuring_entities(
     limit: int = Query(default=10, ge=1, le=50, description="Number of top entities"),
+    entity_bucket: Optional[str] = Query(default=None, description="Optional entity bucket filter"),
     db: AsyncSession = Depends(get_db),
 ):
     """Get top procuring entities ranked by total contract value."""
     service = ProcurementService(db)
-    return await service.get_top_procuring_entities(limit=limit)
+    return await service.get_top_procuring_entities(limit=limit, entity_bucket=entity_bucket)
+
+
+@router.get("/widget-summary", response_model=ProcurementWidgetSummaryResponse)
+async def get_widget_summary(
+    entity_bucket: Optional[str] = Query(default=None, description="Optional entity bucket filter"),
+    procurement_type: Optional[str] = Query(default=None, description="Optional procurement type filter"),
+    search: Optional[str] = Query(default=None, description="Optional project/entity search"),
+    per_page: int = Query(default=20, ge=5, le=50, description="Preview row count"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return a single assembled payload for procurement dashboard widgets."""
+    redis = await get_redis()
+    service = ProcurementService(db, redis)
+    payload = await service.get_widget_summary(
+        entity_bucket=entity_bucket,
+        procurement_type=procurement_type,
+        search=search,
+        per_page=per_page,
+    )
+    return ProcurementWidgetSummaryResponse(**payload)
+
+
+@router.get("/entity-buckets", response_model=List[EntityBucketStats])
+async def get_entity_buckets(
+    db: AsyncSession = Depends(get_db),
+):
+    """Get normalized procuring-entity buckets for widget filters."""
+    service = ProcurementService(db)
+    return await service.get_entity_buckets()
 
 
 @router.post("/ingest", response_model=ProcurementIngestionStats)

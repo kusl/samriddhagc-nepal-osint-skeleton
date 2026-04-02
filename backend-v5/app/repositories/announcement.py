@@ -7,6 +7,7 @@ from sqlalchemy import select, func, desc, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.announcement import GovtAnnouncement
+from app.ingestion.deduplicator import normalize_url
 from app.utils.nepali_date import bs_to_ad
 
 
@@ -15,6 +16,112 @@ class AnnouncementRepository:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    @staticmethod
+    def _normalize_title(title: str) -> str:
+        if not title:
+            return ""
+        normalized = title.translate(str.maketrans("०१२३४५६७८९", "0123456789"))
+        normalized = normalized.replace("–", "-").replace("—", "-")
+        normalized = " ".join(normalized.split())
+        return normalized.strip().lower()
+
+    @staticmethod
+    def _normalized_title_expression():
+        return func.lower(
+            func.trim(
+                func.regexp_replace(
+                    func.replace(
+                        func.replace(
+                            func.translate(
+                                GovtAnnouncement.title,
+                                "०१२३४५६७८९",
+                                "0123456789",
+                            ),
+                            "–",
+                            "-",
+                        ),
+                        "—",
+                        "-",
+                    ),
+                    r"\s+",
+                    " ",
+                    "g",
+                )
+            )
+        )
+
+    @staticmethod
+    def _title_is_specific_enough(normalized_title: str) -> bool:
+        if len(normalized_title) >= 40:
+            return True
+        specific_markers = (
+            "वि.नं",
+            "विज्ञापन",
+            "उम्मेदवार",
+            "सिफारिस",
+            "परिणाम",
+            "नतिजा",
+            "सूचना",
+            "exam",
+            "result",
+            "notice",
+        )
+        return any(marker in normalized_title for marker in specific_markers) or any(ch.isdigit() for ch in normalized_title)
+
+    @staticmethod
+    def _scope_conditions(scope: Optional[str]) -> list:
+        if scope != "federal_ministries":
+            return []
+        return [
+            or_(
+                GovtAnnouncement.source_name.ilike("Ministry %"),
+                GovtAnnouncement.source_name.ilike("Prime Minister%"),
+            )
+        ]
+
+    async def get_by_content_signature(
+        self,
+        *,
+        source: str,
+        source_name: Optional[str],
+        title: str,
+        category: str,
+        date_bs: Optional[str] = None,
+        published_at: Optional[datetime] = None,
+        url: Optional[str] = None,
+    ) -> Optional[GovtAnnouncement]:
+        """Find an existing announcement even when upstream URLs churn."""
+        normalized_title = self._normalize_title(title)
+        if not normalized_title:
+            return None
+
+        conditions = [
+            GovtAnnouncement.source == source,
+            GovtAnnouncement.category == category,
+            self._normalized_title_expression() == normalized_title,
+        ]
+
+        if source_name:
+            conditions.append(GovtAnnouncement.source_name == source_name)
+
+        if date_bs:
+            conditions.append(GovtAnnouncement.date_bs == date_bs)
+        elif published_at:
+            published_day = published_at.date()
+            conditions.append(func.date(GovtAnnouncement.published_at) == published_day)
+        elif url and not self._title_is_specific_enough(normalized_title):
+            normalized_url = normalize_url(url)
+            if normalized_url:
+                conditions.append(GovtAnnouncement.url == normalized_url)
+
+        result = await self.db.execute(
+            select(GovtAnnouncement)
+            .where(and_(*conditions))
+            .order_by(desc(GovtAnnouncement.updated_at), desc(GovtAnnouncement.created_at))
+            .limit(1)
+        )
+        return result.scalar_one_or_none()
 
     async def get_by_id(self, announcement_id: UUID) -> Optional[GovtAnnouncement]:
         """Get announcement by ID."""
@@ -83,9 +190,21 @@ class AnnouncementRepository:
             if converted:
                 published_at = converted.replace(tzinfo=timezone.utc)
 
+        if not existing:
+            existing = await self.get_by_content_signature(
+                source=source,
+                source_name=source_name,
+                title=title,
+                category=category,
+                date_bs=date_bs,
+                published_at=published_at,
+                url=url,
+            )
+
         if existing:
             # Update existing
             existing.title = title
+            existing.url = normalize_url(url) if url else existing.url
             # For dates: if date_ad is provided, use it and clear date_bs (AD date sources)
             # If date_bs is provided, use it (BS date sources)
             if date_ad is not None:
@@ -112,7 +231,7 @@ class AnnouncementRepository:
             source=source,
             source_name=source_name,
             title=title,
-            url=url,
+            url=normalize_url(url),
             category=category,
             date_bs=date_bs,
             date_ad=date_ad,
@@ -212,7 +331,12 @@ class AnnouncementRepository:
         result = await self.db.execute(query)
         return result.scalar() or 0
 
-    async def get_latest(self, limit: int = 10, hours: Optional[int] = None) -> List[GovtAnnouncement]:
+    async def get_latest(
+        self,
+        limit: int = 10,
+        hours: Optional[int] = None,
+        scope: Optional[str] = None,
+    ) -> List[GovtAnnouncement]:
         """Get latest announcements, optionally filtered by publication date."""
         # Use published_at with fetched_at fallback for filtering and sorting
         effective_date = func.coalesce(
@@ -222,11 +346,22 @@ class AnnouncementRepository:
 
         query = select(GovtAnnouncement)
 
+        conditions = self._scope_conditions(scope)
+
         if hours:
             cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
-            query = query.where(effective_date >= cutoff)
+            conditions.append(effective_date >= cutoff)
 
-        query = query.order_by(desc(effective_date)).limit(limit)
+        if conditions:
+            query = query.where(and_(*conditions))
+
+        # Prefer officially dated announcements first; fetched-only items stay available
+        # but sink below records that carry a real publication date.
+        query = query.order_by(
+            GovtAnnouncement.published_at.is_(None),
+            desc(GovtAnnouncement.published_at),
+            desc(GovtAnnouncement.fetched_at),
+        ).limit(limit)
 
         result = await self.db.execute(query)
         return list(result.scalars().all())
@@ -240,14 +375,14 @@ class AnnouncementRepository:
         )
         return result.scalar() or 0
 
-    async def get_stats(self, hours: Optional[int] = None) -> dict:
+    async def get_stats(self, hours: Optional[int] = None, scope: Optional[str] = None) -> dict:
         """Get announcement statistics, optionally filtered by publication date."""
         # Use published_at with fetched_at fallback
         effective_date = func.coalesce(
             GovtAnnouncement.published_at,
             GovtAnnouncement.fetched_at,
         )
-        conditions = []
+        conditions = self._scope_conditions(scope)
         if hours:
             cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
             conditions.append(effective_date >= cutoff)

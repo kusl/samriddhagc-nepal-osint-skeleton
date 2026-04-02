@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getConsolidatedStories, type ConsolidatedStory } from '../analytics';
 
 // Query keys
@@ -26,6 +26,10 @@ export function useStories(options: UseStoriesOptions = {}) {
     queryKey: storiesKeys.consolidated(hours, limit, storyType),
     queryFn: () => getConsolidatedStories(hours, storyType, undefined, limit),
     staleTime: 60 * 1000, // 1 minute
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
     enabled,
   });
 }
@@ -45,5 +49,9 @@ export function useCriticalStories(limit: number = 5) {
       return stories;
     },
     staleTime: 30 * 1000, // 30 seconds for critical stories
+    gcTime: 10 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }

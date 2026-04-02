@@ -12,6 +12,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
 class RelevanceLevel(str, Enum):
@@ -337,11 +338,16 @@ class RelevanceService:
     def __init__(self, config_path: Optional[str] = None):
         """Load relevance rules from YAML config."""
         config_path = config_path or settings.relevance_rules_path
+        candidate_paths = [
+            Path(config_path),
+            _PROJECT_ROOT / "config" / "relevance_rules.yaml",
+        ]
 
         try:
-            with open(config_path) as f:
+            resolved_path = next(path for path in candidate_paths if path.exists())
+            with resolved_path.open() as f:
                 config = yaml.safe_load(f)
-        except FileNotFoundError:
+        except StopIteration:
             logger.warning(f"Relevance config not found at {config_path}, using defaults")
             config = {}
 

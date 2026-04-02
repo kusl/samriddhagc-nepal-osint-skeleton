@@ -19,8 +19,8 @@ const ARCHIVED_WIDGET_IDS = new Set([
 ]);
 
 // Presets available for each role
-const CONSUMER_PRESETS = ['news', 'parliament'];
-const ANALYST_PRESETS = ['news', 'parliament', 'intelligence'];
+const CONSUMER_PRESETS = ['news', 'economy', 'parliament'];
+const ANALYST_PRESETS = ['news', 'economy', 'parliament', 'intelligence'];
 
 export function CustomizePanel() {
   const {

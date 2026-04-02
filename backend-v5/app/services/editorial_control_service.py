@@ -44,6 +44,18 @@ AUTOMATION_DEFS: dict[str, dict[str, str]] = {
         "label": "Analyst Brief Generation",
         "description": "Runs the national analyst brief generator.",
     },
+    "province_anomaly_agent": {
+        "label": "Province Anomaly Agent",
+        "description": "Runs the provincial monitor across all seven provinces.",
+    },
+    "govt_decision_generation": {
+        "label": "Government Decision Extraction",
+        "description": "Extracts candidate government decisions from trusted news and official announcements.",
+    },
+    "cabinet_action_tracking": {
+        "label": "Cabinet Action Tracking",
+        "description": "Maps new official evidence and trusted reporting onto the 100-day cabinet action tracker.",
+    },
 }
 
 PROVIDER_LABELS = {

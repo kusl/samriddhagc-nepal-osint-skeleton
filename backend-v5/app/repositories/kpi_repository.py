@@ -441,8 +441,11 @@ class KPIRepository:
         Get data pipeline health metrics.
 
         Counts all unique sources from the database that have delivered data.
-        Active = delivered data in last 24 hours (most sources don't publish hourly)
-        Total = all sources that have delivered data in last 30 days
+        Active = sources successfully scraped in last 24 hours.
+        Total = all sources scraped in last 30 days.
+
+        Use `scraped_at` instead of `created_at` so repeated fetches that only
+        update existing rows still count as healthy ingestion activity.
         """
         # Active = sources that published in last 24 hours
         active_cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
@@ -451,14 +454,14 @@ class KPIRepository:
         # Total = sources active in last 30 days
         total_cutoff = datetime.now(timezone.utc) - timedelta(days=30)
 
-        # Get all sources that delivered data in last 30 days (total)
+        # Get all sources scraped in last 30 days (total)
         total_query = (
             select(
                 Story.source_id,
                 Story.source_name,
-                func.max(Story.created_at).label("last_seen"),
+                func.max(func.coalesce(Story.scraped_at, Story.created_at)).label("last_seen"),
             )
-            .where(Story.created_at >= total_cutoff)
+            .where(func.coalesce(Story.scraped_at, Story.created_at) >= total_cutoff)
             .group_by(Story.source_id, Story.source_name)
         )
         total_result = await self.db.execute(total_query)
@@ -466,18 +469,18 @@ class KPIRepository:
                        for row in total_result.all()}
         total_sources = len(all_sources)
 
-        # Get sources with data in last 24 hours (active)
+        # Get sources scraped in last 24 hours (active)
         active_query = (
             select(Story.source_id)
-            .where(Story.created_at >= active_cutoff)
+            .where(func.coalesce(Story.scraped_at, Story.created_at) >= active_cutoff)
             .group_by(Story.source_id)
         )
         active_result = await self.db.execute(active_query)
         active_source_ids = {row.source_id for row in active_result.all()}
         active_sources = len(active_source_ids)
 
-        # Get most recent fetch time
-        last_fetch_query = select(func.max(Story.created_at))
+        # Get most recent scrape time
+        last_fetch_query = select(func.max(func.coalesce(Story.scraped_at, Story.created_at)))
         last_fetch = await self.db.scalar(last_fetch_query)
 
         last_fetch_seconds = 0

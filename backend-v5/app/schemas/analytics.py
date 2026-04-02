@@ -1,11 +1,57 @@
 """Analytics Pydantic schemas for dashboard widgets."""
 from datetime import datetime, timezone
+import re
 from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.publishing import PeerReviewSummary
+
+NEPALI_LOCATION_SUFFIXES = [
+    "बाटै", "हरुमा", "हरूमा", "हरुका", "हरूका", "हरुको", "हरूको",
+    "सम्म", "सँग", "बाट", "देखि", "भित्र", "माथि", "तर्फ", "नजिक", "अघि", "पछि",
+    "मा", "मै", "को", "का", "की", "ले",
+]
+
+DISTRICT_ALIAS_HINTS: dict[str, list[str]] = {
+    "kathmandu": ["kathmandu", "काठमाडौं", "काठमाण्डौ", "काठमाण्डू", "काठमाडौँ"],
+    "gorkha": ["gorkha", "गोरखा"],
+    "kaski": ["kaski", "कास्की"],
+    "banke": ["banke", "बाँके", "बांके"],
+    "nepalgunj": ["nepalgunj", "नेपालगञ्ज", "नेपालगंज", "नेपालगन्ज"],
+}
+
+PROVINCE_ALIAS_HINTS: dict[str, list[str]] = {
+    "gandaki": ["gandaki", "गण्डकी", "गंडकी"],
+    "bagmati": ["bagmati", "बागमती"],
+    "koshi": ["koshi", "कोशी"],
+    "madhesh": ["madhesh", "madhes", "मधेस"],
+    "lumbini": ["lumbini", "लुम्बिनी"],
+    "karnali": ["karnali", "कर्णाली"],
+    "sudurpashchim": ["sudurpashchim", "sudurpaschim", "सुदूरपश्चिम"],
+}
+
+
+def _contains_nepali_place_alias(text: str, alias: str) -> bool:
+    suffix_pattern = "|".join(sorted((re.escape(s) for s in NEPALI_LOCATION_SUFFIXES), key=len, reverse=True))
+    pattern = rf"(?<![\u0900-\u097F]){re.escape(alias)}(?:{suffix_pattern})?(?![\u0900-\u097F])"
+    return re.search(pattern, text) is not None
+
+
+def _text_mentions_geo(full_text_lower: str, canonical: str, aliases: list[str]) -> bool:
+    for alias in aliases:
+        alias_lower = alias.lower()
+        if any("\u0900" <= char <= "\u097F" for char in alias_lower):
+            if _contains_nepali_place_alias(full_text_lower, alias_lower):
+                return True
+        else:
+            if re.search(rf"\b{re.escape(alias_lower)}\b", full_text_lower):
+                return True
+    if canonical not in aliases:
+        if re.search(rf"\b{re.escape(canonical.lower())}\b", full_text_lower):
+            return True
+    return False
 
 
 class ConsolidatedStoryResponse(BaseModel):
@@ -33,6 +79,9 @@ class ConsolidatedStoryResponse(BaseModel):
     first_reported_at: Optional[datetime] = None
     last_updated_at: Optional[datetime] = None
     districts_affected: list[str] = []
+    provinces_affected: list[str] = []
+    location_verified: bool = False
+    display_location: Optional[str] = None
     is_verified: bool = False
     confidence_score: Optional[float] = None
     cluster_id: Optional[UUID] = None
@@ -40,6 +89,10 @@ class ConsolidatedStoryResponse(BaseModel):
     @classmethod
     def from_story(cls, story) -> "ConsolidatedStoryResponse":
         """Create from Story model."""
+        full_text_lower = " ".join(
+            filter(None, [getattr(story, "title", None), getattr(story, "summary", None), getattr(story, "content", None)])
+        ).lower()
+
         # Use persisted category if available, otherwise derive from categories
         story_type = story.category
         if not story_type and story.categories:
@@ -64,6 +117,81 @@ class ConsolidatedStoryResponse(BaseModel):
                 if story.relevance_score and story.relevance_score > 0.8:
                     severity = "high"
 
+        # Avoid triggering lazy relationship loads inside async response
+        # serialization for ORM objects. If features were eagerly loaded they
+        # will already be in __dict__; otherwise we treat them as absent and
+        # fall back to persisted district/province fields. For plain Python
+        # stubs in tests, read the attribute normally.
+        features = getattr(story, "__dict__", {}).get("features")
+        if features is None and not hasattr(story, "_sa_instance_state"):
+            try:
+                features = getattr(story, "features", None)
+            except Exception:
+                features = None
+        geo_confidence = getattr(features, "geo_confidence", None)
+        title_district = getattr(features, "title_district", None)
+        primary_municipality = getattr(features, "primary_municipality", None)
+        raw_districts = list(story.districts or [])
+        raw_provinces = list(story.provinces or [])
+        districts_affected = [
+            district
+            for district in raw_districts
+            if _text_mentions_geo(
+                full_text_lower,
+                district.lower(),
+                DISTRICT_ALIAS_HINTS.get(district.lower(), [district]),
+            )
+        ]
+        provinces_affected = [
+            province
+            for province in raw_provinces
+            if _text_mentions_geo(
+                full_text_lower,
+                province.lower(),
+                PROVINCE_ALIAS_HINTS.get(province.lower(), [province]),
+            )
+        ]
+        verified_title_district = bool(
+            title_district
+            and _text_mentions_geo(
+                full_text_lower,
+                str(title_district).lower(),
+                DISTRICT_ALIAS_HINTS.get(str(title_district).lower(), [str(title_district)]),
+            )
+        )
+        verified_primary_municipality = bool(
+            primary_municipality
+            and _text_mentions_geo(
+                full_text_lower,
+                str(primary_municipality).lower(),
+                DISTRICT_ALIAS_HINTS.get(str(primary_municipality).lower(), [str(primary_municipality)]),
+            )
+        )
+        if not districts_affected and (verified_title_district or verified_primary_municipality):
+            districts_affected = raw_districts
+        if not provinces_affected and (verified_title_district or verified_primary_municipality):
+            provinces_affected = raw_provinces
+        location_verified = bool(
+            districts_affected
+            or provinces_affected
+            or verified_title_district
+            or verified_primary_municipality
+            or (
+                geo_confidence is not None
+                and geo_confidence >= 0.5
+                and (districts_affected or provinces_affected)
+            )
+        )
+        display_location = None
+        if districts_affected:
+            display_location = districts_affected[0]
+        elif provinces_affected:
+            display_location = provinces_affected[0]
+        elif story.nepal_relevance == "NEPAL_DOMESTIC":
+            # Ambiguous domestic stories should not inherit outlet branding or
+            # stale low-confidence regional tags; default them to Kathmandu.
+            display_location = "Kathmandu"
+
         return cls(
             id=story.id,
             source_id=story.source_id,
@@ -77,7 +205,10 @@ class ConsolidatedStoryResponse(BaseModel):
             source_count=1,
             first_reported_at=story.published_at,
             last_updated_at=story.created_at,
-            districts_affected=[],
+            districts_affected=districts_affected,
+            provinces_affected=provinces_affected,
+            location_verified=location_verified,
+            display_location=display_location,
             is_verified=False,
             confidence_score=float(story.relevance_score) if story.relevance_score else None,
             cluster_id=story.cluster_id,

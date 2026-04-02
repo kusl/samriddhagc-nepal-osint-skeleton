@@ -3,10 +3,8 @@ import { Wifi, WifiOff, Database, Activity, Zap, AlertTriangle, TrendingDown, Tr
 import { useAuthStore } from '../../store/slices/authSlice';
 import { useSettingsStore } from '../../store/slices/settingsSlice';
 import { usePermissions } from '../../hooks/usePermissions';
-import { useNepalClock } from '../../hooks/useNepalClock';
 import apiClient from '../../api/client';
 import { subscribeViewerCount, getViewerCountSnapshot, getViewerCountServerSnapshot } from '../../api/websocket';
-import { formatNepalLongDate, formatNepalTime, NEPAL_TIME_LABEL } from '../../utils/nepalTime';
 
 interface KPISnapshot {
   active_alerts: {
@@ -53,18 +51,37 @@ const ViewerCount = memo(function ViewerCount() {
 
 // Extracted clock component — only this re-renders every second
 const StatusClock = memo(function StatusClock() {
-  const { now, isServerSynced } = useNepalClock();
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    }).toUpperCase();
+  };
 
   return (
-    <div
-      className="status-section"
-      title={isServerSynced ? 'Server-synced Nepal time' : 'Awaiting server time sync; temporarily using local clock'}
-    >
-      <span className="status-value">{formatNepalLongDate(now)}</span>
+    <div className="status-section">
+      <span className="status-value">{formatDate(time)}</span>
       <span className="status-value" style={{ color: 'var(--bloomberg-orange)', fontWeight: 600 }}>
-        {formatNepalTime(now)}
+        {formatTime(time)}
       </span>
-      <span className="status-label">{NEPAL_TIME_LABEL}</span>
+      <span className="status-label">{time.toLocaleTimeString('en-US', { timeZoneName: 'short' }).split(' ').pop()}</span>
     </div>
   );
 });

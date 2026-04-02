@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
+from app.services.procurement_entity_classifier import classify_procurement_entity
 
 
 class GovtContract(Base):
@@ -50,12 +51,15 @@ class GovtContract(Base):
 
     def to_dict(self) -> dict:
         """Convert to dictionary for API response."""
+        entity_meta = classify_procurement_entity(self.procuring_entity)
         return {
             "id": str(self.id),
             "external_id": self.external_id,
             "ifb_number": self.ifb_number,
             "project_name": self.project_name,
             "procuring_entity": self.procuring_entity,
+            "entity_bucket": entity_meta["entity_bucket"],
+            "entity_bucket_label": entity_meta["entity_bucket_label"],
             "procurement_type": self.procurement_type,
             "contract_award_date": self.contract_award_date.isoformat() if self.contract_award_date else None,
             "contract_amount_npr": self.contract_amount_npr,

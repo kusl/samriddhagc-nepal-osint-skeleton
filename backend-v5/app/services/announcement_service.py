@@ -1,6 +1,5 @@
 """Government announcement service for ingestion and management."""
 import logging
-import hashlib
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 
@@ -9,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.announcement import GovtAnnouncement, GOVT_SOURCES
 from app.repositories.announcement import AnnouncementRepository
+from app.ingestion.deduplicator import generate_external_id
 from app.ingestion.moha_scraper import MoHAScraper, MoHAPost
 from app.ingestion.opmcm_scraper import OPMCMScraper, OPMCMPost
 from app.ingestion.mofa_scraper import MoFAScraper, MoFAPost
@@ -57,6 +57,30 @@ class AnnouncementService:
     def __init__(self, db: AsyncSession):
         self.db = db
         self.repo = AnnouncementRepository(db)
+
+    async def _rollback_after_store_error(self) -> None:
+        """Reset the async session so later scraper inserts can continue."""
+        try:
+            await self.db.rollback()
+        except Exception as rollback_error:
+            logger.warning("Rollback failed after announcement store error: %s", rollback_error)
+
+    async def _record_store_error(self, stats: IngestionStats, url: str, error: Exception) -> None:
+        logger.error(f"Error storing announcement {url}: {error}")
+        stats.errors.append(f"{url}: {error}")
+        await self._rollback_after_store_error()
+
+    def _flatten_scraped_posts(self, result: Any) -> list[Any]:
+        """Normalize scraper outputs that return either lists or endpoint->list mappings."""
+        if isinstance(result, list):
+            return result
+        if isinstance(result, dict):
+            flattened: list[Any] = []
+            for posts in result.values():
+                if isinstance(posts, list):
+                    flattened.extend(posts)
+            return flattened
+        return []
 
     async def ingest_moha(
         self,
@@ -110,7 +134,7 @@ class AnnouncementService:
             for post in posts:
                 try:
                     # Generate external ID from URL
-                    external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                    external_id = generate_external_id(post.url, post.title)
 
                     # Fetch attachments if needed
                     attachments = []
@@ -138,8 +162,7 @@ class AnnouncementService:
                         stats.updated += 1
 
                 except Exception as e:
-                    logger.error(f"Error storing announcement {post.url}: {e}")
-                    stats.errors.append(f"{post.url}: {e}")
+                    await self._record_store_error(stats, post.url, e)
 
         # Broadcast new announcements via WebSocket
         if new_announcements:
@@ -204,7 +227,7 @@ class AnnouncementService:
             for post in posts:
                 try:
                     # Generate external ID from URL
-                    external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                    external_id = generate_external_id(post.url, post.title)
 
                     # Upsert announcement
                     announcement, created = await self.repo.upsert(
@@ -226,8 +249,7 @@ class AnnouncementService:
                         stats.updated += 1
 
                 except Exception as e:
-                    logger.error(f"Error storing announcement {post.url}: {e}")
-                    stats.errors.append(f"{post.url}: {e}")
+                    await self._record_store_error(stats, post.url, e)
 
         # Broadcast new announcements via WebSocket
         if new_announcements:
@@ -292,7 +314,7 @@ class AnnouncementService:
             for post in posts:
                 try:
                     # Generate external ID from URL
-                    external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                    external_id = generate_external_id(post.url, post.title)
 
                     # Upsert announcement
                     announcement, created = await self.repo.upsert(
@@ -315,8 +337,7 @@ class AnnouncementService:
                         stats.updated += 1
 
                 except Exception as e:
-                    logger.error(f"Error storing announcement {post.url}: {e}")
-                    stats.errors.append(f"{post.url}: {e}")
+                    await self._record_store_error(stats, post.url, e)
 
         # Broadcast new announcements via WebSocket
         if new_announcements:
@@ -378,7 +399,7 @@ class AnnouncementService:
             for post in posts:
                 try:
                     # Generate external ID from URL
-                    external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                    external_id = generate_external_id(post.url, post.title)
 
                     # Upsert announcement
                     announcement, created = await self.repo.upsert(
@@ -401,8 +422,7 @@ class AnnouncementService:
                         stats.updated += 1
 
                 except Exception as e:
-                    logger.error(f"Error storing announcement {post.url}: {e}")
-                    stats.errors.append(f"{post.url}: {e}")
+                    await self._record_store_error(stats, post.url, e)
 
         # Broadcast new announcements via WebSocket
         if new_announcements:
@@ -469,9 +489,9 @@ class AnnouncementService:
 
         new_announcements = []
 
-        for post in posts:
+        for post in self._flatten_scraped_posts(posts):
             try:
-                external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                external_id = generate_external_id(post.url, post.title)
 
                 announcement, created = await self.repo.upsert(
                     external_id=external_id,
@@ -492,8 +512,7 @@ class AnnouncementService:
                     stats.updated += 1
 
             except Exception as e:
-                logger.error(f"Error storing announcement {post.url}: {e}")
-                stats.errors.append(f"{post.url}: {e}")
+                await self._record_store_error(stats, post.url, e)
 
         # Check for curfews in new announcements
         if check_curfews and new_announcements:
@@ -564,9 +583,9 @@ class AnnouncementService:
 
         new_announcements = []
 
-        for post in posts:
+        for post in self._flatten_scraped_posts(posts):
             try:
-                external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                external_id = generate_external_id(post.url, post.title)
 
                 announcement, created = await self.repo.upsert(
                     external_id=external_id,
@@ -587,8 +606,7 @@ class AnnouncementService:
                     stats.updated += 1
 
             except Exception as e:
-                logger.error(f"Error storing announcement {post.url}: {e}")
-                stats.errors.append(f"{post.url}: {e}")
+                await self._record_store_error(stats, post.url, e)
 
         # Check for curfews in new announcements (important for DAO!)
         if check_curfews and new_announcements:
@@ -699,7 +717,7 @@ class AnnouncementService:
         for endpoint, posts in results.items():
             for post in posts:
                 try:
-                    external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                    external_id = generate_external_id(post.url, post.title)
 
                     announcement, created = await self.repo.upsert(
                         external_id=external_id,
@@ -720,8 +738,7 @@ class AnnouncementService:
                         stats.updated += 1
 
                 except Exception as e:
-                    logger.error(f"Error storing announcement {post.url}: {e}")
-                    stats.errors.append(f"{post.url}: {e}")
+                    await self._record_store_error(stats, post.url, e)
 
         if new_announcements:
             await self._broadcast_new_announcements(new_announcements)
@@ -798,9 +815,9 @@ class AnnouncementService:
 
         new_announcements = []
 
-        for post in results:
+        for post in self._flatten_scraped_posts(results):
             try:
-                external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                external_id = generate_external_id(post.url, post.title)
 
                 announcement, created = await self.repo.upsert(
                     external_id=external_id,
@@ -821,8 +838,7 @@ class AnnouncementService:
                     stats.updated += 1
 
             except Exception as e:
-                logger.error(f"Error storing announcement {post.url}: {e}")
-                stats.errors.append(f"{post.url}: {e}")
+                await self._record_store_error(stats, post.url, e)
 
         if new_announcements:
             await self._broadcast_new_announcements(new_announcements)
@@ -900,9 +916,9 @@ class AnnouncementService:
 
         new_announcements = []
 
-        for post in results:
+        for post in self._flatten_scraped_posts(results):
             try:
-                external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                external_id = generate_external_id(post.url, post.title)
 
                 announcement, created = await self.repo.upsert(
                     external_id=external_id,
@@ -923,8 +939,7 @@ class AnnouncementService:
                     stats.updated += 1
 
             except Exception as e:
-                logger.error(f"Error storing announcement {post.url}: {e}")
-                stats.errors.append(f"{post.url}: {e}")
+                await self._record_store_error(stats, post.url, e)
 
         if new_announcements:
             await self._broadcast_new_announcements(new_announcements)
@@ -1024,7 +1039,7 @@ class AnnouncementService:
             for _, posts in endpoint_posts.items():
                 for post in posts:
                     try:
-                        external_id = hashlib.md5(post.url.encode()).hexdigest()[:16]
+                        external_id = generate_external_id(post.url, post.title)
                         category = f"security:{post.category or 'notice'}"
                         announcement, created = await self.repo.upsert(
                             external_id=external_id,
@@ -1058,6 +1073,7 @@ class AnnouncementService:
                     except Exception as exc:
                         logger.error("Security ingestion failed for %s: %s", source_id, exc)
                         stats.errors.append(str(exc))
+                        await self._rollback_after_store_error()
 
             all_stats.append(stats)
 
@@ -1231,10 +1247,15 @@ class AnnouncementService:
             except Exception as e:
                 logger.warning(f"Failed to broadcast announcement: {e}")
 
-    async def get_summary(self, limit: int = 5, hours: Optional[int] = None) -> AnnouncementSummary:
+    async def get_summary(
+        self,
+        limit: int = 5,
+        hours: Optional[int] = None,
+        scope: Optional[str] = None,
+    ) -> AnnouncementSummary:
         """Get summary for dashboard widget."""
-        stats = await self.repo.get_stats(hours=hours)
-        latest = await self.repo.get_latest(limit=limit, hours=hours)
+        stats = await self.repo.get_stats(hours=hours, scope=scope)
+        latest = await self.repo.get_latest(limit=limit, hours=hours, scope=scope)
 
         return AnnouncementSummary(
             total=stats["total"],

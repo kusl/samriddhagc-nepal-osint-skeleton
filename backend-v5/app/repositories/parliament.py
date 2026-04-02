@@ -818,6 +818,58 @@ class AttendanceRepository:
         )
         return (result or 0) > 0
 
+    async def seed_swearing_in_baseline_for_current_members(self) -> int:
+        """Create one inaugural attendance record for each current MP if absent.
+
+        This is intended only for the beginning of a term when live attendance
+        scraping has not started yet. It gives all current members a uniform
+        baseline attendance record so early scoring does not penalize everyone
+        as if they never attended parliament.
+        """
+        baseline_dt = await self.db.scalar(
+            select(func.min(func.coalesce(MPPerformance.scraped_at, MPPerformance.created_at)))
+            .where(MPPerformance.is_current_member == True)
+        )
+        baseline_date = baseline_dt.date() if baseline_dt else date.today()
+        session_type = "swearing_in_baseline"
+
+        members_result = await self.db.execute(
+            select(MPPerformance).where(MPPerformance.is_current_member == True)
+        )
+        members = list(members_result.scalars().all())
+        if not members:
+            return 0
+
+        existing_result = await self.db.execute(
+            select(SessionAttendance.mp_id).where(
+                SessionAttendance.session_date == baseline_date,
+                SessionAttendance.session_type == session_type,
+            )
+        )
+        existing_mp_ids = {row[0] for row in existing_result.all()}
+
+        now = datetime.utcnow()
+        created = 0
+        for member in members:
+            if member.id in existing_mp_ids:
+                continue
+            self.db.add(
+                SessionAttendance(
+                    mp_id=member.id,
+                    session_date=baseline_date,
+                    session_type=session_type,
+                    present=True,
+                    chamber=member.chamber,
+                    term=member.term,
+                    scraped_at=now,
+                )
+            )
+            created += 1
+
+        if created:
+            await self.db.commit()
+        return created
+
     async def get_session_dates(
         self, chamber: Optional[str] = None, limit: int = 50
     ) -> list[date]:

@@ -77,6 +77,7 @@ export function useUserStatements() {
     queryFn: () => getUserStatements(),
     staleTime: 2 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+    enabled: false,
   });
 }
 
@@ -99,5 +100,6 @@ export function useMyStoryRequests() {
     queryFn: () => getMyStoryRequests(),
     staleTime: 2 * 60 * 1000,
     refetchInterval: 5 * 60 * 1000,
+    enabled: false,
   });
 }

@@ -1,4 +1,5 @@
 """Shared OpenAI runtime for embeddings and strict JSON judgments."""
+import asyncio
 import hashlib
 import json
 import logging
@@ -153,6 +154,20 @@ class OpenAIRuntime:
                 per_hour=self.settings.openai_max_structured_calls_per_hour,
                 per_day=self.settings.openai_max_structured_calls_per_day,
             )
+        elif bucket == "govt_decision":
+            await self.limiter.consume(
+                "govt_decision",
+                request_units,
+                per_hour=self.settings.openai_max_govt_decision_calls_per_hour,
+                per_day=self.settings.openai_max_govt_decision_calls_per_day,
+            )
+        elif bucket == "cabinet_action":
+            await self.limiter.consume(
+                "cabinet_action",
+                request_units,
+                per_hour=self.settings.openai_max_cabinet_action_calls_per_hour,
+                per_day=self.settings.openai_max_cabinet_action_calls_per_day,
+            )
         elif bucket == "agent":
             await self.limiter.consume(
                 "agent",
@@ -293,23 +308,35 @@ class OpenAIRuntime:
 
         await self._consume_request_budget(bucket=usage_bucket)
 
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            response = await client.post(
-                f"{self.base_url}/chat/completions",
-                headers=self._headers(),
-                json=request_payload,
-            )
-            response.raise_for_status()
-            data = response.json()
+        last_error: Exception | None = None
+        parsed: dict[str, Any] | None = None
+        for attempt in range(2):
+            try:
+                async with httpx.AsyncClient(timeout=180.0) as client:
+                    response = await client.post(
+                        f"{self.base_url}/chat/completions",
+                        headers=self._headers(),
+                        json=request_payload,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
 
-        content = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-        )
-        if not content:
-            raise ValueError("OpenAI returned empty structured content")
-        parsed = json.loads(content)
+                content = (
+                    data.get("choices", [{}])[0]
+                    .get("message", {})
+                    .get("content", "")
+                )
+                if not content:
+                    raise ValueError("OpenAI returned empty structured content")
+                parsed = json.loads(content)
+                break
+            except (httpx.ReadError, json.JSONDecodeError, ValueError) as exc:
+                last_error = exc
+                if attempt == 1:
+                    raise
+                await asyncio.sleep(1.0)
+        if parsed is None:
+            raise last_error or ValueError("OpenAI structured completion failed")
         await self._cache_set(cache_key, {"result": parsed})
         return parsed
 

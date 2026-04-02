@@ -2,8 +2,8 @@
 """Local ECN scraper — runs on Mac, POSTs vote data to VPS.
 
 Usage:
-    OSINT_PASSWORD=your-osint-password python3 scrape_ecn_local.py --loop 180
-    OSINT_PASSWORD=your-osint-password python3 scrape_ecn_local.py --once
+    OSINT_PASSWORD=devpassword123 python3 scrape_ecn_local.py --loop 180
+    OSINT_PASSWORD=devpassword123 python3 scrape_ecn_local.py --once
 """
 import argparse
 import json

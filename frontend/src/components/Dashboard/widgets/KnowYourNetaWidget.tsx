@@ -7,6 +7,7 @@
  * If no parliament session yet, shows graceful "awaiting" state.
  */
 import { memo, useEffect, useState, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Widget } from '../Widget';
 import {
   Landmark, Search, X, User, MapPin,
@@ -36,6 +37,14 @@ interface CandidateInfo {
   gender?: string;
   biography?: string;
   biographySource?: string;
+  electionType?: 'fptp' | 'pr';
+}
+
+type ElectionTypeFilter = 'all' | 'fptp' | 'pr';
+
+function canonicalPartyKey(party: string): string {
+  const shortLabel = getPartyShortLabel(party)?.trim();
+  return shortLabel || party.trim();
 }
 
 // Parliament performance data from API
@@ -60,6 +69,14 @@ interface ParliamentRecord {
   notable_roles?: string;
 }
 
+interface PublicParliamentSummaryResponse extends ParliamentRecord {
+  id: string;
+  name_en?: string;
+  name_ne?: string;
+  party?: string;
+  chamber?: string;
+}
+
 // Performance card for an MP
 function PerformanceCard({ mp, onClose }: { mp: CandidateInfo; onClose: () => void }) {
   const [record, setRecord] = useState<ParliamentRecord | null>(null);
@@ -67,34 +84,42 @@ function PerformanceCard({ mp, onClose }: { mp: CandidateInfo; onClose: () => vo
   const [noData, setNoData] = useState(false);
 
   useEffect(() => {
+    let isCancelled = false;
+
     const fetchRecord = async () => {
       setLoading(true);
+      setNoData(false);
+      setRecord(null);
       try {
-        // Try fetching by candidate ID link
-        const res = await apiClient.get(`/parliament/members/by-candidate/${mp.id}`);
-        setRecord(res.data);
-        setNoData(false);
-      } catch {
-        // Try search by name
-        try {
-          const res = await apiClient.get('/parliament/members', {
-            params: { q: mp.name, per_page: 1 },
-          });
-          if (res.data.items?.length > 0) {
-            setRecord(res.data.items[0]);
+        if (!mp.id.startsWith('pr-')) {
+          const res = await apiClient.get<PublicParliamentSummaryResponse>(
+            `/election-results/house-representatives/${mp.id}/parliamentary-summary`
+          );
+          if (!isCancelled) {
+            setRecord(res.data);
             setNoData(false);
-          } else {
-            setNoData(true);
           }
-        } catch {
-          setNoData(true);
+          return;
         }
-      } finally {
-        setLoading(false);
+      } catch {
+        // Public summary unavailable; fall through to no-data state.
+      }
+      if (!isCancelled) {
+        setNoData(true);
       }
     };
     fetchRecord();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [mp.id, mp.name]);
+
+  useEffect(() => {
+    if (record || noData) {
+      setLoading(false);
+    }
+  }, [record, noData]);
 
   const color = getPartyColor(mp.party);
   const tierLabel = (tier?: string) => {
@@ -108,46 +133,59 @@ function PerformanceCard({ mp, onClose }: { mp: CandidateInfo; onClose: () => vo
     }
   };
 
-  return (
+  const modalHost = typeof document === 'undefined'
+    ? null
+    : (document.fullscreenElement instanceof HTMLElement ? document.fullscreenElement : document.body);
+
+  if (!modalHost) {
+    return null;
+  }
+
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
       onClick={onClose}
     >
       <div
-        className="bg-[#13161a] border border-white/10 rounded-xl shadow-2xl w-[400px] max-h-[85vh] flex flex-col overflow-hidden"
+        className="bg-[#13161a] border border-white/10 rounded-xl shadow-2xl w-full max-w-[860px] max-h-[calc(100vh-64px)] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
+        style={{
+          boxShadow: '0 32px 80px rgba(0, 0, 0, 0.55)',
+        }}
       >
         {/* Header */}
-        <div className="p-4 relative flex-shrink-0" style={{ background: `linear-gradient(135deg, ${color}25 0%, transparent 100%)` }}>
+        <div className="p-5 relative flex-shrink-0" style={{ background: `linear-gradient(135deg, ${color}22 0%, rgba(15, 18, 24, 0.92) 68%)` }}>
           <button onClick={onClose} className="absolute top-3 right-3 p-1.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors">
             <X size={14} className="text-white" />
           </button>
           <div className="flex items-start gap-3">
-            <div className="w-14 h-14 rounded-lg bg-slate-800 overflow-hidden flex-shrink-0 border-2 border-white/10">
+            <div className="w-20 h-20 rounded-xl bg-slate-800 overflow-hidden flex-shrink-0 border-2 border-white/10">
               {mp.photoUrl ? (
                 <img src={mp.photoUrl} alt="" className="w-full h-full object-cover"
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-800">
-                  <User size={24} className="text-slate-500" />
+                  <User size={30} className="text-slate-500" />
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0 pt-0.5">
-              <h3 className="text-[15px] font-bold text-white leading-tight">{mp.name}</h3>
+              <h3 className="text-[20px] font-bold text-white leading-tight">{mp.name}</h3>
               {mp.nameNe && mp.nameNe !== mp.name && (
-                <div className="text-[11px] text-slate-400 mt-0.5">{mp.nameNe}</div>
+                <div className="text-[12px] text-slate-400 mt-1">{mp.nameNe}</div>
               )}
-              <div className="flex items-center gap-2 mt-1.5">
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
                 <span style={{
-                  fontSize: 9, fontWeight: 700, padding: '1px 6px',
+                  fontSize: 10, fontWeight: 700, padding: '3px 8px',
                   background: color, color: '#fff',
+                  borderRadius: 999,
+                  letterSpacing: '0.08em',
                 }}>
                   {getPartyShortLabel(mp.party)}
                 </span>
-                <span className="text-[10px] text-slate-500">{mp.constituency}</span>
+                <span className="text-[12px] text-slate-300">{mp.constituency}</span>
               </div>
-              <div className="text-[10px] text-slate-600 mt-0.5">
+              <div className="text-[11px] text-slate-500 mt-1">
                 {mp.district}, {mp.province}
               </div>
             </div>
@@ -155,20 +193,20 @@ function PerformanceCard({ mp, onClose }: { mp: CandidateInfo; onClose: () => vo
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
             </div>
           ) : noData ? (
-            // No parliament data yet — new parliament
+            // Public parliament linkage missing
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-4 rounded-lg bg-amber-500/5 border border-amber-500/15">
                 <AlertCircle size={20} className="text-amber-400 flex-shrink-0" />
                 <div>
-                  <div className="text-[12px] font-semibold text-amber-400">Awaiting First Session</div>
+                  <div className="text-[12px] font-semibold text-amber-400">Parliamentary Record Unavailable</div>
                   <div className="text-[10px] text-slate-500 mt-1 leading-relaxed">
-                    The 2082 parliament has not convened yet. Performance data will appear once sessions begin and the parliament scraper picks up attendance, bills, and committee assignments.
+                    This public candidate profile does not yet have a linked parliamentary summary. Election, constituency, and biography data are available below, but attendance, bills, and committee metrics are not currently attached to this profile.
                   </div>
                 </div>
               </div>
@@ -225,22 +263,22 @@ function PerformanceCard({ mp, onClose }: { mp: CandidateInfo; onClose: () => vo
               )}
 
               {/* Category breakdown */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {[
                   { label: 'Legislative', score: record.legislative_score, icon: FileText, detail: `${record.bills_introduced} bills introduced, ${record.bills_passed} passed` },
                   { label: 'Participation', score: record.participation_score, icon: BarChart3, detail: record.session_attendance_pct != null ? `${record.session_attendance_pct.toFixed(0)}% attendance` : 'No data' },
                   { label: 'Accountability', score: record.accountability_score, icon: MessageSquare, detail: `${record.questions_asked} questions asked` },
                   { label: 'Committee', score: record.committee_score, icon: Users, detail: `${record.committee_memberships} memberships${record.committee_leadership_roles > 0 ? `, ${record.committee_leadership_roles} leadership` : ''}` },
                 ].map(cat => (
-                  <div key={cat.label} className="p-2.5 rounded-lg bg-white/[0.02] border border-white/5">
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <cat.icon size={10} className="text-slate-500" />
-                      <span className="text-[9px] text-slate-500 uppercase tracking-wide">{cat.label}</span>
+                  <div key={cat.label} className="p-4 rounded-xl bg-white/[0.02] border border-white/5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <cat.icon size={12} className="text-slate-500" />
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wide">{cat.label}</span>
                     </div>
-                    <div className="text-lg font-bold text-white font-mono">
+                    <div className="text-[20px] font-bold text-white font-mono">
                       {cat.score != null ? cat.score.toFixed(0) : '--'}
                     </div>
-                    <div className="text-[9px] text-slate-600 mt-0.5">{cat.detail}</div>
+                    <div className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">{cat.detail}</div>
                   </div>
                 ))}
               </div>
@@ -283,6 +321,8 @@ function PerformanceCard({ mp, onClose }: { mp: CandidateInfo; onClose: () => vo
         </div>
       </div>
     </div>
+    ,
+    modalHost,
   );
 }
 
@@ -292,6 +332,7 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedParty, setSelectedParty] = useState<string | null>(null);
+  const [selectedElectionType, setSelectedElectionType] = useState<ElectionTypeFilter>('all');
   const [selectedMP, setSelectedMP] = useState<CandidateInfo | null>(null);
 
   // Load winners
@@ -299,9 +340,40 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const data = await loadElectionData(electionYear);
+        const combinedResponse = await apiClient.get('/election-results/house-representatives').catch(() => null);
+
+        if (combinedResponse?.data?.members?.length) {
+          const combinedMembers: CandidateInfo[] = combinedResponse.data.members.map((member: any) => ({
+            id: member.id,
+            constituencyId: member.constituency_id,
+            name: member.name,
+            nameNe: member.name_ne,
+            nameRoman: member.name_roman,
+            party: member.party,
+            constituency: member.constituency,
+            district: member.district,
+            province: member.province,
+            votes: member.votes || 0,
+            votePct: member.vote_pct || 0,
+            isWinner: true,
+            photoUrl: member.photo_url || undefined,
+            age: member.age || undefined,
+            gender: member.gender,
+            biography: member.biography,
+            biographySource: member.biography_source,
+            electionType: member.election_type,
+          }));
+          setCandidates(combinedMembers);
+          return;
+        }
+
+        const [data, prResponse] = await Promise.all([
+          loadElectionData(electionYear),
+          apiClient.get('/election-results/pr-members').catch(() => null),
+        ]);
+
+        const winners: CandidateInfo[] = [];
         if (data) {
-          const winners: CandidateInfo[] = [];
           for (const c of data.constituencies) {
             const sorted = [...c.candidates].sort((a, b) => b.votes - a.votes);
             for (const candidate of sorted) {
@@ -324,11 +396,28 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
                 gender: candidate.gender,
                 biography: candidate.biography,
                 biographySource: candidate.biography_source,
+                electionType: 'fptp',
               });
             }
           }
-          setCandidates(winners.sort((a, b) => a.name.localeCompare(b.name)));
         }
+
+        const prMembers = (prResponse?.data?.members || []).map((member: any) => ({
+          id: member.id,
+          constituencyId: `pr-${member.party_code || member.party}`,
+          name: member.name_roman || member.name_ne,
+          nameNe: member.name_ne,
+          nameRoman: member.name_roman,
+          party: member.party_code || member.party,
+          constituency: 'PR - Party List',
+          district: member.district || 'Party List',
+          province: 'PR',
+          votes: 0,
+          votePct: 0,
+          isWinner: true,
+          electionType: 'pr' as const,
+        }));
+        setCandidates([...winners, ...prMembers].sort((a, b) => a.name.localeCompare(b.name)));
       } catch (err) {
         console.error('Failed to load parliamentarians:', err);
       } finally {
@@ -339,15 +428,38 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
   }, [electionYear]);
 
   // Party counts
+  const typeScopedCandidates = useMemo(() => {
+    if (selectedElectionType === 'all') return candidates;
+    return candidates.filter((candidate) => candidate.electionType === selectedElectionType);
+  }, [candidates, selectedElectionType]);
+
   const parties = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const c of candidates) counts[c.party] = (counts[c.party] || 0) + 1;
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
-  }, [candidates]);
+    const counts = new Map<string, { count: number; colorParty: string }>();
+    for (const candidate of typeScopedCandidates) {
+      const key = canonicalPartyKey(candidate.party);
+      const existing = counts.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        counts.set(key, { count: 1, colorParty: candidate.party });
+      }
+    }
+
+    return Array.from(counts.entries())
+      .map(([party, value]) => ({
+        party,
+        count: value.count,
+        colorParty: value.colorParty,
+      }))
+      .sort((a, b) => b.count - a.count || a.party.localeCompare(b.party));
+  }, [typeScopedCandidates]);
 
   // Filter
   const filtered = useMemo(() => {
     let result = candidates;
+    if (selectedElectionType !== 'all') {
+      result = result.filter((candidate) => candidate.electionType === selectedElectionType);
+    }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(c =>
@@ -358,35 +470,87 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
         c.district.toLowerCase().includes(q)
       );
     }
-    if (selectedParty) result = result.filter(c => c.party === selectedParty);
+    if (selectedParty) {
+      result = result.filter((candidate) => canonicalPartyKey(candidate.party) === selectedParty);
+    }
     return result;
-  }, [candidates, searchQuery, selectedParty]);
+  }, [candidates, searchQuery, selectedParty, selectedElectionType]);
+
+  const electionTypeCounts = useMemo(() => ({
+    all: candidates.length,
+    fptp: candidates.filter((candidate) => candidate.electionType === 'fptp').length,
+    pr: candidates.filter((candidate) => candidate.electionType === 'pr').length,
+  }), [candidates]);
+
+  useEffect(() => {
+    if (selectedParty && !parties.some((party) => party.party === selectedParty)) {
+      setSelectedParty(null);
+    }
+  }, [parties, selectedParty]);
 
   return (
     <Widget id="neta" icon={<Landmark size={14} />} badge={candidates.length}>
       <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Search & Filter */}
         <div style={{ padding: '8px 10px', borderBottom: '1px solid var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            background: 'var(--bg-elevated)', padding: '4px 8px',
-            border: '1px solid var(--border-subtle)',
-          }}>
-            <Search size={11} style={{ color: 'var(--text-disabled)', flexShrink: 0 }} />
-            <input
-              type="text" value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search name, constituency, district..."
-              style={{
-                flex: 1, background: 'transparent', border: 'none', outline: 'none',
-                fontSize: 11, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)',
-              }}
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                <X size={11} style={{ color: 'var(--text-muted)' }} />
-              </button>
-            )}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'var(--bg-elevated)', padding: '4px 8px',
+              border: '1px solid var(--border-subtle)',
+              minWidth: 220,
+              flex: '1 1 220px',
+            }}>
+              <Search size={11} style={{ color: 'var(--text-disabled)', flexShrink: 0 }} />
+              <input
+                type="text" value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search name, constituency, district..."
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  fontSize: 11, color: 'var(--text-primary)', fontFamily: 'var(--font-sans)',
+                }}
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+                  <X size={11} style={{ color: 'var(--text-muted)' }} />
+                </button>
+              )}
+            </div>
+            <div style={{
+              display: 'inline-flex',
+              border: '1px solid var(--border-subtle)',
+              background: 'var(--bg-elevated)',
+              overflow: 'hidden',
+            }}>
+              {([
+                { id: 'all', label: 'All', count: electionTypeCounts.all },
+                { id: 'fptp', label: 'FPTP', count: electionTypeCounts.fptp },
+                { id: 'pr', label: 'PR', count: electionTypeCounts.pr },
+              ] as const).map((option) => {
+                const active = selectedElectionType === option.id;
+                return (
+                  <button
+                    key={option.id}
+                    onClick={() => setSelectedElectionType(option.id)}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: 9,
+                      fontWeight: 700,
+                      background: active ? 'rgba(59,130,246,0.18)' : 'transparent',
+                      color: active ? 'var(--text-primary)' : 'var(--text-muted)',
+                      border: 'none',
+                      borderRight: option.id !== 'pr' ? '1px solid var(--border-subtle)' : 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-sans)',
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {option.label} ({option.count})
+                  </button>
+                );
+              })}
+            </div>
           </div>
           <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
             <button
@@ -399,11 +563,11 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
                 cursor: 'pointer', fontFamily: 'var(--font-sans)',
               }}
             >
-              All ({candidates.length})
+              All ({typeScopedCandidates.length})
             </button>
-            {parties.map(([party, count]) => {
+            {parties.map(({ party, count, colorParty }) => {
               const active = selectedParty === party;
-              const pColor = getPartyColor(party);
+              const pColor = getPartyColor(colorParty);
               return (
                 <button key={party}
                   onClick={() => setSelectedParty(active ? null : party)}
@@ -415,7 +579,7 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
                     cursor: 'pointer', fontFamily: 'var(--font-sans)',
                   }}
                 >
-                  {getPartyShortLabel(party)} ({count})
+                  {party} ({count})
                 </button>
               );
             })}
@@ -427,7 +591,7 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
           padding: '4px 10px', fontSize: 9, color: 'var(--text-disabled)',
           borderBottom: '1px solid var(--border-subtle)',
         }}>
-          {filtered.length} elected representatives — click for performance card
+          {filtered.length} elected representatives
         </div>
 
         {/* MP List */}
@@ -479,6 +643,17 @@ export const KnowYourNetaWidget = memo(function KnowYourNetaWidget() {
                     </span>
                     <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 4px', background: pColor, color: '#fff', flexShrink: 0 }}>
                       {getPartyShortLabel(mp.party)}
+                    </span>
+                    <span style={{
+                      fontSize: 8,
+                      fontWeight: 700,
+                      padding: '1px 4px',
+                      background: 'var(--bg-elevated)',
+                      color: mp.electionType === 'pr' ? '#60A5FA' : 'var(--text-muted)',
+                      border: '1px solid var(--border-subtle)',
+                      flexShrink: 0,
+                    }}>
+                      {mp.electionType === 'pr' ? 'PR' : 'FPTP'}
                     </span>
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1, display: 'flex', alignItems: 'center', gap: 4 }}>

@@ -151,12 +151,9 @@ function shortParty(p) {
 }
 
 async function login() {
-  const email = localStorage.getItem('parliamentPreviewEmail') || 'dev@narada.dev';
-  const password = window.prompt('Enter the OSINT password for preview login');
-  if (!password) throw new Error('OSINT password is required for preview login');
   const r = await fetch(`${API}/auth/login`, {
     method: 'POST', headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({email, password})
+    body: JSON.stringify({email:'dev@narada.dev', password:'devpassword123'})
   });
   const d = await r.json();
   TOKEN = d.access_token;

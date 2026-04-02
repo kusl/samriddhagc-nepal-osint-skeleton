@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getMarketSummary,
   refreshMarketData,
@@ -9,7 +9,7 @@ import {
 // Query keys - centralized for cache invalidation
 export const marketKeys = {
   all: ['market'] as const,
-  summary: () => [...marketKeys.all, 'summary'] as const,
+  summary: () => [...marketKeys.all, 'summary', 'v4'] as const,
 };
 
 /**
@@ -24,11 +24,13 @@ export function useMarketSummary() {
   return useQuery<MarketSummary>({
     queryKey: marketKeys.summary(),
     queryFn: getMarketSummary,
-    staleTime: 30 * 60 * 1000, // 30 minutes
+    staleTime: 5 * 60 * 1000,
     gcTime: 60 * 60 * 1000, // keep cached for 1 hour
-    refetchInterval: 30 * 60 * 1000, // hourly backend poll does not need 5-minute fanout
+    placeholderData: keepPreviousData,
+    refetchInterval: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
+    refetchOnReconnect: true,
+    refetchOnMount: false,
   });
 }
 

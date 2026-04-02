@@ -40,6 +40,7 @@ interface MapEvent {
   severity: string;
   timestamp: string;
   timeLabel?: string;
+  isFetchedOnly?: boolean;
   district?: string;
   coordinates: [number, number];
   story_type?: string;
@@ -250,6 +251,17 @@ function getTimeAgo(timestamp: string): string {
   if (mins < 60) return `${mins}m`;
   if (mins < 1440) return `${Math.floor(mins / 60)}h`;
   return `${Math.floor(mins / 1440)}d`;
+}
+
+function getFeedPriorityBucket(event: Pick<MapEvent, 'category' | 'isFetchedOnly'>): number {
+  if (event.category !== 'GOVERNMENT') return 0;
+  return event.isFetchedOnly ? 2 : 1;
+}
+
+function compareFeedEvents(a: Pick<MapEvent, 'category' | 'isFetchedOnly' | 'timestamp'>, b: Pick<MapEvent, 'category' | 'isFetchedOnly' | 'timestamp'>): number {
+  const bucketDiff = getFeedPriorityBucket(a) - getFeedPriorityBucket(b);
+  if (bucketDiff !== 0) return bucketDiff;
+  return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
 }
 
 function getEventTimeLabel(event: Pick<MapEvent, 'timestamp' | 'timeLabel'>): string {
@@ -727,6 +739,7 @@ function SituationMapWidget() {
       severity: a.is_important ? 'HIGH' : 'MEDIUM',
       timestamp: a.timestamp,
       timeLabel: a.time_label,
+      isFetchedOnly: a.is_fetched_only,
       district: a.district,
       coordinates: a.coordinates,
       story_type: a.category.replace(/-/g, ' '),
@@ -1433,7 +1446,7 @@ function SituationMapWidget() {
   const recentEvents = useMemo(() => {
     // Deduplicate by title (keep most recent) in addition to cluster_id dedup
     const seenTitles = new globalThis.Map<string, MapEvent>();
-    const sorted = [...dedupedFilteredEvents].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const sorted = [...dedupedFilteredEvents].sort(compareFeedEvents);
     const deduped: MapEvent[] = [];
     for (const e of sorted) {
       const key = e.title.trim().toLowerCase();

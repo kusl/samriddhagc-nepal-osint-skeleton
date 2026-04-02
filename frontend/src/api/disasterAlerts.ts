@@ -5,6 +5,7 @@ import apiClient from './client'
 export interface DisasterAlert {
   id: string
   external_id: string | null
+  entry_type?: 'alert' | 'incident'
   title: string
   title_ne: string | null
   description: string | null
@@ -47,6 +48,7 @@ export interface DisasterIncident {
 
 export interface AlertStats {
   active_alerts: number
+  recent_alerts?: number
   danger_alerts: number
   warning_alerts: number
   by_severity: Record<string, number>
@@ -194,6 +196,7 @@ export const getHazardIcon = (hazardType: string | null): string => {
     earthquake: '🔔',
     fire: '🔥',
     forest_fire: '🌲🔥',
+    pollution: '🌫️',
     lightning: '⚡',
     drought: '☀️',
     cold_wave: '❄️',
@@ -201,6 +204,7 @@ export const getHazardIcon = (hazardType: string | null): string => {
     avalanche: '🏔️',
     glof: '🏔️💧',
     wind_storm: '💨',
+    windstorm: '💨',
     heavy_rainfall: '🌧️',
     animal_attack: '🐻',
     drowning: '🏊',

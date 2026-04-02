@@ -64,6 +64,20 @@ export {
   debtClockKeys,
 } from './useDebtClock';
 
+export {
+  useEconomySnapshot,
+  economyKeys,
+} from './useEconomy';
+
+export {
+  useProcurementContracts,
+  useProcurementStats,
+  useProcurementEntityBuckets,
+  useProcurementTopEntities,
+  useProcurementWidgetSummary,
+  procurementKeys,
+} from './useProcurement';
+
 // Government Announcements hooks
 export {
   useAnnouncementSummary,
@@ -74,6 +88,18 @@ export {
   useToggleImportant,
   announcementKeys,
 } from './useAnnouncements';
+
+export {
+  useLatestGovtDecisions,
+  govtDecisionKeys,
+} from './useGovtDecisions';
+
+export {
+  useCabinetActionSummary,
+  useCabinetActionItems,
+  useCabinetActionDetail,
+  cabinetActionKeys,
+} from './useCabinetActions';
 
 // Market data hooks (NEPSE, forex, gold/silver, fuel)
 export {

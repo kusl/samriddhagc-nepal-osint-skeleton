@@ -65,6 +65,18 @@ def parse_bs_date(date_str: str) -> Optional[datetime]:
     return None
 
 
+def extract_bs_sort_key(date_str: str) -> Optional[tuple[int, int, int]]:
+    """Extract a sortable BS date tuple from strings like '2082.12.11(2026.03.26)'."""
+    try:
+        match = re.search(r'(\d{4})\.(\d{1,2})\.(\d{1,2})', date_str or '')
+        if not match:
+            return None
+        year, month, day = match.groups()
+        return (int(year), int(month), int(day))
+    except Exception:
+        return None
+
+
 async def fetch_fuel_prices() -> Optional[FuelPrices]:
     """Fetch fuel prices from NOC website.
 
@@ -105,7 +117,7 @@ async def fetch_fuel_prices() -> Optional[FuelPrices]:
             lpg_idx = None
 
             for i, header in enumerate(headers):
-                if 'date' in header or 'effective' in header:
+                if 'date' in header and 'time' not in header:
                     date_idx = i
                 elif 'petrol' in header or 'ms' in header:
                     petrol_idx = i
@@ -116,14 +128,24 @@ async def fetch_fuel_prices() -> Optional[FuelPrices]:
                 elif 'lpg' in header:
                     lpg_idx = i
 
-            # Get the most recent price row (first data row after header)
+            # Get the most recent actual retail row.
+            # The table sometimes starts with an older "प्रेस ..." row that should not
+            # override the latest effective retail prices.
             rows = table.find_all("tr")
             data_row = None
+            best_sort_key = None
             for row in rows[1:]:  # Skip header
                 cells = row.find_all("td")
                 if len(cells) >= 5:  # Must have enough columns
-                    data_row = cells
-                    break
+                    first_cell_text = cells[0].get_text(" ", strip=True)
+                    if 'प्रेस' in first_cell_text.lower():
+                        continue
+                    sort_key = extract_bs_sort_key(first_cell_text)
+                    if sort_key is None:
+                        continue
+                    if best_sort_key is None or sort_key > best_sort_key:
+                        best_sort_key = sort_key
+                        data_row = cells
 
             if not data_row:
                 logger.warning("Could not find data row in NOC price table")

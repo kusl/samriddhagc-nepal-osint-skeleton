@@ -131,6 +131,22 @@ async def guest_login(
     )
 
 
+@router.post("/public", response_model=LoginResponse)
+async def public_login():
+    """Issue a stateless public consumer session without creating a DB user."""
+    public_expire_minutes = max(settings.guest_token_expire_hours * 60, 7 * 24 * 60)
+    user = AuthService.build_public_consumer_user()
+    access_token = AuthService.create_public_access_token(expires_minutes=public_expire_minutes)
+    refresh_token = AuthService.create_public_refresh_token()
+
+    return LoginResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=public_expire_minutes * 60,
+        user=UserResponse.model_validate(user),
+    )
+
+
 @router.post("/send-otp")
 async def send_otp(
     request: SendOTPRequest,

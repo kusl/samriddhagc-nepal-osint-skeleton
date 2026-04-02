@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Zap, TrendingUp, AlertTriangle, RefreshCw } from 'lucide-react'
-import { fetchApiMetrics, type ApiMetrics } from '../../api/system'
+import { Zap, RefreshCw } from 'lucide-react'
+import { fetchApiMetrics } from '../../api/system'
 
 function MetricCard({ label, value, sub, color }: { label: string; value: string; sub?: string; color?: string }) {
   return (
@@ -20,6 +20,60 @@ export function ApiMonitorPanel() {
     queryFn: () => fetchApiMetrics(period),
     refetchInterval: 60000,
   })
+  const summaryCards = useMemo(() => {
+    if (!data) return []
+    return [
+      { label: 'Total Requests', value: data.request_count.toLocaleString() },
+      {
+        label: 'Platform Errors',
+        value: data.platform_error_count.toLocaleString(),
+        sub: `${(data.platform_error_rate * 100).toFixed(2)}% real server failures`,
+        color: data.platform_error_count > 0 ? 'text-red-400' : 'text-emerald-400',
+      },
+      {
+        label: 'Client Errors',
+        value: data.client_error_count.toLocaleString(),
+        sub: `${(data.client_error_rate * 100).toFixed(2)}% 4xx responses`,
+        color: data.client_error_count > 0 ? 'text-amber-400' : 'text-white',
+      },
+      {
+        label: 'Auth Misuse',
+        value: data.auth_error_count.toLocaleString(),
+        sub: '401/403 requests',
+        color: data.auth_error_count > 0 ? 'text-sky-400' : 'text-white',
+      },
+      {
+        label: 'Broken Integration',
+        value: data.broken_integration_count.toLocaleString(),
+        sub: 'Known bad-route noise',
+        color: data.broken_integration_count > 0 ? 'text-fuchsia-400' : 'text-white',
+      },
+      { label: 'Avg Response', value: `${data.avg_response_ms.toFixed(0)}ms` },
+      {
+        label: 'P95',
+        value: `${data.p95_response_ms.toFixed(0)}ms`,
+        color: data.p95_response_ms > 500 ? 'text-amber-400' : 'text-white',
+      },
+      {
+        label: 'P99',
+        value: `${data.p99_response_ms.toFixed(0)}ms`,
+        color: data.p99_response_ms > 1000 ? 'text-red-400' : 'text-white',
+      },
+    ]
+  }, [data])
+
+  const healthBadgeClass = (health: string) => {
+    switch (health) {
+      case 'degraded':
+        return 'bg-red-500/15 text-red-300 border border-red-500/30'
+      case 'broken_integration':
+        return 'bg-fuchsia-500/15 text-fuchsia-300 border border-fuchsia-500/30'
+      case 'auth_misuse':
+        return 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+      default:
+        return 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -56,35 +110,10 @@ export function ApiMonitorPanel() {
       ) : (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-6 gap-3">
-            <MetricCard
-              label="Total Requests"
-              value={data.request_count.toLocaleString()}
-            />
-            <MetricCard
-              label="Errors"
-              value={data.error_count.toLocaleString()}
-              color={data.error_count > 0 ? 'text-red-400' : 'text-white'}
-            />
-            <MetricCard
-              label="Error Rate"
-              value={`${(data.error_rate * 100).toFixed(2)}%`}
-              color={data.error_rate > 0.01 ? 'text-amber-400' : 'text-emerald-400'}
-            />
-            <MetricCard
-              label="Avg Response"
-              value={`${data.avg_response_ms.toFixed(0)}ms`}
-            />
-            <MetricCard
-              label="P95"
-              value={`${data.p95_response_ms.toFixed(0)}ms`}
-              color={data.p95_response_ms > 500 ? 'text-amber-400' : 'text-white'}
-            />
-            <MetricCard
-              label="P99"
-              value={`${data.p99_response_ms.toFixed(0)}ms`}
-              color={data.p99_response_ms > 1000 ? 'text-red-400' : 'text-white'}
-            />
+          <div className="grid grid-cols-4 gap-3 xl:grid-cols-8">
+            {summaryCards.map((card) => (
+              <MetricCard key={card.label} label={card.label} value={card.value} sub={card.sub} color={card.color} />
+            ))}
           </div>
 
           {/* Endpoint Table */}
@@ -103,13 +132,13 @@ export function ApiMonitorPanel() {
                   <th className="px-4 py-2.5 text-right">Requests</th>
                   <th className="px-4 py-2.5 text-right">Avg (ms)</th>
                   <th className="px-4 py-2.5 text-right">P95 (ms)</th>
-                  <th className="px-4 py-2.5 text-right">Errors</th>
+                  <th className="px-4 py-2.5 text-right">4xx</th>
+                  <th className="px-4 py-2.5 text-right">5xx</th>
                   <th className="px-4 py-2.5">Health</th>
                 </tr>
               </thead>
               <tbody>
                 {data.endpoints.map((ep, i) => {
-                  const errorRate = ep.count > 0 ? ep.errors / ep.count : 0
                   return (
                     <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
                       <td className="px-4 py-2.5 text-xs text-white font-mono">{ep.path}</td>
@@ -126,18 +155,16 @@ export function ApiMonitorPanel() {
                       <td className="px-4 py-2.5 text-xs text-white font-mono text-right tabular-nums">{ep.count.toLocaleString()}</td>
                       <td className="px-4 py-2.5 text-xs text-white font-mono text-right tabular-nums">{ep.avg_ms.toFixed(0)}</td>
                       <td className="px-4 py-2.5 text-xs text-white/50 font-mono text-right tabular-nums">{ep.p95_ms.toFixed(0)}</td>
-                      <td className={`px-4 py-2.5 text-xs font-mono text-right tabular-nums ${ep.errors > 0 ? 'text-red-400' : 'text-white/30'}`}>
-                        {ep.errors}
+                      <td className={`px-4 py-2.5 text-xs font-mono text-right tabular-nums ${ep.client_errors > 0 ? 'text-amber-400' : 'text-white/30'}`}>
+                        {ep.client_errors}
+                      </td>
+                      <td className={`px-4 py-2.5 text-xs font-mono text-right tabular-nums ${ep.server_errors > 0 ? 'text-red-400' : 'text-white/30'}`}>
+                        {ep.server_errors}
                       </td>
                       <td className="px-4 py-2.5">
-                        <div className="w-16 h-1.5 bg-white/[0.05] rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full ${
-                              errorRate > 0.05 ? 'bg-red-400' : errorRate > 0.01 ? 'bg-amber-400' : 'bg-emerald-400'
-                            }`}
-                            style={{ width: `${Math.max(5, (1 - errorRate) * 100)}%` }}
-                          />
-                        </div>
+                        <span className={`inline-flex rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-wide ${healthBadgeClass(ep.health)}`}>
+                          {ep.health.replace('_', ' ')}
+                        </span>
                       </td>
                     </tr>
                   )

@@ -23,6 +23,69 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+
+          if (
+            id.includes('/react/') ||
+            id.includes('/react-dom/') ||
+            id.includes('/react-router-dom/') ||
+            id.includes('/framer-motion/')
+          ) {
+            return 'vendor-react'
+          }
+
+          if (
+            id.includes('@blueprintjs/') ||
+            id.includes('/normalize.css/')
+          ) {
+            return 'vendor-blueprint'
+          }
+
+          if (
+            id.includes('/leaflet') ||
+            id.includes('/react-leaflet') ||
+            id.includes('/react-leaflet-draw') ||
+            id.includes('/@turf/')
+          ) {
+            return 'vendor-geo'
+          }
+
+          if (
+            id.includes('/cytoscape') ||
+            id.includes('/react-cytoscapejs') ||
+            id.includes('/vis-data/') ||
+            id.includes('/vis-timeline/') ||
+            id.includes('/d3/')
+          ) {
+            return 'vendor-graph'
+          }
+
+          if (
+            id.includes('/recharts/') ||
+            id.includes('/react-countup/')
+          ) {
+            return 'vendor-charts'
+          }
+
+          if (
+            id.includes('/axios/') ||
+            id.includes('/zustand/') ||
+            id.includes('@tanstack/react-query')
+          ) {
+            return 'vendor-data'
+          }
+
+          if (id.includes('/react-markdown/')) {
+            return 'vendor-markdown'
+          }
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     host: true,

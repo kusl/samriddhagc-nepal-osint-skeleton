@@ -207,6 +207,17 @@ from app.models.province_anomaly import (
 # Fact-check system (user-requested verification)
 from app.models.fact_check import FactCheckRequest, FactCheckResult
 from app.models.fact_check_review import FactCheckReview
+from app.models.promise import ManifestoPromise
+from app.models.cabinet_action import (
+    CabinetActionProgram,
+    CabinetActionItem,
+    CabinetActionMilestone,
+    CabinetActionReview,
+    CabinetActionEvidence,
+    CabinetActionPromiseLink,
+)
+from app.models.govt_decision import GovtDecisionItem
+from app.models.govt_decision_review import GovtDecisionReview
 from app.models.story_narrative import StoryNarrative, StoryNarrativeCluster
 from app.models.automation_control import AutomationControl
 
@@ -449,6 +460,14 @@ __all__ = [
     "FactCheckRequest",
     "FactCheckResult",
     "FactCheckReview",
+    "CabinetActionProgram",
+    "CabinetActionItem",
+    "CabinetActionMilestone",
+    "CabinetActionReview",
+    "CabinetActionEvidence",
+    "CabinetActionPromiseLink",
+    "GovtDecisionItem",
+    "GovtDecisionReview",
     "StoryNarrative",
     "StoryNarrativeCluster",
     "AutomationControl",

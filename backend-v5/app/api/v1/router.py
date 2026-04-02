@@ -10,9 +10,12 @@ CONSUMER_MODE = os.getenv("CONSUMER_MODE", "false").lower() == "true"
 # ── Always-loaded modules (consumer + dev) ──
 from app.api.v1 import (
     stories, analytics, ingest, analysis, embeddings,
-    disasters, disaster_alerts, map, kpi, weather,
-    announcements, market, infrastructure, seismic, curfew, debt_clock,
+    disasters, disaster_alerts, map, kpi, weather, river,
+    announcements, market, infrastructure, seismic, curfew, debt_clock, economy,
     twitter, elections, energy, auth,
+    dashboard,
+    govt_decisions,
+    cabinet_actions,
     # Public feed endpoints (consumer accounts)
     public_events,
     # Parliament (MP Performance Index)
@@ -40,6 +43,8 @@ from app.api.v1 import (
     promises,
     # Verbatim / Parliamentary Speeches
     verbatim,
+    # Government procurement (Bolpatra)
+    procurement,
 )
 
 # ── Analyst-only modules (skipped in consumer mode) ──
@@ -72,8 +77,6 @@ if not CONSUMER_MODE:
         pwtt,
         # Connected analyst hypotheses
         hypotheses,
-        # Government procurement (Bolpatra)
-        procurement,
         # Procurement analysis (risk scoring, investigation workbench)
         procurement_analysis,
         # Corporate Analytics (advanced beneficial ownership, shell scoring, etc.)
@@ -106,15 +109,20 @@ router.include_router(disaster_alerts.router, dependencies=any_auth)
 router.include_router(map.router, dependencies=any_auth)
 router.include_router(kpi.router, dependencies=any_auth)
 router.include_router(weather.router, dependencies=any_auth)
+router.include_router(river.router, dependencies=any_auth)
 router.include_router(announcements.router, dependencies=any_auth)
 router.include_router(market.router, dependencies=any_auth)
 router.include_router(debt_clock.router, dependencies=any_auth)
+router.include_router(economy.router, dependencies=any_auth)
 router.include_router(infrastructure.router, dependencies=any_auth)
 router.include_router(seismic.router, dependencies=any_auth)
 router.include_router(curfew.router, dependencies=any_auth)
 router.include_router(twitter.router, dependencies=any_auth)
 router.include_router(elections.router, dependencies=any_auth)
 router.include_router(energy.router, dependencies=any_auth)
+router.include_router(dashboard.router, dependencies=any_auth)
+router.include_router(govt_decisions.router)
+router.include_router(cabinet_actions.router)
 router.include_router(public_events.router, dependencies=any_auth)
 router.include_router(alerts.router, dependencies=any_auth)
 router.include_router(parliament.router, dependencies=any_auth)
@@ -125,6 +133,7 @@ router.include_router(briefs.router, dependencies=any_auth)
 router.include_router(province_anomalies.router, dependencies=any_auth)
 router.include_router(fact_check.router, dependencies=any_auth)
 router.include_router(tactical.router, dependencies=any_auth)
+router.include_router(procurement.router, dependencies=any_auth)
 router.include_router(election_results.router)  # Public — election data is open
 router.include_router(promises.router, dependencies=any_auth)
 router.include_router(verbatim.router, dependencies=any_auth)
@@ -154,7 +163,6 @@ if not CONSUMER_MODE:
     router.include_router(trade.router, dependencies=analyst_auth)
     router.include_router(pwtt.router, dependencies=analyst_auth)
     router.include_router(hypotheses.router, dependencies=analyst_auth)
-    router.include_router(procurement.router, dependencies=analyst_auth)
     router.include_router(companies.router, dependencies=analyst_auth)
     router.include_router(procurement_analysis.router, dependencies=analyst_auth)
     router.include_router(earth_engine.router, dependencies=analyst_auth)

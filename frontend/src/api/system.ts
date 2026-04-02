@@ -41,12 +41,23 @@ export interface EndpointMetric {
   avg_ms: number
   p95_ms: number
   errors: number
+  client_errors: number
+  server_errors: number
+  auth_errors: number
+  not_found_errors: number
+  health: 'healthy' | 'degraded' | 'broken_integration' | 'auth_misuse'
 }
 
 export interface ApiMetrics {
   request_count: number
   error_count: number
   error_rate: number
+  client_error_count: number
+  platform_error_count: number
+  auth_error_count: number
+  broken_integration_count: number
+  client_error_rate: number
+  platform_error_rate: number
   avg_response_ms: number
   p95_response_ms: number
   p99_response_ms: number

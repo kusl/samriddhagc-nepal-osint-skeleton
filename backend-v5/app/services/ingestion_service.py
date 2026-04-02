@@ -1,12 +1,14 @@
 """Ingestion service for processing RSS articles into stories."""
+import hashlib
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 from uuid import UUID
 
 import yaml
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -23,12 +25,15 @@ from app.services.severity_service import SeverityService
 from app.services.analysis.haiku_relevance_filter import verify_nepal_relevance, should_haiku_verify
 from app.services.editorial_control_service import EditorialControlService
 from app.services.notification_matching_service import NotificationMatchingService
+from app.services.openai_story_classifier import OpenAIStoryClassifier
+from app.services.embeddings.text_embedder import embedding_to_pgvector_literal
 from app.core.realtime_bus import publish_news
 from app.ml.feature_extraction import extract_severity_tokens
 from app.ml.inference import get_predictor
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # RL prediction confidence threshold - use RL prediction if confidence >= this
 RL_CONFIDENCE_THRESHOLD = 0.6
@@ -59,6 +64,8 @@ class IngestionService:
         self._new_story_ids: list[UUID] = []
         self.use_rl = use_rl
         self._rl_predictor = None
+        self._openai_classifier = None
+        self._realtime_clustering_enabled = True
 
     async def _create_realtime_cluster(
         self,
@@ -71,62 +78,78 @@ class IngestionService:
         If matched story already has a cluster, return that cluster_id.
         Otherwise, create a new cluster and assign both stories to it.
         """
+        if not self._realtime_clustering_enabled:
+            return None
+
         try:
-            # Find the matched story in database by title (recent only)
-            from sqlalchemy import select
-            from datetime import timedelta
+            async with self.db.begin_nested():
+                # Find the matched story in database by title (recent only)
+                from sqlalchemy import select
+                from datetime import timedelta
 
-            recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
-            result = await self.db.execute(
-                select(Story)
-                .where(Story.title == matched_title)
-                .where(Story.created_at >= recent_cutoff)
-                .limit(1)
-            )
-            matched_story = result.scalar_one_or_none()
+                recent_cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+                result = await self.db.execute(
+                    select(Story)
+                    .where(Story.title == matched_title)
+                    .where(Story.created_at >= recent_cutoff)
+                    .limit(1)
+                )
+                matched_story = result.scalar_one_or_none()
 
-            if not matched_story:
+                if not matched_story:
+                    return None
+
+                # If matched story has a cluster, use it
+                if matched_story.cluster_id:
+                    # Update cluster counts
+                    cluster_result = await self.db.execute(
+                        select(StoryCluster).where(StoryCluster.id == matched_story.cluster_id)
+                    )
+                    cluster = cluster_result.scalar_one_or_none()
+                    if cluster:
+                        cluster.story_count += 1
+                        if new_story.source_id not in (cluster.unique_sources or []):
+                            cluster.source_count += 1
+                            cluster.unique_sources = (cluster.unique_sources or []) + [new_story.source_id]
+                    return str(matched_story.cluster_id)
+
+                # Create new cluster for both stories
+                cluster = StoryCluster(
+                    headline=new_story.title,  # Use newest as headline
+                    summary=new_story.summary,
+                    category=new_story.category,
+                    severity=new_story.severity,
+                    story_count=2,
+                    source_count=2 if new_story.source_id != matched_story.source_id else 1,
+                    unique_sources=[matched_story.source_id, new_story.source_id],
+                    confidence_level="corroborated",
+                )
+                self.db.add(cluster)
+                await self.db.flush()
+
+                # Assign both stories to cluster
+                matched_story.cluster_id = cluster.id
+                new_story.cluster_id = cluster.id
+
+                logger.info(
+                    f"Real-time cluster created: {cluster.id} with 2 stories "
+                    f"({matched_story.source_name}, {new_story.source_name})"
+                )
+
+                return str(cluster.id)
+
+        except ProgrammingError as e:
+            error_text = str(e)
+            if "story_clusters" in error_text and "does not exist" in error_text:
+                self._realtime_clustering_enabled = False
+                logger.warning(
+                    "Disabling real-time clustering for this worker due to incompatible story_clusters schema: %s",
+                    e,
+                )
                 return None
 
-            # If matched story has a cluster, use it
-            if matched_story.cluster_id:
-                # Update cluster counts
-                cluster_result = await self.db.execute(
-                    select(StoryCluster).where(StoryCluster.id == matched_story.cluster_id)
-                )
-                cluster = cluster_result.scalar_one_or_none()
-                if cluster:
-                    cluster.story_count += 1
-                    if new_story.source_id not in (cluster.unique_sources or []):
-                        cluster.source_count += 1
-                        cluster.unique_sources = (cluster.unique_sources or []) + [new_story.source_id]
-                return str(matched_story.cluster_id)
-
-            # Create new cluster for both stories
-            cluster = StoryCluster(
-                headline=new_story.title,  # Use newest as headline
-                summary=new_story.summary,
-                category=new_story.category,
-                severity=new_story.severity,
-                story_count=2,
-                source_count=2 if new_story.source_id != matched_story.source_id else 1,
-                unique_sources=[matched_story.source_id, new_story.source_id],
-                confidence_level="corroborated",
-            )
-            self.db.add(cluster)
-            await self.db.flush()
-
-            # Assign both stories to cluster
-            matched_story.cluster_id = cluster.id
-            new_story.cluster_id = cluster.id
-
-            logger.info(
-                f"Real-time cluster created: {cluster.id} with 2 stories "
-                f"({matched_story.source_name}, {new_story.source_name})"
-            )
-
-            return str(cluster.id)
-
+            logger.warning(f"Failed to create real-time cluster: {e}")
+            return None
         except Exception as e:
             logger.warning(f"Failed to create real-time cluster: {e}")
             return None
@@ -142,16 +165,64 @@ class IngestionService:
                 self._rl_predictor = None
         return self._rl_predictor
 
+    def _get_openai_classifier(self) -> Optional[OpenAIStoryClassifier]:
+        if self._openai_classifier is None:
+            classifier = OpenAIStoryClassifier()
+            self._openai_classifier = classifier if classifier.enabled else False
+        return self._openai_classifier if self._openai_classifier is not False else None
+
+    async def _persist_openai_embedding(
+        self,
+        *,
+        story_id: UUID,
+        text_for_embedding: str,
+        embedding: list[float],
+    ) -> None:
+        if not embedding or all(x == 0.0 for x in embedding):
+            return
+
+        try:
+            async with self.db.begin_nested():
+                await self.db.execute(
+                    text(
+                        """
+                        INSERT INTO story_embeddings (story_id, text_hash, model_name, model_version, embedding_vector, created_at, updated_at)
+                        VALUES (:story_id, :text_hash, :model_name, :model_version, CAST(:embedding AS vector), NOW(), NOW())
+                        ON CONFLICT (story_id) DO UPDATE SET
+                            text_hash = EXCLUDED.text_hash,
+                            model_name = EXCLUDED.model_name,
+                            model_version = EXCLUDED.model_version,
+                            embedding_vector = EXCLUDED.embedding_vector,
+                            updated_at = NOW()
+                        """
+                    ),
+                    {
+                        "story_id": story_id,
+                        "text_hash": hashlib.sha256(text_for_embedding.encode("utf-8")).hexdigest(),
+                        "model_name": settings.openai_embedding_model,
+                        "model_version": f"openai-{settings.openai_embedding_dimensions}",
+                        "embedding": embedding_to_pgvector_literal(embedding),
+                    },
+                )
+        except Exception as exc:
+            logger.warning("Failed to persist immediate OpenAI embedding for %s: %s", story_id, exc)
+
     def _load_sources(self) -> list[dict]:
         """Load RSS sources from config file."""
         if self._sources is not None:
             return self._sources
 
+        candidate_paths = [
+            Path(settings.sources_config_path),
+            _PROJECT_ROOT / "config" / "sources.yaml",
+        ]
+
         try:
-            with open(settings.sources_config_path) as f:
+            config_path = next(path for path in candidate_paths if path.exists())
+            with config_path.open() as f:
                 config = yaml.safe_load(f)
                 self._sources = config.get("sources", [])
-        except FileNotFoundError:
+        except StopIteration:
             logger.error(f"Sources config not found: {settings.sources_config_path}")
             self._sources = []
 
@@ -318,12 +389,16 @@ class IngestionService:
         if not self.deduplicator.check_and_mark(article.external_id):
             return "duplicates"
 
-        # Check database dedup by external_id
-        if await self.repo.exists_by_external_id(article.external_id):
+        # Check database dedup by external_id and refresh heartbeat
+        existing_story = await self.repo.get_by_external_id(article.external_id)
+        if existing_story:
+            await self.repo.touch_scraped_at(existing_story.id)
             return "duplicates"
 
-        # Also check by URL (unique constraint)
-        if await self.repo.exists_by_url(article.url):
+        # Also check by URL (unique constraint) and refresh heartbeat
+        existing_by_url = await self.repo.get_by_url(article.url)
+        if existing_by_url:
+            await self.repo.touch_scraped_at(existing_by_url.id)
             return "duplicates"
 
         # Real-time title similarity check - find existing similar story
@@ -381,6 +456,38 @@ class IngestionService:
         # Get initial category and severity from rules
         final_category = relevance.category.value if relevance.category else None
         final_severity = severity_result.level.value
+        text_for_embedding = " ".join(
+            part.strip() for part in [article.title or "", article.summary or ""] if part and part.strip()
+        )
+
+        openai_category_used = False
+        openai_embedding: Optional[list[float]] = None
+        openai_classifier = None
+        if relevance.level != RelevanceLevel.INTERNATIONAL:
+            openai_classifier = self._get_openai_classifier()
+        if openai_classifier:
+            try:
+                openai_result = await openai_classifier.classify(
+                    title=article.title,
+                    summary=article.summary,
+                )
+                if (
+                    openai_result is not None and (
+                        openai_result.confidence >= settings.openai_story_classification_min_confidence
+                        or final_category is None
+                    )
+                ):
+                    final_category = openai_result.category
+                    openai_embedding = openai_result.embedding
+                    openai_category_used = True
+                    logger.debug(
+                        "OpenAI category: %s (%.0f%%) for '%s'",
+                        final_category,
+                        openai_result.confidence * 100.0,
+                        article.title[:60],
+                    )
+            except Exception as exc:
+                logger.warning("OpenAI story classification failed, using fallback category: %s", exc)
 
         # Apply RL predictions if enabled and confident
         rl_predictor = self._get_rl_predictor()
@@ -390,17 +497,18 @@ class IngestionService:
         if rl_predictor:
             try:
                 # RL Category prediction
-                category_pred = rl_predictor.classify_story(
-                    title=article.title,
-                    content=article.summary,
-                )
-                if category_pred.confidence >= RL_CONFIDENCE_THRESHOLD:
-                    final_category = category_pred.category
-                    rl_category_used = True
-                    logger.debug(
-                        f"RL category: {category_pred.category} "
-                        f"({category_pred.confidence:.0%}) for '{article.title[:50]}'"
+                if not openai_category_used:
+                    category_pred = rl_predictor.classify_story(
+                        title=article.title,
+                        content=article.summary,
                     )
+                    if category_pred.confidence >= RL_CONFIDENCE_THRESHOLD:
+                        final_category = category_pred.category
+                        rl_category_used = True
+                        logger.debug(
+                            f"RL category: {category_pred.category} "
+                            f"({category_pred.confidence:.0%}) for '{article.title[:50]}'"
+                        )
 
                 # RL Priority prediction
                 severity_tokens = extract_severity_tokens(article.title, article.summary)
@@ -423,10 +531,13 @@ class IngestionService:
                 logger.warning(f"RL prediction failed, using rules: {e}")
 
         # Log RL usage stats periodically
-        if rl_category_used or rl_priority_used:
+        if openai_category_used or rl_category_used or rl_priority_used:
             logger.info(
-                f"RL predictions used - category: {rl_category_used}, "
-                f"priority: {rl_priority_used} for '{article.title[:40]}...'"
+                "Classification used - openai_category: %s, rl_category: %s, rl_priority: %s for '%s...'",
+                openai_category_used,
+                rl_category_used,
+                rl_priority_used,
+                article.title[:40],
             )
 
         # Create story with cluster_id if matched to existing story
@@ -454,6 +565,13 @@ class IngestionService:
             async with self.db.begin_nested():
                 self.db.add(story)
                 await self.db.flush()  # Check for constraint violations early
+
+            if openai_embedding:
+                await self._persist_openai_embedding(
+                    story_id=story.id,
+                    text_for_embedding=text_for_embedding,
+                    embedding=openai_embedding,
+                )
 
             # Create real-time cluster if similar story found but no cluster exists
             if matched_title and not matched_cluster_id:
@@ -493,6 +611,10 @@ class IngestionService:
 
             return "new"
         except IntegrityError:
+            # A concurrent insert won the race; refresh the stored row heartbeat if present.
+            existing_story = await self.repo.get_by_external_id(article.external_id)
+            if existing_story:
+                await self.repo.touch_scraped_at(existing_story.id)
             logger.debug(f"Duplicate story skipped: {article.url[:50]}")
             return "duplicates"
         except Exception as e:

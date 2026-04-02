@@ -1,5 +1,5 @@
-# Nepal OSINT v5 Backend - Lightweight Production Dependencies
-# Excludes: torch, transformers, sentence-transformers, geemap, playwright, weasyprint
+# Nepal OSINT v5 Backend - Production Dependencies
+# Excludes: torch, transformers, sentence-transformers, geemap, weasyprint
 
 # Core
 fastapi>=0.109.0
@@ -25,6 +25,7 @@ requests>=2.31.0
 feedparser>=6.0.10
 beautifulsoup4>=4.12.0
 lxml>=5.1.0
+playwright>=1.40.0
 
 # Utilities
 pyyaml>=6.0
@@ -71,3 +72,4 @@ PyPDF2>=3.0.0
 PyMuPDF>=1.24.0
 pytesseract>=0.3.10
 Pillow>=10.0.0
+openpyxl>=3.1.0

@@ -184,14 +184,22 @@ export function ConsolidatedIntelPanel({ hours = 72, limit = 500, districts, com
 
     // Apply province filter if active
     if (selectedDistricts && selectedDistricts.length > 0) {
+      const selectedProvinceSet = new Set((selectedProvinces as Province[]).map(p => p.toLowerCase()))
+
       filtered = filtered.filter(story => {
-        // If story has no districts_affected, check headline for district mentions
-        if (!story.districts_affected || story.districts_affected.length === 0) {
-          const text = `${story.canonical_headline} ${story.summary || ''}`.toLowerCase()
-          return selectedDistricts.some(d => text.includes(d))
+        const storyDistricts = (story.districts_affected || []).map(d => d.toLowerCase())
+        if (storyDistricts.length > 0) {
+          return storyDistricts.some(d => selectedDistricts.includes(d))
         }
-        // Check if any affected district is in selected provinces
-        return story.districts_affected.some(d => selectedDistricts.includes(d.toLowerCase()))
+
+        const storyProvinces = (story.provinces_affected || []).map(p => p.toLowerCase())
+        if (storyProvinces.length > 0) {
+          return storyProvinces.some(p => selectedProvinceSet.has(p))
+        }
+
+        // Only fall back to headline matching when geographic metadata is absent.
+        const text = `${story.canonical_headline} ${story.summary || ''}`.toLowerCase()
+        return selectedDistricts.some(d => text.includes(d))
       })
     }
 

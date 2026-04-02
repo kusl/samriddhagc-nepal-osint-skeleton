@@ -53,6 +53,12 @@ class DebtClockService:
         r'href="(?P<url>https://www\.nrb\.org\.np/red/current-macroeconomic-and-financial-situation-english[^"]+/?)"',
         re.IGNORECASE,
     )
+    _NRB_HOMEPAGE_CARD_RE = re.compile(
+        r'<span class="carousel-info-value">\s*(?P<value>[^<]+?)\s*</span>.*?'
+        r'<div class="carousel-title">\s*(?P<title>[^<]+?)\s*</div>.*?'
+        r'<div class="carousel-date">\s*(?P<label>[^<]+?)\s*</div>',
+        re.IGNORECASE | re.DOTALL,
+    )
     _PDMO_PERIOD_RE = re.compile(
         r"For the month of\s+(?P<label>.+?)\s+PUBLIC DEBT MANAGEMENT OFFICE",
         re.IGNORECASE | re.DOTALL,
@@ -117,9 +123,10 @@ class DebtClockService:
             )
             fallback_response.raise_for_status()
             fallback_summary = self.parse_html(fallback_response.text)
-            pdmo_payload, nrb_payload, population_point, unemployment_point, imf_growth_point = await asyncio.gather(
+            pdmo_payload, nrb_payload, nrb_homepage_payload, population_point, unemployment_point, imf_growth_point = await asyncio.gather(
                 self._safe_fetch("PDMO debt report", self._fetch_latest_pdmo_payload(client)),
                 self._safe_fetch("NRB macro report", self._fetch_nrb_payload(client)),
+                self._safe_fetch("NRB homepage indicators", self._fetch_nrb_homepage_payload(client)),
                 self._safe_fetch(
                     "World Bank population",
                     self._fetch_world_bank_indicator(client, self.WORLD_BANK_POPULATION_INDICATOR),
@@ -137,6 +144,7 @@ class DebtClockService:
                 fallback_summary=fallback_summary,
                 pdmo_payload=pdmo_payload,
                 nrb_payload=nrb_payload,
+                nrb_homepage_payload=nrb_homepage_payload,
                 population_point=population_point,
                 unemployment_point=unemployment_point,
                 imf_growth_point=imf_growth_point,
@@ -155,6 +163,7 @@ class DebtClockService:
         fallback_summary: dict[str, Any],
         pdmo_payload: dict[str, Any] | None,
         nrb_payload: dict[str, Any] | None,
+        nrb_homepage_payload: dict[str, Any] | None,
         population_point: dict[str, Any] | None,
         unemployment_point: dict[str, Any] | None,
         imf_growth_point: dict[str, Any] | None,
@@ -254,6 +263,102 @@ class DebtClockService:
                 " latest current macro report. Population and unemployment use World Bank API series. Real GDP"
                 " growth uses IMF DataMapper. The summary is refreshed on a low-frequency scheduler and cached in Redis."
             ),
+            "food_inflation_pct": (
+                nrb_homepage_payload.get("food_inflation_pct")
+                if nrb_homepage_payload and nrb_homepage_payload.get("food_inflation_pct") is not None
+                else nrb_payload.get("food_inflation_pct") if nrb_payload else None
+            ),
+            "food_inflation_label": (
+                nrb_homepage_payload.get("food_inflation_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("food_inflation_label") if nrb_payload else None
+            ),
+            "non_food_inflation_pct": (
+                nrb_homepage_payload.get("non_food_inflation_pct")
+                if nrb_homepage_payload and nrb_homepage_payload.get("non_food_inflation_pct") is not None
+                else nrb_payload.get("non_food_inflation_pct") if nrb_payload else None
+            ),
+            "non_food_inflation_label": (
+                nrb_homepage_payload.get("non_food_inflation_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("non_food_inflation_label") if nrb_payload else None
+            ),
+            "broad_money_growth_pct": (
+                nrb_homepage_payload.get("broad_money_growth_pct")
+                if nrb_homepage_payload
+                else nrb_payload.get("broad_money_growth_pct") if nrb_payload else None
+            ),
+            "broad_money_growth_label": (
+                nrb_homepage_payload.get("broad_money_growth_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("broad_money_growth_label") if nrb_payload else None
+            ),
+            "private_sector_credit_growth_pct": (
+                nrb_homepage_payload.get("private_sector_credit_growth_pct")
+                if nrb_homepage_payload
+                else nrb_payload.get("private_sector_credit_growth_pct") if nrb_payload else None
+            ),
+            "private_sector_credit_growth_label": (
+                nrb_homepage_payload.get("private_sector_credit_growth_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("private_sector_credit_growth_label") if nrb_payload else None
+            ),
+            "remittance_inflow_billion_npr": (
+                nrb_homepage_payload.get("remittance_inflow_billion_npr")
+                if nrb_homepage_payload
+                else nrb_payload.get("remittance_inflow_billion_npr") if nrb_payload else None
+            ),
+            "remittance_inflow_label": (
+                nrb_homepage_payload.get("remittance_inflow_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("remittance_inflow_label") if nrb_payload else None
+            ),
+            "bop_surplus_billion_npr": (
+                nrb_homepage_payload.get("bop_surplus_billion_npr")
+                if nrb_homepage_payload
+                else nrb_payload.get("bop_surplus_billion_npr") if nrb_payload else None
+            ),
+            "bop_surplus_label": (
+                nrb_homepage_payload.get("bop_surplus_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("bop_surplus_label") if nrb_payload else None
+            ),
+            "weighted_deposit_rate_pct": (
+                nrb_homepage_payload.get("weighted_deposit_rate_pct")
+                if nrb_homepage_payload
+                else nrb_payload.get("weighted_deposit_rate_pct") if nrb_payload else None
+            ),
+            "weighted_deposit_rate_label": (
+                nrb_homepage_payload.get("weighted_deposit_rate_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("weighted_deposit_rate_label") if nrb_payload else None
+            ),
+            "weighted_credit_rate_pct": (
+                nrb_homepage_payload.get("weighted_credit_rate_pct")
+                if nrb_homepage_payload
+                else nrb_payload.get("weighted_credit_rate_pct") if nrb_payload else None
+            ),
+            "weighted_credit_rate_label": (
+                nrb_homepage_payload.get("weighted_credit_rate_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("weighted_credit_rate_label") if nrb_payload else None
+            ),
+            "interbank_rate_pct": (
+                nrb_homepage_payload.get("interbank_rate_pct")
+                if nrb_homepage_payload
+                else nrb_payload.get("interbank_rate_pct") if nrb_payload else None
+            ),
+            "interbank_rate_label": (
+                nrb_homepage_payload.get("interbank_rate_label")
+                if nrb_homepage_payload
+                else nrb_payload.get("interbank_rate_label") if nrb_payload else None
+            ),
+            "total_financial_institutions": nrb_homepage_payload.get("total_financial_institutions") if nrb_homepage_payload else None,
+            "total_financial_institutions_label": nrb_homepage_payload.get("total_financial_institutions_label") if nrb_homepage_payload else None,
+            "licensed_bfis": nrb_homepage_payload.get("licensed_bfis") if nrb_homepage_payload else None,
+            "licensed_bfis_label": nrb_homepage_payload.get("licensed_bfis_label") if nrb_homepage_payload else None,
+            "total_bfi_branches": nrb_homepage_payload.get("total_bfi_branches") if nrb_homepage_payload else None,
+            "total_bfi_branches_label": nrb_homepage_payload.get("total_bfi_branches_label") if nrb_homepage_payload else None,
             "domestic_debt_npr": domestic_debt_npr,
             "external_debt_npr": external_debt_npr,
             "fetched_at": fetched_at,
@@ -291,6 +396,14 @@ class DebtClockService:
         )
         response.raise_for_status()
         return self.parse_nrb_pdf(response.content)
+
+    async def _fetch_nrb_homepage_payload(self, client: httpx.AsyncClient) -> dict[str, Any]:
+        response = await client.get(
+            "https://www.nrb.org.np/",
+            headers={"User-Agent": "Mozilla/5.0", "Accept": "text/html,application/xhtml+xml"},
+        )
+        response.raise_for_status()
+        return self.parse_nrb_homepage(response.text)
 
     async def _fetch_world_bank_indicator(self, client: httpx.AsyncClient, indicator: str) -> dict[str, Any]:
         response = await client.get(
@@ -330,6 +443,42 @@ class DebtClockService:
         period_match = cls._NRB_PERIOD_RE.search(text)
         inflation_match = cls._NRB_INFLATION_RE.search(text)
         fiscal_match = cls._NRB_FISCAL_RE.search(text)
+        food_inflation_match = re.search(
+            r"Food\s+and\s+beverage\s+inflation\s+stood\s+at\s+(?P<food>\d+\.\d+)\s+percent.*?"
+            r"Non-food\s+and\s+service\s+inflation\s+stood\s+at\s+(?P<non_food>\d+\.\d+)\s+percent",
+            text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        broad_money_match = re.search(
+            r"Broad money \(M2\) increased by [\d\.]+\s+percent\.\s+On y\s*-\s*o\s*-\s*y basis,\s*M2 expanded by\s+(?P<m2>\d+\.\d+)\s+percent",
+            text,
+            re.IGNORECASE,
+        )
+        private_credit_match = re.search(
+            r"private sector credit increased\s+by [\d\.]+\s+percent\.\s+On y\s*-\s*o\s*-\s*y basis,.*?private\s+sector credit increased by\s+(?P<credit>\d+\.\d+)\s+percent",
+            text,
+            re.IGNORECASE | re.DOTALL,
+        )
+        remittance_match = re.search(
+            r"remittance inflows stood at Rs\.\s*(?P<remittance>[\d\.]+)\s+billion",
+            text,
+            re.IGNORECASE,
+        )
+        bop_match = re.search(
+            r"balance of payments\s+remained at a surplus of Rs\.(?P<bop>[\d\.]+)\s+billion",
+            text,
+            re.IGNORECASE,
+        )
+        deposit_rate_match = re.search(
+            r"weighted average deposit rate of\s+commercial banks stood at\s+(?P<deposit>\d+\.\d+)\s+percent\s+and lending rate stood at\s+(?P<credit>\d+\.?\d*)\s+percent",
+            text,
+            re.IGNORECASE,
+        )
+        interbank_match = re.search(
+            r"weighted average inter\s*-\s*bank rate\s+among the BFIs stands at\s+(?P<interbank>\d+\.\d+)\s+percent",
+            text,
+            re.IGNORECASE,
+        )
         inflation_year = cls._extract_year(inflation_match.group("period")) if inflation_match else None
         period_label = cls._normalize_whitespace(period_match.group("label")) if period_match else None
 
@@ -337,10 +486,75 @@ class DebtClockService:
             "inflation_pct": cls._parse_number(inflation_match.group("inflation")) if inflation_match else None,
             "inflation_year": inflation_year,
             "inflation_label": f"NRB y/y CPI, {inflation_match.group('period')}" if inflation_match else None,
+            "food_inflation_pct": cls._parse_number(food_inflation_match.group("food")) if food_inflation_match else None,
+            "food_inflation_label": f"NRB food and beverage inflation, {period_label}" if food_inflation_match and period_label else None,
+            "non_food_inflation_pct": cls._parse_number(food_inflation_match.group("non_food")) if food_inflation_match else None,
+            "non_food_inflation_label": f"NRB non-food inflation, {period_label}" if food_inflation_match and period_label else None,
+            "broad_money_growth_pct": cls._parse_number(broad_money_match.group("m2")) if broad_money_match else None,
+            "broad_money_growth_label": f"NRB y/y broad money growth, {period_label}" if broad_money_match and period_label else None,
+            "private_sector_credit_growth_pct": cls._parse_number(private_credit_match.group("credit")) if private_credit_match else None,
+            "private_sector_credit_growth_label": f"NRB y/y private sector credit growth, {period_label}" if private_credit_match and period_label else None,
+            "remittance_inflow_billion_npr": cls._parse_number(remittance_match.group("remittance")) if remittance_match else None,
+            "remittance_inflow_label": f"NRB remittance inflow, {period_label}" if remittance_match and period_label else None,
+            "bop_surplus_billion_npr": cls._parse_number(bop_match.group("bop")) if bop_match else None,
+            "bop_surplus_label": f"NRB balance of payments, {period_label}" if bop_match and period_label else None,
+            "weighted_deposit_rate_pct": cls._parse_number(deposit_rate_match.group("deposit")) if deposit_rate_match else None,
+            "weighted_deposit_rate_label": f"NRB weighted deposit rate, {period_label}" if deposit_rate_match and period_label else None,
+            "weighted_credit_rate_pct": cls._parse_number(deposit_rate_match.group("credit")) if deposit_rate_match else None,
+            "weighted_credit_rate_label": f"NRB weighted credit rate, {period_label}" if deposit_rate_match and period_label else None,
+            "interbank_rate_pct": cls._parse_number(interbank_match.group("interbank")) if interbank_match else None,
+            "interbank_rate_label": f"NRB weighted interbank rate, {period_label}" if interbank_match and period_label else None,
             "expenditure_billion": cls._parse_number(fiscal_match.group("expenditure")) if fiscal_match else None,
             "revenue_billion": cls._parse_number(fiscal_match.group("revenue")) if fiscal_match else None,
             "fiscal_label": f"NRB {period_label}" if fiscal_match and period_label else None,
             "fiscal_year": inflation_year,
+        }
+
+    @classmethod
+    def parse_nrb_homepage(cls, html: str) -> dict[str, Any]:
+        cards = {}
+        for match in cls._NRB_HOMEPAGE_CARD_RE.finditer(html):
+            title = cls._normalize_whitespace(match.group("title"))
+            cards[title.lower()] = {
+                "value": cls._normalize_whitespace(match.group("value")),
+                "label": cls._normalize_whitespace(match.group("label")),
+            }
+
+        def get_card_value(title: str) -> str | None:
+            item = cards.get(title.lower())
+            return item["value"] if item else None
+
+        def get_card_label(title: str) -> str | None:
+            item = cards.get(title.lower())
+            return item["label"] if item else None
+
+        return {
+            "inflation_pct": cls._parse_percentage(get_card_value("National Consumer Price Inflation")),
+            "inflation_label": get_card_label("National Consumer Price Inflation"),
+            "food_inflation_pct": cls._parse_percentage(get_card_value("Food and Beverage Inflation")),
+            "food_inflation_label": get_card_label("Food and Beverage Inflation"),
+            "non_food_inflation_pct": cls._parse_percentage(get_card_value("Non Food Inflation")),
+            "non_food_inflation_label": get_card_label("Non Food Inflation"),
+            "broad_money_growth_pct": cls._parse_percentage(get_card_value("Broad Money Growth")),
+            "broad_money_growth_label": get_card_label("Broad Money Growth"),
+            "private_sector_credit_growth_pct": cls._parse_percentage(get_card_value("Private Sector Credit Growth")),
+            "private_sector_credit_growth_label": get_card_label("Private Sector Credit Growth"),
+            "remittance_inflow_billion_npr": cls._parse_number_string(get_card_value("Remittance Inflow (Rs in Billion)")),
+            "remittance_inflow_label": get_card_label("Remittance Inflow (Rs in Billion)"),
+            "bop_surplus_billion_npr": cls._parse_number_string(get_card_value("Balance of Payment Surplus (Rs in billion)")),
+            "bop_surplus_label": get_card_label("Balance of Payment Surplus (Rs in billion)"),
+            "weighted_deposit_rate_pct": cls._parse_percentage(get_card_value("Weighted Average Deposit Rate ('A' class banks)")),
+            "weighted_deposit_rate_label": get_card_label("Weighted Average Deposit Rate ('A' class banks)"),
+            "weighted_credit_rate_pct": cls._parse_percentage(get_card_value("Weighted Average Interest rate on Credit ('A' class banks)")),
+            "weighted_credit_rate_label": get_card_label("Weighted Average Interest rate on Credit ('A' class banks)"),
+            "interbank_rate_pct": cls._parse_percentage(get_card_value("Weighted Average Interbank Rate('A' class banks)")),
+            "interbank_rate_label": get_card_label("Weighted Average Interbank Rate('A' class banks)"),
+            "total_financial_institutions": cls._parse_integer_string(get_card_value("Total no. of Financial Institutions")),
+            "total_financial_institutions_label": get_card_label("Total no. of Financial Institutions"),
+            "licensed_bfis": cls._parse_integer_string(get_card_value("Licensed BFIs")),
+            "licensed_bfis_label": get_card_label("Licensed BFIs"),
+            "total_bfi_branches": cls._parse_integer_string(get_card_value("Total Branches of BFIs")),
+            "total_bfi_branches_label": get_card_label("Total Branches of BFIs"),
         }
 
     @classmethod
@@ -503,6 +717,27 @@ class DebtClockService:
     @staticmethod
     def _parse_number(raw: str) -> float:
         return float(raw.replace(",", "").strip())
+
+    @staticmethod
+    def _parse_percentage(raw: str | None) -> float | None:
+        if not raw:
+            return None
+        cleaned = raw.replace("%", "").replace(",", "").strip()
+        return float(cleaned) if cleaned else None
+
+    @staticmethod
+    def _parse_number_string(raw: str | None) -> float | None:
+        if not raw:
+            return None
+        cleaned = raw.replace(",", "").strip()
+        return float(cleaned) if cleaned else None
+
+    @staticmethod
+    def _parse_integer_string(raw: str | None) -> int | None:
+        if not raw:
+            return None
+        cleaned = raw.replace(",", "").strip()
+        return int(cleaned) if cleaned else None
 
     @staticmethod
     def _load_json_via_urllib(url: str) -> Any:

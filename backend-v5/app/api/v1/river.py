@@ -10,9 +10,6 @@ from app.services.river_service import RiverMonitoringService
 
 router = APIRouter(prefix="/river", tags=["river-monitoring"])
 
-# River monitoring disabled — table too large, causes CPU spikes
-_DISABLED = True
-
 
 @router.get("/stations")
 async def get_stations(
@@ -20,8 +17,6 @@ async def get_stations(
     db: AsyncSession = Depends(get_db),
 ):
     """Get all river monitoring stations with current readings."""
-    if _DISABLED:
-        return []
     service = RiverMonitoringService(db)
     stations = await service.get_all_stations(basin=basin)
 
@@ -39,8 +34,6 @@ async def get_station(
     db: AsyncSession = Depends(get_db),
 ):
     """Get station details with reading history."""
-    if _DISABLED:
-        raise HTTPException(status_code=404, detail="River monitoring disabled")
     service = RiverMonitoringService(db)
     result = await service.get_station_history(station_id, hours=hours)
 
@@ -56,8 +49,6 @@ async def get_river_alerts(
     db: AsyncSession = Depends(get_db),
 ):
     """Get stations with danger or warning water levels."""
-    if _DISABLED:
-        return []
     service = RiverMonitoringService(db)
     return await service.get_danger_stations(hours=hours)
 
@@ -67,8 +58,6 @@ async def get_river_stats(
     db: AsyncSession = Depends(get_db),
 ):
     """Get river monitoring statistics."""
-    if _DISABLED:
-        return {"total_stations": 0, "active_stations": 0, "basins": []}
     service = RiverMonitoringService(db)
     return await service.get_stats()
 
@@ -78,8 +67,6 @@ async def get_map_data(
     db: AsyncSession = Depends(get_db),
 ):
     """Get river stations formatted for map display."""
-    if _DISABLED:
-        return []
     service = RiverMonitoringService(db)
     return await service.get_map_data()
 
@@ -89,8 +76,6 @@ async def get_basins(
     db: AsyncSession = Depends(get_db),
 ):
     """Get list of river basins."""
-    if _DISABLED:
-        return []
     service = RiverMonitoringService(db)
     stats = await service.get_stats()
     return stats.get("basins", [])

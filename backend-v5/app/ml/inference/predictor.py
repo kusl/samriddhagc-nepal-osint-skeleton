@@ -16,6 +16,25 @@ from app.ml.models.temporal_embedder import TemporalEmbedder, TemporalSimilarity
 logger = logging.getLogger(__name__)
 
 
+def _embedding_model_key_for_dim(requested_key: str, embedding_dim: int) -> str:
+    """Pick an embedder whose output dimension matches the loaded classifier."""
+    dim_to_keys = {
+        384: {"minilm"},
+        768: {"e5-base"},
+        1024: {"e5-large", "openai-3-small", "openai-3-large"},
+    }
+    compatible_keys = dim_to_keys.get(embedding_dim, set())
+    if requested_key in compatible_keys:
+        return requested_key
+    if embedding_dim == 384:
+        return "minilm"
+    if embedding_dim == 768:
+        return "e5-base"
+    if embedding_dim == 1024:
+        return "openai-3-small" if requested_key.startswith("openai-3-") else "e5-large"
+    return requested_key
+
+
 @dataclass
 class ModelStatus:
     """Status of an RL model."""
@@ -194,9 +213,15 @@ class RLPredictor:
         try:
             from app.ml.feature_extraction import build_story_text
             from app.services.embeddings import get_embedder
+            from app.config import get_settings
 
+            settings = get_settings()
             text = build_story_text(title, content)
-            emb = get_embedder().embed_text(text)
+            embedder_key = _embedding_model_key_for_dim(
+                settings.embedding_model_key,
+                self.embedding_story_classifier.embedding_dim,
+            )
+            emb = get_embedder(embedder_key).embed_text(text)
             emb_result = self.embedding_story_classifier.predict(emb)
 
             # Only override if the trained model is more confident.

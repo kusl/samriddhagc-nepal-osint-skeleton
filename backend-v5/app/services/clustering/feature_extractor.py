@@ -9,6 +9,12 @@ from app.services.clustering.minhash import get_minhash_generator
 
 logger = logging.getLogger(__name__)
 
+NEPALI_LOCATION_SUFFIXES = [
+    "बाटै", "हरुमा", "हरूमा", "हरुका", "हरूका", "हरुको", "हरूको",
+    "सम्म", "सँग", "बाट", "देखि", "भित्र", "माथि", "तर्फ", "नजिक", "अघि", "पछि",
+    "मा", "मै", "को", "का", "की", "ले",
+]
+
 # Nepal districts (77 total)
 NEPAL_DISTRICTS = {
     # Province 1
@@ -115,6 +121,32 @@ CITY_TO_PROVINCE = {
     "damak": "koshi", "mechinagar": "koshi", "birtamod": "koshi",
 }
 
+CITY_TO_DISTRICT = {
+    "kathmandu": "kathmandu",
+    "lalitpur": "lalitpur",
+    "patan": "lalitpur",
+    "bhaktapur": "bhaktapur",
+    "hetauda": "makwanpur",
+    "bharatpur": "chitwan",
+    "pokhara": "kaski",
+    "biratnagar": "morang",
+    "dharan": "sunsari",
+    "itahari": "sunsari",
+    "janakpur": "dhanusha",
+    "rajbiraj": "saptari",
+    "birgunj": "parsa",
+    "butwal": "rupandehi",
+    "siddharthanagar": "rupandehi",
+    "nepalgunj": "banke",
+    "tulsipur": "dang",
+    "ghorahi": "dang",
+    "dhangadhi": "kailali",
+    "tikapur": "kailali",
+    "damak": "jhapa",
+    "mechinagar": "jhapa",
+    "birtamod": "jhapa",
+}
+
 NEPALI_CITY_TO_PROVINCE = {
     "काठमाडौं": "bagmati",
     "काठमाण्डौ": "bagmati",
@@ -143,6 +175,112 @@ NEPALI_CITY_TO_PROVINCE = {
     "दमक": "koshi",
     "मेचीनगर": "koshi",
     "बिर्तामोड": "koshi",
+}
+
+NEPALI_DISTRICT_ALIASES = {
+    "ताप्लेजुङ": "taplejung",
+    "पाँचथर": "panchthar",
+    "इलाम": "ilam",
+    "झापा": "jhapa",
+    "मोरङ": "morang",
+    "सुनसरी": "sunsari",
+    "धनकुटा": "dhankuta",
+    "तेह्रथुम": "terhathum",
+    "संखुवासभा": "sankhuwasabha",
+    "भोजपुर": "bhojpur",
+    "सोलुखुम्बु": "solukhumbu",
+    "ओखलढुङ्गा": "okhaldhunga",
+    "खोटाङ": "khotang",
+    "उदयपुर": "udayapur",
+    "सप्तरी": "saptari",
+    "सिराहा": "siraha",
+    "धनुषा": "dhanusha",
+    "महोत्तरी": "mahottari",
+    "सर्लाही": "sarlahi",
+    "रौतहट": "rautahat",
+    "बारा": "bara",
+    "पर्सा": "parsa",
+    "डोलखा": "dolakha",
+    "सिन्धुपाल्चोक": "sindhupalchok",
+    "सिन्धुपालचोक": "sindhupalchok",
+    "रसुवा": "rasuwa",
+    "धादिङ": "dhading",
+    "नुवाकोट": "nuwakot",
+    "भक्तपुर": "bhaktapur",
+    "काभ्रे": "kavre",
+    "कावरे": "kavre",
+    "काभ्रेपलान्चोक": "kavrepalanchok",
+    "रामेछाप": "ramechhap",
+    "सिन्धुली": "sindhuli",
+    "मकवानपुर": "makwanpur",
+    "चितवन": "chitwan",
+    "गोरखा": "gorkha",
+    "लमजुङ": "lamjung",
+    "तनहुँ": "tanahun",
+    "कास्की": "kaski",
+    "मनाङ": "manang",
+    "मुस्ताङ": "mustang",
+    "म्याग्दी": "myagdi",
+    "पर्वत": "parbat",
+    "बागलुङ": "baglung",
+    "स्याङ्जा": "syangja",
+    "पाल्पा": "palpa",
+    "गुल्मी": "gulmi",
+    "रुपन्देही": "rupandehi",
+    "कपिलवस्तु": "kapilvastu",
+    "नवलपरासी": "nawalparasi",
+    "नवलपुर": "nawalpur",
+    "दाङ": "dang",
+    "बाँके": "banke",
+    "बर्दिया": "bardiya",
+    "सुर्खेत": "surkhet",
+    "दैलेख": "dailekh",
+    "जाजरकोट": "jajarkot",
+    "रुकुम": "rukum",
+    "रोल्पा": "rolpa",
+    "प्युठान": "pyuthan",
+    "सल्यान": "salyan",
+    "डोल्पा": "dolpa",
+    "जुम्ला": "jumla",
+    "मुगु": "mugu",
+    "हुम्ला": "humla",
+    "कालिकोट": "kalikot",
+    "अछाम": "achham",
+    "बाजुरा": "bajura",
+    "बझाङ": "bajhang",
+    "डोटी": "doti",
+    "कैलाली": "kailali",
+    "कञ्चनपुर": "kanchanpur",
+    "दडेलधुरा": "dadeldhura",
+    "बैतडी": "baitadi",
+    "दार्चुला": "darchula",
+}
+
+NEPALI_CITY_ALIASES = {
+    "काठमाडौं": "kathmandu",
+    "काठमाण्डौ": "kathmandu",
+    "काठमाण्डू": "kathmandu",
+    "पोखरा": "pokhara",
+    "ललितपुर": "lalitpur",
+    "पाटन": "patan",
+    "भक्तपुर": "bhaktapur",
+    "विराटनगर": "biratnagar",
+    "वीरगञ्ज": "birgunj",
+    "बिरगंज": "birgunj",
+    "भरतपुर": "bharatpur",
+    "धरान": "dharan",
+    "बुटवल": "butwal",
+    "हेटौंडा": "hetauda",
+    "हेटौडा": "hetauda",
+    "नेपालगञ्ज": "nepalgunj",
+    "जनकपुर": "janakpur",
+    "धनगढी": "dhangadhi",
+    "इटहरी": "itahari",
+    "तुलसीपुर": "tulsipur",
+    "दमक": "damak",
+    "राजविराज": "rajbiraj",
+    "घोराही": "ghorahi",
+    "बिर्तामोड": "birtamod",
 }
 
 PROVINCE_KEYWORDS = {
@@ -503,6 +641,8 @@ class FeatureExtractor:
         self._international_cities = {c.lower() for c in INTERNATIONAL_CITIES}
         # Nepali language Nepal locations (no case conversion needed)
         self._nepal_locations_ne = NEPAL_LOCATIONS_NE
+        self._nepali_district_aliases = NEPALI_DISTRICT_ALIASES
+        self._nepali_city_aliases = NEPALI_CITY_ALIASES
 
     def extract(
         self,
@@ -589,15 +729,10 @@ class FeatureExtractor:
 
     def _tokenize_title(self, title: str) -> List[str]:
         """Tokenize and normalize title."""
-        # Lowercase and split
         title_lower = title.lower()
-
-        # Remove punctuation
-        title_clean = re.sub(r"[^\w\s]", " ", title_lower)
-
-        # Split and filter
+        raw_tokens = re.findall(r"[A-Za-z0-9]+|[\u0900-\u097F]+", title_lower)
         tokens = [
-            w for w in title_clean.split()
+            w for w in raw_tokens
             if len(w) > 2 and w not in STOP_WORDS
         ]
 
@@ -612,10 +747,10 @@ class FeatureExtractor:
             if re.search(pattern, text_lower):
                 found.append(district)
 
-        # Check Nepali names (substring match for Devanagari)
-        for location in self._nepal_locations_ne:
-            if location in text_lower:
-                found.append(location)
+        # Check Nepali district aliases and normalize to canonical English district keys
+        for alias, district in self._nepali_district_aliases.items():
+            if self._contains_nepali_place_alias(text_lower, alias):
+                found.append(district)
 
         return sorted(set(found))
 
@@ -642,9 +777,20 @@ class FeatureExtractor:
             pattern = rf"\b{re.escape(city)}\b"
             if re.search(pattern, text_lower):
                 found.append(city)
-        for location in self._nepal_locations_ne:
-            if location in text_lower and location not in found:
-                found.append(location)
+
+        for alias, city in self._nepali_city_aliases.items():
+            if self._contains_nepali_place_alias(text_lower, alias):
+                found.append(city)
+
+        # Capture local-body names even when they are not in the fixed city list.
+        for match in re.findall(
+            r"([ऀ-ॿA-Za-z0-9][ऀ-ॿA-Za-z0-9\s\-/]{0,40}?(?:महानगरपालिका|उपमहानगरपालिका|नगरपालिका|गाउँपालिका|Rural Municipality|Municipality|Metropolitan City|Sub-Metropolitan City))",
+            text_lower,
+        ):
+            candidate = re.sub(r"\s+", " ", match).strip(" ,.;:-")
+            if candidate:
+                found.append(candidate)
+
         return sorted(set(found))
 
     def _build_place_mentions(
@@ -684,10 +830,14 @@ class FeatureExtractor:
             return None
         if place in DISTRICT_TO_PROVINCE:
             return DISTRICT_TO_PROVINCE[place]
+        if place in self._nepali_district_aliases:
+            return DISTRICT_TO_PROVINCE.get(self._nepali_district_aliases[place])
         if place in CITY_TO_PROVINCE:
             return CITY_TO_PROVINCE[place]
         if place in NEPALI_CITY_TO_PROVINCE:
             return NEPALI_CITY_TO_PROVINCE[place]
+        if place in self._nepali_city_aliases:
+            return CITY_TO_PROVINCE.get(self._nepali_city_aliases[place])
         return None
 
     def _resolve_primary_municipality(
@@ -699,6 +849,12 @@ class FeatureExtractor:
             pattern = rf"\b{re.escape(city)}\b"
             if re.search(pattern, title_lower):
                 return city
+        for alias, city in self._nepali_city_aliases.items():
+            if self._contains_nepali_place_alias(title_lower, alias):
+                return city
+        for municipality in municipalities:
+            if municipality in title_lower:
+                return municipality
         return municipalities[0] if municipalities else None
 
     def _compute_geo_confidence(self, features: StoryFeatures) -> float:
@@ -742,18 +898,28 @@ class FeatureExtractor:
             if re.search(pattern, title_lower):
                 return district
 
+        # Check Nepali district aliases and normalize to canonical English district keys
+        for alias, district in self._nepali_district_aliases.items():
+            if self._contains_nepali_place_alias(title_lower, alias):
+                return district
+
         # Check English cities
         for city in self._cities_lower:
             pattern = rf"\b{re.escape(city)}\b"
             if re.search(pattern, title_lower):
                 return city
 
-        # Check Nepali locations (substring match)
-        for location in self._nepal_locations_ne:
-            if location in title_lower:
-                return location
+        # Check Nepali city aliases
+        for alias, city in self._nepali_city_aliases.items():
+            if self._contains_nepali_place_alias(title_lower, alias):
+                return city
 
         return None
+
+    def _contains_nepali_place_alias(self, text: str, alias: str) -> bool:
+        suffix_pattern = "|".join(sorted((re.escape(s) for s in NEPALI_LOCATION_SUFFIXES), key=len, reverse=True))
+        pattern = rf"(?<![\u0900-\u097F]){re.escape(alias)}(?:{suffix_pattern})?(?![\u0900-\u097F])"
+        return re.search(pattern, text) is not None
 
     def _extract_constituencies(self, text_lower: str) -> List[str]:
         """Extract Nepal constituencies mentioned in text."""

@@ -18,12 +18,14 @@ import type {
 export const getAnnouncementSummary = async (
   limit: number = 5,
   hours?: number,
-  provinces?: string[]
+  provinces?: string[],
+  scope?: string,
 ): Promise<AnnouncementSummary> => {
   const response = await apiClient.get('/announcements/summary', {
     params: {
       limit,
       hours,
+      scope,
       // Pass provinces as comma-separated string if provided
       province: provinces && provinces.length > 0 ? provinces.join(',') : undefined,
     },

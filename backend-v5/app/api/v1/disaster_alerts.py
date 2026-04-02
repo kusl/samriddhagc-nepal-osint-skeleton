@@ -55,6 +55,7 @@ async def get_active_alerts(
         result.append({
             "id": inc["id"],
             "external_id": str(inc["bipad_id"]),
+            "entry_type": "incident",
             "title": inc["title"],
             "title_ne": None,
             "description": None,
@@ -87,6 +88,7 @@ async def get_active_alerts(
         result.append({
             "id": alert["id"],
             "external_id": str(alert["bipad_id"]),
+            "entry_type": "alert",
             "title": alert["title"],
             "title_ne": None,
             "description": None,
@@ -176,7 +178,8 @@ async def get_alert_stats(
     incident_repo = DisasterIncidentRepository(db)
 
     # AsyncSession is not safe for concurrent queries via asyncio.gather.
-    active_alerts = await alert_repo.count_total(hours=hours)
+    active_alerts = await alert_repo.count_total(hours=hours, active_only=True)
+    recent_alerts = await alert_repo.count_total(hours=hours)
     alerts_by_type = await alert_repo.count_by_type(hours=hours)
     incidents_in_window = await incident_repo.count_total(hours=hours)
     incidents_by_type = await incident_repo.count_by_type(hours=hours)
@@ -190,6 +193,7 @@ async def get_alert_stats(
 
     result = {
         "active_alerts": active_alerts,
+        "recent_alerts": recent_alerts,
         "danger_alerts": danger_count,
         "warning_alerts": warning_count,
         "by_severity": {
@@ -275,9 +279,12 @@ async def get_hazard_types():
     """Get list of hazard types."""
     return [
         {"code": "flood", "name": "Flood", "name_ne": "बाढी", "icon": "flood"},
+        {"code": "heavy_rainfall", "name": "Heavy Rainfall", "name_ne": "भारी वर्षा", "icon": "heavy_rainfall"},
         {"code": "landslide", "name": "Landslide", "name_ne": "पहिरो", "icon": "landslide"},
         {"code": "earthquake", "name": "Earthquake", "name_ne": "भूकम्प", "icon": "earthquake"},
         {"code": "fire", "name": "Fire", "name_ne": "आगलागी", "icon": "fire"},
+        {"code": "forest_fire", "name": "Forest Fire", "name_ne": "डढेलो", "icon": "forest_fire"},
+        {"code": "pollution", "name": "Pollution Alert", "name_ne": "प्रदूषण चेतावनी", "icon": "pollution"},
         {"code": "lightning", "name": "Lightning", "name_ne": "चट्याङ", "icon": "lightning"},
         {"code": "drought", "name": "Drought", "name_ne": "खडेरी", "icon": "drought"},
         {"code": "cold_wave", "name": "Cold Wave", "name_ne": "चिसो लहर", "icon": "cold_wave"},
@@ -292,14 +299,17 @@ async def sync_bipad_data(
     fetch_alerts: bool = True,
     fetch_incidents: bool = True,
     incident_limit: int = Query(default=100, le=500),
+    alert_limit: int = Query(default=200, le=500),
     db: AsyncSession = Depends(get_db),
 ):
     """Trigger manual sync with BIPAD Portal."""
     service = DisasterIngestionService(db)
     stats = await service.ingest_all(
         incident_limit=incident_limit,
+        alert_limit=alert_limit,
         earthquake_limit=50,
         incident_days_back=30,
+        alert_days_back=30,
         earthquake_days_back=7,
         filter_insignificant=False,
     )

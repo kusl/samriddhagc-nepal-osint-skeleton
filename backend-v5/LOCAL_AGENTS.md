@@ -65,8 +65,8 @@ Add `/usr/sbin/cron` (or Terminal.app)
 
 ```bash
 # Manual test
-OSINT_PASSWORD=your-osint-password venv/bin/python run_local_api.py analyst --hours 6
-OSINT_PASSWORD=your-osint-password venv/bin/python run_local_api.py province --hours 6
+OSINT_PASSWORD=devpassword123 venv/bin/python run_local_api.py analyst --hours 6
+OSINT_PASSWORD=devpassword123 venv/bin/python run_local_api.py province --hours 6
 
 # Check cron logs
 tail -f /tmp/osint_agents.log
@@ -78,10 +78,10 @@ tail -f /tmp/osint_agents.log
 cd ~/Desktop/Projects/nepal_osint_v5/backend-v5
 
 # Analyst brief (situation report)
-OSINT_PASSWORD=your-osint-password venv/bin/python run_local_api.py analyst --hours 6
+OSINT_PASSWORD=devpassword123 venv/bin/python run_local_api.py analyst --hours 6
 
 # Province anomaly (7-province threat assessment)
-OSINT_PASSWORD=your-osint-password venv/bin/python run_local_api.py province --hours 6
+OSINT_PASSWORD=devpassword123 venv/bin/python run_local_api.py province --hours 6
 
 # Both at once
 ./run_agents.sh all

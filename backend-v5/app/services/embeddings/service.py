@@ -241,6 +241,21 @@ class EmbeddingService:
             "skipped": 0,
             "failed": 0,
         }
+        effective_limit = limit
+        if self._uses_openai_embeddings():
+            budget_limits = [
+                self.settings.openai_max_embedding_texts_per_hour,
+                self.settings.openai_max_embedding_texts_per_day,
+            ]
+            positive_limits = [value for value in budget_limits if value > 0]
+            if positive_limits:
+                effective_limit = min(limit, min(positive_limits))
+                if effective_limit < limit:
+                    logger.info(
+                        "Capping embedding batch from %s to %s to respect OpenAI text budget",
+                        limit,
+                        effective_limit,
+                    )
 
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
@@ -264,7 +279,7 @@ class EmbeddingService:
                 Story.nepal_relevance.in_(["NEPAL_DOMESTIC", "NEPAL_NEIGHBOR"])
             )
 
-        query = query.limit(limit)
+        query = query.limit(effective_limit)
 
         result = await self.db.execute(query)
         stories = result.scalars().all()

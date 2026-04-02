@@ -369,6 +369,17 @@ const TIME_FILTERS = [
 type ReadFilter = 'all' | 'important';
 type SortFilter = 'newest' | 'oldest';
 
+const CHIP_STYLE = {
+  padding: '3px 7px',
+  fontSize: '9px',
+  fontWeight: 600,
+  fontFamily: 'var(--font-mono)',
+  border: '1px solid var(--border-subtle)',
+  cursor: 'pointer',
+  lineHeight: 1.2,
+  whiteSpace: 'nowrap' as const,
+};
+
 function getAnnouncementTimestamp(announcement: Announcement): number {
   const dateValue =
     announcement.published_at ??
@@ -406,6 +417,8 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
     if (!data) return [];
     return Object.entries(data.by_source).sort(([, countA], [, countB]) => countB - countA);
   }, [data]);
+
+  const topSourceEntries = useMemo(() => sourceEntries.slice(0, 4), [sourceEntries]);
 
   // Filter and sort announcements
   const filteredAnnouncements = useMemo(() => {
@@ -488,7 +501,7 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            padding: '10px 12px',
+            padding: '8px 10px',
             borderBottom: '1px solid var(--border-subtle)',
           }}
         >
@@ -498,7 +511,7 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
               <span
                 style={{
                   fontFamily: 'var(--font-mono)',
-                  fontSize: '18px',
+                  fontSize: '16px',
                   fontWeight: 600,
                 }}
               >
@@ -522,7 +535,7 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
                 background: 'var(--bg-tertiary)',
                 borderRadius: '4px',
                 padding: '2px',
-                marginLeft: '4px',
+                marginLeft: '2px',
               }}
             >
               {TIME_FILTERS.map((filter) => (
@@ -530,7 +543,7 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
                   key={filter.label}
                   onClick={() => setTimeFilter(filter.hours)}
                   style={{
-                    padding: '3px 6px',
+                    padding: '2px 5px',
                     fontSize: '9px',
                     fontWeight: 500,
                     border: 'none',
@@ -556,14 +569,14 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
             {isProvinceFilterEnabled && (
               <div
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '3px 8px',
-                  background: 'rgba(64, 136, 80, 0.15)',
-                  borderRadius: '4px',
-                  marginLeft: '4px',
-                }}
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '2px 6px',
+                background: 'rgba(64, 136, 80, 0.15)',
+                borderRadius: '4px',
+                marginLeft: '2px',
+              }}
                 title={`Filtered by: ${selectedProvinces.join(', ')}`}
               >
                 <MapPin size={10} color="#408850" />
@@ -593,8 +606,8 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
             <button
               onClick={() => setActiveFilter('all')}
               style={{
-                padding: '4px 10px',
-                fontSize: '10px',
+                padding: '3px 8px',
+                fontSize: '9px',
                 fontWeight: 500,
                 border: 'none',
                 borderRadius: '4px',
@@ -617,8 +630,8 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
                 key={cat}
                 onClick={() => setActiveFilter(cat)}
                 style={{
-                  padding: '4px 10px',
-                  fontSize: '10px',
+                  padding: '3px 8px',
+                  fontSize: '9px',
                   fontWeight: 500,
                   border: 'none',
                   borderRadius: '4px',
@@ -641,14 +654,12 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
           </div>
         </div>
 
-        {/* Professional filter toolbar */}
         <div
           style={{
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '8px',
-            alignItems: 'center',
-            padding: '8px 12px',
+            gap: '6px',
+            padding: '6px 10px',
             borderBottom: '1px solid var(--border-subtle)',
             background: 'rgba(255,255,255,0.01)',
             flexShrink: 0,
@@ -656,12 +667,49 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
         >
           <div
             style={{
+              display: 'flex',
+              gap: '4px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              flex: '1 1 100%',
+              minWidth: 0,
+              scrollbarWidth: 'thin',
+            }}
+          >
+            <button
+              onClick={() => setSourceFilter('all')}
+              style={{
+                ...CHIP_STYLE,
+                background: sourceFilter === 'all' ? 'var(--bg-secondary)' : 'var(--bg-active)',
+                color: sourceFilter === 'all' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              }}
+            >
+              All sources
+            </button>
+            {topSourceEntries.map(([source]) => (
+              <button
+                key={source}
+                onClick={() => setSourceFilter(source)}
+                style={{
+                  ...CHIP_STYLE,
+                  background: sourceFilter === source ? 'var(--bg-secondary)' : 'var(--bg-active)',
+                  color: sourceFilter === source ? 'var(--text-primary)' : 'var(--text-secondary)',
+                }}
+                title={source}
+              >
+                {source.replace('.gov.np', '')}
+              </button>
+            ))}
+          </div>
+
+          <div
+            style={{
               flex: '1 1 220px',
-              minWidth: '160px',
+              minWidth: '180px',
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              padding: '5px 8px',
+              padding: '4px 8px',
               border: '1px solid var(--border-subtle)',
               borderRadius: '5px',
               background: 'var(--bg-tertiary)',
@@ -683,50 +731,25 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
             />
           </div>
 
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
+          <button
+            onClick={() => setReadFilter(readFilter === 'important' ? 'all' : 'important')}
             style={{
-              minWidth: '140px',
-              padding: '5px 8px',
+              ...CHIP_STYLE,
+              padding: '4px 8px',
               borderRadius: '5px',
-              border: '1px solid var(--border-subtle)',
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)',
-              fontSize: '10px',
+              background: readFilter === 'important' ? 'var(--bg-secondary)' : 'var(--bg-tertiary)',
+              color: readFilter === 'important' ? 'var(--text-primary)' : 'var(--text-secondary)',
             }}
           >
-            <option value="all">All sources</option>
-            {sourceEntries.map(([source, count]) => (
-              <option key={source} value={source}>
-                {source} ({count})
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={readFilter}
-            onChange={(e) => setReadFilter(e.target.value as ReadFilter)}
-            style={{
-              minWidth: '95px',
-              padding: '5px 8px',
-              borderRadius: '5px',
-              border: '1px solid var(--border-subtle)',
-              background: 'var(--bg-tertiary)',
-              color: 'var(--text-secondary)',
-              fontSize: '10px',
-            }}
-          >
-            <option value="all">All</option>
-            <option value="important">Important</option>
-          </select>
+            Important
+          </button>
 
           <select
             value={sortFilter}
             onChange={(e) => setSortFilter(e.target.value as SortFilter)}
             style={{
-              minWidth: '110px',
-              padding: '5px 8px',
+              minWidth: '108px',
+              padding: '4px 8px',
               borderRadius: '5px',
               border: '1px solid var(--border-subtle)',
               background: 'var(--bg-tertiary)',
@@ -745,7 +768,7 @@ export const AnnouncementsWidget = memo(function AnnouncementsWidget() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
-              padding: '5px 8px',
+              padding: '4px 8px',
               borderRadius: '5px',
               border: '1px solid var(--border-subtle)',
               background: hasAdvancedFilters ? 'var(--bg-tertiary)' : 'transparent',

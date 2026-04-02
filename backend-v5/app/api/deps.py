@@ -13,6 +13,56 @@ from app.services.auth_service import AuthService
 # HTTP Bearer token scheme
 security = HTTPBearer(auto_error=False)
 
+PUBLIC_READ_ROUTE_PREFIXES = (
+    "/api/v1/dashboard/bootstrap",
+    "/api/v1/kpi/snapshot",
+    "/api/v1/kpi/trends/hourly",
+    "/api/v1/stories/recent",
+    "/api/v1/stories/sources",
+    "/api/v1/stories",
+    "/api/v1/map/events",
+    "/api/v1/announcements/summary",
+    "/api/v1/twitter/tweets",
+    "/api/v1/verbatim/summary",
+    "/api/v1/verbatim/scoreboard",
+    "/api/v1/verbatim/sessions",
+    "/api/v1/briefs/latest",
+    "/api/v1/briefs/history",
+    "/api/v1/province-anomalies/latest",
+    "/api/v1/parliament/bills",
+    "/api/v1/parliament/questions/as-sessions",
+    "/api/v1/disaster-alerts/active",
+    "/api/v1/disaster-alerts/stats",
+    "/api/v1/disaster-alerts/map-data",
+    "/api/v1/fact-check/results",
+    "/api/v1/analytics/story-tracker",
+    "/api/v1/analytics/developing-stories",
+    "/api/v1/analytics/consolidated-stories",
+    "/api/v1/weather/summary",
+    "/api/v1/market/summary",
+    "/api/v1/debt-clock/nepal",
+    "/api/v1/infrastructure/border-crossings",
+    "/api/v1/govt-decisions/latest",
+    "/api/v1/procurement/widget-summary",
+    "/api/v1/economy/nrb-snapshot",
+    "/api/v1/cabinet-actions/summary",
+    "/api/v1/cabinet-actions/items",
+    "/api/v1/election-results/house-representatives",
+    "/api/v1/promises",
+    "/api/v1/promises/summary",
+)
+
+
+def _is_public_read_route(request: Request) -> bool:
+    if request.method.upper() not in {"GET", "HEAD"}:
+        return False
+
+    path = request.url.path
+    return any(
+        path == prefix or path.startswith(prefix + "/")
+        for prefix in PUBLIC_READ_ROUTE_PREFIXES
+    )
+
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """Get database session dependency."""
@@ -35,10 +85,14 @@ async def get_current_user(
     This halves connection pressure vs the old approach where auth held
     its own get_db session open alongside the endpoint's session.
     """
+    is_public_read = _is_public_read_route(request)
+
     if credentials:
         raw_token = credentials.credentials
     elif token and request.method.upper() == "GET":
         raw_token = token
+    elif is_public_read:
+        return AuthService.build_public_consumer_user()
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -49,6 +103,8 @@ async def get_current_user(
     payload = AuthService.decode_token(raw_token)
 
     if not payload:
+        if is_public_read:
+            return AuthService.build_public_consumer_user()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -56,11 +112,16 @@ async def get_current_user(
         )
 
     if payload.type != "access":
+        if is_public_read:
+            return AuthService.build_public_consumer_user()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+    if payload.public_consumer or payload.auth_provider == "public":
+        return AuthService.build_public_consumer_user()
 
     # Short-lived session — closes immediately after user fetch.
     # The old code used Depends(get_db) which held the connection open
@@ -70,6 +131,8 @@ async def get_current_user(
         user = await auth_service.get_user_by_id(UUID(payload.sub))
 
     if not user:
+        if is_public_read:
+            return AuthService.build_public_consumer_user()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
@@ -77,6 +140,8 @@ async def get_current_user(
         )
 
     if not user.is_active:
+        if is_public_read:
+            return AuthService.build_public_consumer_user()
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User account is disabled",

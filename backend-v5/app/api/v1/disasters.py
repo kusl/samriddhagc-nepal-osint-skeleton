@@ -247,9 +247,10 @@ async def get_summary(
 @router.post("/ingest", response_model=IngestionStatsResponse, dependencies=[Depends(require_dev)])
 async def trigger_ingestion(
     incident_limit: int = Query(100, ge=1, le=500, description="Max incidents to fetch"),
+    alert_limit: int = Query(200, ge=1, le=500, description="Max realtime alerts to fetch"),
     earthquake_limit: int = Query(50, ge=1, le=200, description="Max earthquakes to fetch"),
     days_back: int = Query(30, ge=1, le=365, description="Fetch incidents from last N days"),
-    filter_insignificant: bool = Query(True, description="Only store significant incidents"),
+    filter_insignificant: bool = Query(False, description="Only store significant incidents"),
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -261,8 +262,10 @@ async def trigger_ingestion(
     service = DisasterIngestionService(db)
     stats = await service.ingest_all(
         incident_limit=incident_limit,
+        alert_limit=alert_limit,
         earthquake_limit=earthquake_limit,
         incident_days_back=days_back,
+        alert_days_back=days_back,
         filter_insignificant=filter_insignificant,
     )
 

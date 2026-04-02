@@ -26,7 +26,8 @@ export function useRiverStations(basin?: string) {
   return useQuery<RiverStation[]>({
     queryKey: riverKeys.stations(basin),
     queryFn: () => getRiverStations(basin),
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -37,7 +38,8 @@ export function useRiverStats() {
   return useQuery<RiverStats>({
     queryKey: riverKeys.stats(),
     queryFn: getRiverStats,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -48,7 +50,8 @@ export function useRiverMapData() {
   return useQuery<RiverMapPoint[]>({
     queryKey: riverKeys.mapData(),
     queryFn: getRiverMapData,
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }
 
@@ -59,6 +62,7 @@ export function useRiverAlerts(hours: number = 24) {
   return useQuery<RiverAlert[]>({
     queryKey: riverKeys.alerts(hours),
     queryFn: () => getRiverAlerts(hours),
-    staleTime: 60 * 1000, // 1 minute
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 }

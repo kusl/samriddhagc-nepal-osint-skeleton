@@ -1,12 +1,10 @@
 // P0 Widget exports (connected to backend)
-export { MapWidget } from './MapWidget';
 export { ElectionMapWidget } from './ElectionMapWidget';
 export { KPIWidget } from './KPIWidget';
 export { StoriesWidget } from './StoriesWidget';
 export { NewsFeedWidget } from './NewsFeedWidget';
 export { DisastersWidget } from './DisastersWidget';
 export { ThreatsWidget } from './ThreatsWidget';
-export { ElectionsWidget } from './ElectionsWidget';
 export { KnowYourNetaWidget } from './KnowYourNetaWidget';
 
 // Election Monitor Widgets (Palantir-style modular)
@@ -42,9 +40,24 @@ export { ParliamentSessionWidget } from './ParliamentSessionWidget';
 
 // Government Decisions
 export { GovtDecisionsWidget } from './GovtDecisionsWidget';
+export { CabinetActionTrackerWidget } from './CabinetActionTrackerWidget';
 
 // Government Loan Tracker
 export { GovtLoanTrackerWidget } from './GovtLoanTrackerWidget';
+export { DebtTrackerWidget } from './DebtTrackerWidget';
+export { GovtContractsWidget } from './GovtContractsWidget';
+export { EconomicNewsWidget } from './EconomicNewsWidget';
+export { PriceWatchWidget } from './PriceWatchWidget';
+export { TradeCustomsWidget } from './TradeCustomsWidget';
+export { PublicSpendingWidget } from './PublicSpendingWidget';
+export { NrbMacroWidget } from './NrbMacroWidget';
+export { NrbPricesFlowsWidget } from './NrbPricesFlowsWidget';
+export { NrbBankingLiquidityWidget } from './NrbBankingLiquidityWidget';
+export { FiscalPositionWidget } from './FiscalPositionWidget';
+export { ExternalSectorWidget } from './ExternalSectorWidget';
+export { MonetaryConditionsWidget } from './MonetaryConditionsWidget';
+export { PricesCostPressureWidget } from './PricesCostPressureWidget';
+export { RiverMonitoringWidget } from './RiverMonitoringWidget';
 
 // Bills Tracker (Parliamentary Bills Pipeline)
 export { BillTrackerWidget } from './BillTrackerWidget';
@@ -71,20 +84,6 @@ import { WidgetSkeleton, WidgetError, WidgetEmpty } from './shared';
 
 export function MarketWidget() {
   const { data, isLoading, error } = useMarketSummary();
-  const regionalFuelBands = [
-    { label: 'Kathmandu · Pokhara · Dipayal', petrol: 157, diesel: 142 },
-    { label: 'Surkhet · Dang', petrol: 156, diesel: 141 },
-    { label: 'Birgunj · Biratnagar · Nepalgunj', petrol: 154.5, diesel: 139.5 },
-  ];
-  const nationalFuelAverage = regionalFuelBands.reduce(
-    (totals, band) => ({
-      petrol: totals.petrol + band.petrol,
-      diesel: totals.diesel + band.diesel,
-    }),
-    { petrol: 0, diesel: 0 },
-  );
-  const averagePetrol = nationalFuelAverage.petrol / regionalFuelBands.length;
-  const averageDiesel = nationalFuelAverage.diesel / regionalFuelBands.length;
 
   // Format number with commas
   const formatValue = (value: number, unit: string): string => {
@@ -112,11 +111,37 @@ export function MarketWidget() {
   // Build market indicators from API data
   const indicators = data ? [
     { label: 'NEPSE', value: data.nepse ? formatValue(data.nepse.value, data.nepse.unit) : '--', change: data.nepse ? formatChange(data.nepse.change) : '--', up: (data.nepse?.change ?? 0) >= 0 },
-    { label: 'USD/NPR', value: data.usd_npr ? formatValue(data.usd_npr.value, data.usd_npr.unit) : '--', change: data.usd_npr ? formatChange(data.usd_npr.change) : '--', up: (data.usd_npr?.change ?? 0) >= 0 },
+    {
+      label: 'USD/NPR',
+      value: data.usd_npr ? formatValue(data.usd_npr.value, data.usd_npr.unit) : '--',
+      change: data.usd_npr ? formatChange(data.usd_npr.change) : '--',
+      up: (data.usd_npr?.change ?? 0) >= 0,
+      sublabel: data.usd_npr?.data_date
+        ? `NRB forex · ${new Date(data.usd_npr.data_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+        : 'NRB forex',
+    },
     { label: 'Gold/Tola', value: data.gold ? formatValue(data.gold.value, data.gold.unit) : '--', change: data.gold ? formatChange(data.gold.change) : '--', up: (data.gold?.change ?? 0) >= 0 },
     { label: 'Silver/Tola', value: data.silver ? formatValue(data.silver.value, data.silver.unit) : '--', change: data.silver ? formatChange(data.silver.change) : '--', up: (data.silver?.change ?? 0) >= 0 },
-    { label: 'Petrol/L', value: formatValue(averagePetrol, 'NPR/litre'), change: data.petrol ? formatChange(data.petrol.change) : '--', up: (data.petrol?.change ?? 0) >= 0, icon: <Fuel size={10} />, sublabel: 'NOC national avg' },
-    { label: 'Diesel/L', value: formatValue(averageDiesel, 'NPR/litre'), change: data.diesel ? formatChange(data.diesel.change) : '--', up: (data.diesel?.change ?? 0) >= 0, icon: <Fuel size={10} />, sublabel: 'NOC national avg' },
+    {
+      label: 'Petrol/L',
+      value: data.petrol ? formatValue(data.petrol.value, 'NPR/litre') : '--',
+      change: data.petrol ? formatChange(data.petrol.change) : '--',
+      up: (data.petrol?.change ?? 0) >= 0,
+      icon: <Fuel size={10} />,
+      sublabel: data.petrol?.data_date
+        ? `NOC · ${new Date(data.petrol.data_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+        : 'Nepal Oil Corporation',
+    },
+    {
+      label: 'Diesel/L',
+      value: data.diesel ? formatValue(data.diesel.value, 'NPR/litre') : '--',
+      change: data.diesel ? formatChange(data.diesel.change) : '--',
+      up: (data.diesel?.change ?? 0) >= 0,
+      icon: <Fuel size={10} />,
+      sublabel: data.diesel?.data_date
+        ? `NOC · ${new Date(data.diesel.data_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+        : 'Nepal Oil Corporation',
+    },
   ] : [];
 
   if (isLoading) {

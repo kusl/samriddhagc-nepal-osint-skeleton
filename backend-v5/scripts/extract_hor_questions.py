@@ -9,7 +9,6 @@ Usage:
     python scripts/extract_hor_questions.py /path/to/pdf output.json
 """
 import json
-import os
 import re
 import sys
 from pathlib import Path
@@ -423,14 +422,12 @@ if __name__ == "__main__":
     # If --ingest flag, also POST to backend
     if "--ingest" in sys.argv:
         base_url = "http://localhost:8000"
-        password = os.environ.get("OSINT_PASSWORD", "")
+        password = "devpassword123"
         for arg in sys.argv:
             if arg.startswith("--url="):
                 base_url = arg.split("=", 1)[1]
             if arg.startswith("--password="):
                 password = arg.split("=", 1)[1]
-        if not password:
-            raise SystemExit("Set OSINT_PASSWORD or pass --password=<value> to ingest questions")
 
         output_path = sys.argv[2] if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else "hor6_questions.json"
         with open(output_path, "r", encoding="utf-8") as f:

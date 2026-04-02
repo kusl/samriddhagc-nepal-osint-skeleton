@@ -91,3 +91,45 @@ def bs_to_ad(bs_date: str) -> Optional[datetime]:
 
     except (ValueError, IndexError):
         return None
+
+
+def ad_to_bs(ad_date: datetime) -> Optional[str]:
+    """
+    Convert Gregorian datetime to a BS date string.
+
+    Args:
+        ad_date: Gregorian datetime
+
+    Returns:
+        Date in format "YYYY-MM-DD" or None if invalid / unsupported
+    """
+    if not ad_date:
+        return None
+
+    try:
+        target = ad_date.replace(tzinfo=None)
+        reference = AD_REFERENCE.replace(tzinfo=None)
+        if target < reference:
+            return None
+
+        delta_days = (target.date() - reference.date()).days
+        year = BS_REFERENCE_YEAR
+        month = BS_REFERENCE_MONTH
+        day = BS_REFERENCE_DAY
+
+        while delta_days > 0:
+            month_days = BS_MONTH_DAYS.get(year)
+            if not month_days:
+                return None
+            day += 1
+            if day > month_days[month - 1]:
+                day = 1
+                month += 1
+                if month > 12:
+                    month = 1
+                    year += 1
+            delta_days -= 1
+
+        return f"{year:04d}-{month:02d}-{day:02d}"
+    except Exception:
+        return None

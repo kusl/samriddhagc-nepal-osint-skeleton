@@ -314,7 +314,7 @@ def main():
 
     print(f"\n{'='*60}")
     print("Done! Now run analysis:")
-    print("  OSINT_PASSWORD=your-osint-password python3 run_local_verbatim.py --once")
+    print("  OSINT_PASSWORD=devpassword123 python3 run_local_verbatim.py --once")
 
 
 if __name__ == "__main__":

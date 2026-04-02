@@ -2,7 +2,6 @@
 import asyncio
 import base64
 import logging
-import os
 from typing import Optional
 
 import httpx
@@ -23,8 +22,8 @@ class CAMISClient:
 
     GATEWAY = "https://camis.ocr.gov.np/gateway"
     AUTH_URL = "https://camis.ocr.gov.np/gateway/auth/api/ocr-login"
-    CLIENT_ID = os.environ.get("CAMIS_CLIENT_ID", "external-ocr-client")
-    CLIENT_SECRET = os.environ.get("CAMIS_CLIENT_SECRET", "")
+    CLIENT_ID = "external-ocr-client"
+    CLIENT_SECRET = "OCR@pp123"
 
     def __init__(
         self,
@@ -99,11 +98,6 @@ class CAMISClient:
         if not self.username or not self.password:
             raise ValueError(
                 "CAMIS credentials not configured. Set CAMIS_USERNAME and CAMIS_PASSWORD environment variables."
-            )
-
-        if not self.CLIENT_SECRET:
-            raise ValueError(
-                "CAMIS client secret not configured. Set CAMIS_CLIENT_SECRET in the environment."
             )
 
         basic_creds = base64.b64encode(

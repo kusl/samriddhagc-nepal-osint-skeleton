@@ -19,13 +19,32 @@ logger = logging.getLogger(__name__)
 # Routes to cache: path prefix -> TTL in seconds
 CACHED_ROUTES: dict[str, int] = {
     "/api/v1/stories/recent": 30,
+    "/api/v1/disasters/incidents/recent": 30,
+    "/api/v1/disasters/incidents/significant": 30,
+    "/api/v1/disasters/alerts/active": 30,
+    "/api/v1/disaster-alerts/active": 30,
+    "/api/v1/disaster-alerts/incidents": 30,
+    "/api/v1/disaster-alerts/stats": 60,
+    "/api/v1/disaster-alerts/map-data": 30,
     "/api/v1/map/events": 60,
     "/api/v1/election-results/live-snapshot": 30,
+    "/api/v1/election-results/house-representatives": 60,
     "/api/v1/twitter/tweets": 60,
+    "/api/v1/analytics/consolidated-stories": 30,
     "/api/v1/analytics/cluster-timeline": 45,
+    "/api/v1/analytics/summary": 45,
+    "/api/v1/analytics/developing-stories": 45,
+    "/api/v1/analytics/story-tracker": 45,
     "/api/v1/fact-check/results": 60,
     "/api/v1/market/summary": 600,
+    "/api/v1/economy/nrb-snapshot": 600,
+    "/api/v1/debt-clock/nepal": 30,
+    "/api/v1/procurement/widget-summary": 600,
     "/api/v1/briefs/latest": 60,
+    "/api/v1/govt-decisions/latest": 120,
+    "/api/v1/cabinet-actions/summary": 120,
+    "/api/v1/cabinet-actions/items": 120,
+    "/api/v1/cabinet-actions/manifesto": 120,
     "/api/v1/kpi/snapshot": 15,
     "/api/v1/kpi/trends/hourly": 30,
     "/api/v1/announcements/summary": 60,
@@ -47,6 +66,12 @@ CACHED_ROUTES: dict[str, int] = {
 
 CACHE_PREFIX = "rcache:"
 
+# Auth-protected dashboard reads that are identical for all users and safe to
+# serve from a shared cache. These routes sit behind guest/consumer auth, so a
+# blanket "authorization header means bypass" rule would otherwise force cold
+# recomputation on every dashboard visit.
+SHARED_AUTH_CACHEABLE_ROUTES: set[str] = set(CACHED_ROUTES.keys())
+
 
 def _cache_key(path: str, query: str) -> str:
     """Build a short cache key from path + query string."""
@@ -63,6 +88,23 @@ def _match_route(path: str) -> int | None:
     if path == "/api/v1/stories":
         return CACHED_ROUTES.get("/api/v1/stories", None)
     return None
+
+
+def _is_shared_auth_cacheable(path: str) -> bool:
+    return _match_route(path) is not None and any(
+        path == prefix or path.startswith(prefix + "/")
+        for prefix in SHARED_AUTH_CACHEABLE_ROUTES
+    )
+
+
+def _should_bypass_cache(request: Request) -> bool:
+    """Skip shared response cache for authenticated or caller-specific requests."""
+    path = request.url.path
+    if request.headers.get("authorization") and not _is_shared_auth_cacheable(path):
+        return True
+    if request.cookies:
+        return True
+    return False
 
 
 async def invalidate_response_cache(redis_getter):
@@ -90,6 +132,9 @@ class ResponseCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         # Only cache GET requests
         if request.method != "GET":
+            return await call_next(request)
+
+        if _should_bypass_cache(request):
             return await call_next(request)
 
         path = request.url.path

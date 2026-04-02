@@ -201,9 +201,9 @@ class RiverMonitoringService:
 
     async def get_stats(self) -> dict:
         """Get river monitoring statistics."""
-        status_counts = await self.station_repo.count_by_status()
-        basins = await self.station_repo.get_basins()
         stations_with_latest = await self.station_repo.get_all_with_latest_reading()
+        status_counts = await self.station_repo.count_by_status(stations_with_latest)
+        basins = await self.station_repo.get_basins()
 
         latest_reading_at: Optional[datetime] = None
         for station in stations_with_latest:
@@ -230,6 +230,10 @@ class RiverMonitoringService:
             "basins": basins,
             "last_updated": (latest_reading_at or datetime.now(timezone.utc)).isoformat(),
         }
+
+    async def cleanup_old_readings(self, days: int) -> int:
+        """Prune old river readings to keep the VPS dataset bounded."""
+        return await self.reading_repo.cleanup_old_readings(days=days)
 
     async def get_map_data(self) -> list[dict]:
         """Get all stations formatted for map display."""

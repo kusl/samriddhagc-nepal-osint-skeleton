@@ -40,12 +40,15 @@ const hazardIcons: Record<string, typeof Flame> = {
   fire: Flame,
   forest_fire: Flame,
   flood: Droplets,
+  heavy_rainfall: Droplets,
   landslide: Mountain,
   earthquake: TrendingUp,
   lightning: Zap,
   wind_storm: Wind,
+  windstorm: Wind,
   cold_wave: Snowflake,
   epidemic: Bug,
+  pollution: Wind,
 }
 
 const getHazardIconComponent = (hazardType: string | null) => {
@@ -279,10 +282,13 @@ export default function DisasterAlertsPage() {
             >
               <option value="">All Hazards</option>
               <option value="fire">Fire</option>
+              <option value="forest_fire">Forest Fire</option>
               <option value="flood">Flood</option>
+              <option value="heavy_rainfall">Heavy Rainfall</option>
               <option value="landslide">Landslide</option>
               <option value="earthquake">Earthquake</option>
               <option value="lightning">Lightning</option>
+              <option value="pollution">Pollution</option>
             </select>
             <select
               value={daysFilter}

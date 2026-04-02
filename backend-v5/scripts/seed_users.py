@@ -29,19 +29,19 @@ from app.services.auth_service import AuthService
 DEFAULT_USERS = [
     {
         "email": "dev@narada.dev",
-        "password": "change-me-dev-password",
+        "password": "devpassword123",
         "full_name": "Dev User",
         "role": UserRole.DEV,
     },
     {
         "email": "analyst@narada.dev",
-        "password": "change-me-analyst-password",
+        "password": "analystpassword123",
         "full_name": "Analyst User",
         "role": UserRole.ANALYST,
     },
     {
         "email": "consumer@narada.dev",
-        "password": "change-me-consumer-password",
+        "password": "consumerpassword123",
         "full_name": "Consumer User",
         "role": UserRole.CONSUMER,
     },
@@ -83,7 +83,7 @@ async def seed_users():
     for user_data in DEFAULT_USERS:
         print(f"  {user_data['role'].value.upper():8} | {user_data['email']:25} | {user_data['password']}")
     print("=" * 60)
-    print("\nIMPORTANT: Replace these placeholders before using this outside local development!")
+    print("\nIMPORTANT: Change these passwords in production!")
     print()
 
 

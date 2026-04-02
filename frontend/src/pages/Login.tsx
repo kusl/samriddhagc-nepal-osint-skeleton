@@ -4,7 +4,7 @@ import { Eye, EyeOff, Users, BarChart3, Code2, UserCircle, AlertTriangle, ArrowL
 import { login as apiLogin, googleAuth as apiGoogleAuth, guestLogin as apiGuestLogin, sendOtp as apiSendOtp, signup as apiSignup } from '../api/auth'
 import { useAuthStore, UserRole, User } from '../store/slices/authSlice'
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
+const GOOGLE_CLIENT_ID = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined)?.trim() || undefined
 
 type DemoAccount = {
   role: UserRole
@@ -190,7 +190,8 @@ export default function Login() {
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
-      setGoogleInitError('Google sign-in is disabled: set VITE_GOOGLE_CLIENT_ID in frontend and GOOGLE_CLIENT_ID in backend.')
+      setGoogleReady(false)
+      setGoogleInitError('')
       return
     }
     const initGoogle = () => {
@@ -255,6 +256,10 @@ export default function Login() {
   }, [renderGoogleButton, mode])
 
   const handleGoogleClick = () => {
+    if (!GOOGLE_CLIENT_ID) {
+      setError('Google sign-in is unavailable in this deployment.')
+      return
+    }
     if (!googleReady || typeof google === 'undefined' || !google.accounts?.id) {
       setError('Google sign-in is not ready yet.')
       return
@@ -565,7 +570,7 @@ export default function Login() {
                   </div>
 
                   {/* Google */}
-                  {GOOGLE_CLIENT_ID ? (
+                  {GOOGLE_CLIENT_ID && (
                     <div className="space-y-2">
                       <div
                         ref={googleBtnRef}
@@ -585,11 +590,6 @@ export default function Login() {
                       >
                         {googleLoading ? 'Signing in with Google...' : 'Trouble with popup? Try fallback'}
                       </button>
-                    </div>
-                  ) : (
-                    <div className="flex items-start gap-2 rounded border border-amber-500/15 bg-amber-500/5 p-2.5 text-xs text-amber-400/70">
-                      <AlertTriangle size={12} className="mt-0.5 shrink-0" />
-                      <span>Google sign-in disabled. Set <code className="font-mono text-amber-400/90">VITE_GOOGLE_CLIENT_ID</code>.</span>
                     </div>
                   )}
 

@@ -67,6 +67,11 @@ class EndpointMetric(BaseModel):
     avg_ms: float
     p95_ms: float = 0
     errors: int = 0
+    client_errors: int = 0
+    server_errors: int = 0
+    auth_errors: int = 0
+    not_found_errors: int = 0
+    health: str = "healthy"
 
 
 class ApiMetricsResponse(BaseModel):
@@ -74,6 +79,12 @@ class ApiMetricsResponse(BaseModel):
     request_count: int = 0
     error_count: int = 0
     error_rate: float = 0.0
+    client_error_count: int = 0
+    platform_error_count: int = 0
+    auth_error_count: int = 0
+    broken_integration_count: int = 0
+    client_error_rate: float = 0.0
+    platform_error_rate: float = 0.0
     avg_response_ms: float = 0
     p95_response_ms: float = 0
     p99_response_ms: float = 0

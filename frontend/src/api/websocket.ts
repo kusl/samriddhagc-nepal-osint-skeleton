@@ -23,11 +23,6 @@ export interface WebSocketMessage {
 export type MessageHandler = (message: WebSocketMessage) => void
 export type ConnectionHandler = (connected: boolean) => void
 
-export interface ServerClockSnapshot {
-  serverEpochMs: number | null
-  receivedAtPerfMs: number | null
-}
-
 interface SubscribeMessage {
   type: 'subscribe' | 'unsubscribe'
   channel: string
@@ -232,7 +227,6 @@ export class OSINTWebSocket {
       let message: WebSocketMessage
 
       if (rawMessage.type === 'heartbeat' || rawMessage.type === 'pong') {
-        _syncServerClock(rawMessage.timestamp)
         // Extract viewer count from heartbeat if present
         if (typeof rawMessage.viewers === 'number') {
           _setViewerCount(rawMessage.viewers)
@@ -241,7 +235,6 @@ export class OSINTWebSocket {
       }
 
       if (rawMessage.type === 'viewer_count') {
-        _syncServerClock(rawMessage.timestamp)
         if (typeof rawMessage.viewers === 'number') {
           _setViewerCount(rawMessage.viewers)
         }
@@ -290,8 +283,6 @@ export class OSINTWebSocket {
           timestamp: rawMessage.timestamp || new Date().toISOString(),
         }
       }
-
-      _syncServerClock(message.timestamp)
 
       // Get handlers for this channel
       const channel = message.channel as WebSocketChannel
@@ -367,29 +358,11 @@ export class OSINTWebSocket {
 // ── Live viewer count (external store for useSyncExternalStore) ──
 let _viewerCount = 0
 const _viewerListeners = new Set<() => void>()
-let _serverClock: ServerClockSnapshot = {
-  serverEpochMs: null,
-  receivedAtPerfMs: null,
-}
-const _serverClockListeners = new Set<() => void>()
 
 export function _setViewerCount(count: number) {
   if (count === _viewerCount) return
   _viewerCount = count
   _viewerListeners.forEach(l => l())
-}
-
-function _syncServerClock(timestamp: unknown) {
-  if (typeof timestamp !== 'string') return
-
-  const serverEpochMs = Date.parse(timestamp)
-  if (Number.isNaN(serverEpochMs)) return
-
-  _serverClock = {
-    serverEpochMs,
-    receivedAtPerfMs: performance.now(),
-  }
-  _serverClockListeners.forEach((listener) => listener())
 }
 
 export function subscribeViewerCount(cb: () => void) {
@@ -399,19 +372,6 @@ export function subscribeViewerCount(cb: () => void) {
 
 export function getViewerCountSnapshot() { return _viewerCount }
 export function getViewerCountServerSnapshot() { return 0 }
-
-export function subscribeServerClock(cb: () => void) {
-  _serverClockListeners.add(cb)
-  return () => { _serverClockListeners.delete(cb) }
-}
-
-export function getServerClockSnapshot() { return _serverClock }
-export function getServerClockServerSnapshot(): ServerClockSnapshot {
-  return {
-    serverEpochMs: null,
-    receivedAtPerfMs: null,
-  }
-}
 
 // Singleton instance
 let wsInstance: OSINTWebSocket | null = null

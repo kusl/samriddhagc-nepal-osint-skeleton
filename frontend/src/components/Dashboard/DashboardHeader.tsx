@@ -1,22 +1,31 @@
-import { useState, useEffect, useRef, memo, useSyncExternalStore, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, memo, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Grid3X3, User, LogOut, Terminal, Search, Github } from 'lucide-react';
 import { useDashboardStore } from '../../stores/dashboardStore';
 import { useAuthStore } from '../../store/slices/authSlice';
 import { usePermissions } from '../../hooks/usePermissions';
-import { useSettingsStore } from '../../store/slices/settingsSlice';
 import { useUserPreferencesStore } from '../../store/slices/userPreferencesSlice';
 import { useNotificationStore } from '../../stores/notificationStore';
-import apiClient from '../../api/client';
 import { subscribeViewerCount, getViewerCountSnapshot, getViewerCountServerSnapshot } from '../../api/websocket';
-import { useNepalClock } from '../../hooks/useNepalClock';
-import { formatNepalShortDate, formatNepalTime, NEPAL_TIME_LABEL } from '../../utils/nepalTime';
 import { NotificationBell } from '../common/NotificationBell';
 
 const PRESET_TABS = [
   { id: 'news', label: 'News' },
+  { id: 'economy', label: 'Economy' },
   { id: 'parliament', label: 'Accountability' },
 ] as const;
+
+const subscribeOnlineStatus = (cb: () => void) => {
+  window.addEventListener('online', cb);
+  window.addEventListener('offline', cb);
+  return () => {
+    window.removeEventListener('online', cb);
+    window.removeEventListener('offline', cb);
+  };
+};
+
+const getOnlineStatusSnapshot = () => navigator.onLine;
+const getOnlineStatusServerSnapshot = () => true;
 
 const ViewerBadge = memo(function ViewerBadge() {
   const viewers = useSyncExternalStore(subscribeViewerCount, getViewerCountSnapshot, getViewerCountServerSnapshot);
@@ -29,24 +38,26 @@ const ViewerBadge = memo(function ViewerBadge() {
 });
 
 const Clock = memo(function Clock() {
-  const { now, isServerSynced } = useNepalClock();
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const hh = time.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  const date = time.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }).toUpperCase();
 
   return (
-    <div
-      className="hidden sm:flex items-center gap-2"
-      style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}
-      title={isServerSynced ? 'Server-synced Nepal time' : 'Awaiting server time sync; temporarily using local clock'}
-    >
-      <span style={{ color: 'var(--text-muted)' }}>{formatNepalShortDate(now)}</span>
-      <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{formatNepalTime(now)}</span>
-      <span style={{ color: 'var(--text-disabled)', letterSpacing: '0.08em' }}>{NEPAL_TIME_LABEL}</span>
+    <div className="hidden sm:flex items-center gap-2" style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+      <span style={{ color: 'var(--text-muted)' }}>{date}</span>
+      <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{hh}</span>
     </div>
   );
 });
 
 export const DashboardHeader = memo(function DashboardHeader() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [isConnected, setIsConnected] = useState(true);
   const { setCustomizePanelOpen, customizePanelOpen, applyPreset, activePreset } = useDashboardStore();
   const { user, logout, isGuest } = useAuthStore();
   const { isDev } = usePermissions();
@@ -54,37 +65,9 @@ export const DashboardHeader = memo(function DashboardHeader() {
   const { setPreferencesOpen } = useNotificationStore();
   const navigate = useNavigate();
   const menuRef = useRef<HTMLDivElement>(null);
-
-  const { getSelectedDistricts } = useSettingsStore();
-  const selectedDistricts = useMemo(() => getSelectedDistricts(), [getSelectedDistricts]);
-
-  const checkConnection = useCallback(async () => {
-    try {
-      const params: Record<string, unknown> = { hours: 6 };
-      if (selectedDistricts.length > 0) params.districts = selectedDistricts.join(',');
-      await apiClient.get('/kpi/snapshot', { params });
-      setIsConnected(true);
-    } catch {
-      setIsConnected(false);
-    }
-  }, [selectedDistricts]);
-
-  useEffect(() => {
-    checkConnection();
-    const interval = setInterval(checkConnection, 30000);
-    return () => clearInterval(interval);
-  }, [checkConnection]);
-
-  useEffect(() => {
-    const handleOnline = () => setIsConnected(true);
-    const handleOffline = () => setIsConnected(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const isConnected = useSyncExternalStore(subscribeOnlineStatus, getOnlineStatusSnapshot, getOnlineStatusServerSnapshot);
+  const isPublicViewer = !user;
+  const isGuestLike = isGuest || isPublicViewer;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -147,6 +130,8 @@ export const DashboardHeader = memo(function DashboardHeader() {
                 data-tour-id={
                   tab.id === 'news'
                     ? 'news-tab'
+                    : tab.id === 'economy'
+                      ? 'economy-tab'
                     : tab.id === 'parliament'
                       ? 'accountability-tab'
                       : undefined
@@ -255,7 +240,7 @@ export const DashboardHeader = memo(function DashboardHeader() {
           >
             <User size={14} />
             <span className="hidden sm:inline" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              {isGuest ? 'Guest' : (user?.username || user?.role || 'User')}
+              {isGuestLike ? 'Guest' : (user?.username || user?.role || 'User')}
             </span>
           </button>
 
@@ -277,9 +262,9 @@ export const DashboardHeader = memo(function DashboardHeader() {
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <p style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-primary)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {isGuest ? 'Guest Session' : (user?.username || user?.fullName || 'User')}
+                      {isGuestLike ? 'Guest Session' : (user?.username || user?.fullName || 'User')}
                     </p>
-                    {!isGuest && user?.email && (
+                    {!isGuestLike && user?.email && (
                       <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {user.email}
                       </p>
@@ -288,13 +273,13 @@ export const DashboardHeader = memo(function DashboardHeader() {
                 </div>
                 <div style={{ marginTop: 8 }}>
                   <span className={`inline-flex px-2 py-0.5 text-[10px] font-medium uppercase ${getRoleBadgeClass()}`}>
-                    {isGuest ? 'guest' : (user?.role || 'consumer')}
+                    {isGuestLike ? 'guest' : (user?.role || 'consumer')}
                   </span>
                 </div>
               </div>
 
               <div style={{ padding: '4px 0' }}>
-                {isGuest ? (
+                {isGuestLike ? (
                   <button
                     onClick={handleGoToLogin}
                     style={{

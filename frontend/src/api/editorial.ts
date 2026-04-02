@@ -205,6 +205,171 @@ export interface StoryTrackerItem {
   }>
 }
 
+export interface GovtDecisionEditorialItem {
+  item_id: string
+  external_key: string
+  event_key: string
+  representative_title?: string | null
+  representative_url?: string | null
+  source_name?: string | null
+  published_at?: string | null
+  source_story_ids: string[]
+  source_announcement_ids: string[]
+  source_count: number
+  raw: {
+    office?: string | null
+    implementing_ministry?: string | null
+    decision_type?: string | null
+    decision_title?: string | null
+    decision_summary?: string | null
+    status?: string | null
+    evidence_summary?: string | null
+    confidence?: number | null
+    is_actual_decision: boolean
+    supporting_sources?: Array<{
+      kind: string
+      id: string
+      title: string
+      summary?: string | null
+      source_name: string
+      source_token: string
+      url: string
+      published_at: string
+      cluster_id?: string | null
+      is_official: boolean
+    }>
+    model_payload?: Record<string, unknown> | null
+  }
+  review: {
+    workflow_status: string
+    final_office?: string | null
+    final_implementing_ministry?: string | null
+    final_decision_type?: string | null
+    final_decision_title?: string | null
+    final_decision_summary?: string | null
+    final_status?: string | null
+    final_source_url?: string | null
+    final_evidence_note?: string | null
+    final_confidence?: number | null
+    reviewer_note?: string | null
+    approved_at?: string | null
+    rejected_at?: string | null
+    rejection_reason?: string | null
+    needs_rerun: boolean
+    rerun_requested_at?: string | null
+  }
+  effective: {
+    office?: string | null
+    implementing_ministry?: string | null
+    decision_type?: string | null
+    decision_title?: string | null
+    decision_summary?: string | null
+    status?: string | null
+    source_url?: string | null
+    evidence_note?: string | null
+    confidence?: number | null
+  }
+}
+
+export interface CabinetActionEditorialItem {
+  item_id: string
+  program_id: string
+  item_number: number
+  source_pdf_page?: number | null
+  raw: {
+    section_key: string
+    section_title_ne?: string | null
+    section_title_en?: string | null
+    source_text_ne: string
+    title_en: string
+    summary_en: string
+    lead_institution?: string | null
+    supporting_institutions: string[]
+    action_type?: string | null
+    trackability_class: string
+    deadline_text_ne?: string | null
+    deadline_kind?: string | null
+    deadline_value?: number | null
+    due_date_bs?: string | null
+    due_date_ad?: string | null
+    status: string
+    evidence_strength?: string | null
+    is_public: boolean
+    last_checked_at?: string | null
+    raw_seed_payload?: Record<string, unknown> | null
+  }
+  review: {
+    workflow_status: string
+    final_section_key?: string | null
+    final_section_title_en?: string | null
+    final_title_en?: string | null
+    final_summary_en?: string | null
+    final_lead_institution?: string | null
+    final_supporting_institutions?: string[] | null
+    final_action_type?: string | null
+    final_trackability_class?: string | null
+    final_status?: string | null
+    final_evidence_note?: string | null
+    final_confidence?: number | null
+    final_is_public?: boolean | null
+    final_manifesto_promise_ids?: string[] | null
+    milestone_overrides?: Array<Record<string, unknown>> | null
+    reviewer_note?: string | null
+    approved_at?: string | null
+    rejected_at?: string | null
+    rejection_reason?: string | null
+    needs_rerun: boolean
+    rerun_requested_at?: string | null
+  }
+  effective: {
+    section_key?: string | null
+    section_title_en?: string | null
+    title_en?: string | null
+    summary_en?: string | null
+    lead_institution?: string | null
+    supporting_institutions?: string[] | null
+    action_type?: string | null
+    trackability_class?: string | null
+    status?: string | null
+    evidence_note?: string | null
+    confidence?: number | null
+    is_public?: boolean | null
+    manifesto_promise_ids?: string[] | null
+  }
+  milestones: Array<{
+    id: string
+    milestone_order: number
+    source_text_ne: string
+    title_en: string
+    summary_en: string
+    deadline_text_ne?: string | null
+    due_date_bs?: string | null
+    due_date_ad?: string | null
+    status: string
+    evidence_strength?: string | null
+  }>
+  evidence: Array<{
+    id: string
+    source_kind: string
+    source_title: string
+    source_name?: string | null
+    source_url?: string | null
+    published_at?: string | null
+    is_official: boolean
+    extracted_status?: string | null
+    evidence_note_en?: string | null
+    confidence?: number | null
+    is_public: boolean
+    is_applied: boolean
+  }>
+  manifesto_links: Array<{
+    id: string
+    promise_id: string
+    category: string
+    title: string
+  }>
+}
+
 export interface ReasonBody {
   reason: string
 }
@@ -337,5 +502,112 @@ export async function rejectStoryTracker(narrativeId: string, reason: string): P
 
 export async function rerunStoryTracker(narrativeId: string, reason: string): Promise<{ status: string; narrative_id: string }> {
   const { data } = await apiClient.post(`/admin/editorial/story-tracker/${narrativeId}/rerun`, { reason })
+  return data
+}
+
+export async function fetchGovtDecisionInbox(params: {
+  workflowStatus?: string
+  page?: number
+  per_page?: number
+} = {}): Promise<PaginationEnvelope<GovtDecisionEditorialItem>> {
+  const { data } = await apiClient.get('/admin/editorial/govt-decisions/inbox', {
+    params: {
+      workflow_status: params.workflowStatus,
+      page: params.page,
+      per_page: params.per_page,
+    },
+  })
+  return data
+}
+
+export async function fetchGovtDecisionDetail(itemId: string): Promise<GovtDecisionEditorialItem> {
+  const { data } = await apiClient.get(`/admin/editorial/govt-decisions/${itemId}`)
+  return data
+}
+
+export async function patchGovtDecision(itemId: string, payload: Record<string, unknown>): Promise<GovtDecisionEditorialItem> {
+  const { data } = await apiClient.patch(`/admin/editorial/govt-decisions/${itemId}`, payload)
+  return data
+}
+
+export async function approveGovtDecision(itemId: string, reason: string): Promise<GovtDecisionEditorialItem> {
+  const { data } = await apiClient.post(`/admin/editorial/govt-decisions/${itemId}/approve`, { reason })
+  return data
+}
+
+export async function rejectGovtDecision(itemId: string, reason: string): Promise<GovtDecisionEditorialItem> {
+  const { data } = await apiClient.post(`/admin/editorial/govt-decisions/${itemId}/reject`, { reason })
+  return data
+}
+
+export async function rerunGovtDecision(itemId: string, reason: string): Promise<GovtDecisionEditorialItem> {
+  const { data } = await apiClient.post(`/admin/editorial/govt-decisions/${itemId}/rerun`, { reason })
+  return data
+}
+
+export async function supersedeGovtDecision(itemId: string, reason: string): Promise<GovtDecisionEditorialItem> {
+  const { data } = await apiClient.post(`/admin/editorial/govt-decisions/${itemId}/supersede`, { reason })
+  return data
+}
+
+export async function seedCabinetActions(payload: {
+  pdf_path: string
+  program_key?: string
+  auto_approve?: boolean
+}) {
+  const { data } = await apiClient.post('/admin/editorial/cabinet-actions/seed', payload)
+  return data
+}
+
+export async function fetchCabinetActionInbox(params: {
+  workflowStatus?: string
+  page?: number
+  per_page?: number
+} = {}): Promise<PaginationEnvelope<CabinetActionEditorialItem>> {
+  const { data } = await apiClient.get('/admin/editorial/cabinet-actions/inbox', {
+    params: {
+      workflow_status: params.workflowStatus,
+      page: params.page,
+      per_page: params.per_page,
+    },
+  })
+  return data
+}
+
+export async function fetchCabinetActionDetail(itemId: string): Promise<CabinetActionEditorialItem> {
+  const { data } = await apiClient.get(`/admin/editorial/cabinet-actions/${itemId}`)
+  return data
+}
+
+export async function quickUpdateCabinetAction(
+  itemId: string,
+  payload: {
+    status: string
+    evidence_note?: string
+    reviewer_note?: string
+    is_public?: boolean
+  },
+): Promise<CabinetActionEditorialItem> {
+  const { data } = await apiClient.put(`/admin/editorial/cabinet-actions/${itemId}/quick-update`, payload)
+  return data
+}
+
+export async function patchCabinetAction(itemId: string, payload: Record<string, unknown>): Promise<CabinetActionEditorialItem> {
+  const { data } = await apiClient.patch(`/admin/editorial/cabinet-actions/${itemId}`, payload)
+  return data
+}
+
+export async function approveCabinetAction(itemId: string, reason: string): Promise<CabinetActionEditorialItem> {
+  const { data } = await apiClient.post(`/admin/editorial/cabinet-actions/${itemId}/approve`, { reason })
+  return data
+}
+
+export async function rejectCabinetAction(itemId: string, reason: string): Promise<CabinetActionEditorialItem> {
+  const { data } = await apiClient.post(`/admin/editorial/cabinet-actions/${itemId}/reject`, { reason })
+  return data
+}
+
+export async function rerunCabinetAction(itemId: string, reason: string): Promise<CabinetActionEditorialItem> {
+  const { data } = await apiClient.post(`/admin/editorial/cabinet-actions/${itemId}/rerun`, { reason })
   return data
 }

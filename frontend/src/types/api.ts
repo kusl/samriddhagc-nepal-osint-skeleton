@@ -182,6 +182,7 @@ export interface AnalyticsSummary {
   entities: number
   active_alerts: number
   top_event_types: Array<{ event_type: string; count: number }>
+  sources_breakdown?: Record<string, number>
   time_range_hours: number
 }
 

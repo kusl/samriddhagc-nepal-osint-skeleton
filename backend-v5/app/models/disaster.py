@@ -17,6 +17,9 @@ class HazardType(str, Enum):
     LANDSLIDE = "landslide"
     EARTHQUAKE = "earthquake"
     FIRE = "fire"
+    FOREST_FIRE = "forest_fire"
+    HEAVY_RAINFALL = "heavy_rainfall"
+    POLLUTION = "pollution"
     LIGHTNING = "lightning"
     DROUGHT = "drought"
     AVALANCHE = "avalanche"
@@ -45,15 +48,22 @@ class DisasterSeverity(str, Enum):
 # BIPAD hazard ID to type mapping (from https://bipadportal.gov.np/api/v1/hazard/)
 BIPAD_HAZARD_MAP: dict[int, HazardType] = {
     10: HazardType.FIRE,
+    12: HazardType.FOREST_FIRE,
     11: HazardType.FLOOD,
-    12: HazardType.EARTHQUAKE,
+    8: HazardType.EARTHQUAKE,
     17: HazardType.LANDSLIDE,
     23: HazardType.LIGHTNING,  # Thunderbolt
+    14: HazardType.HEAVY_RAINFALL,
+    19: HazardType.HEAVY_RAINFALL,
     18: HazardType.DROUGHT,
+    25: HazardType.DROUGHT,
     3: HazardType.AVALANCHE,
     22: HazardType.WINDSTORM,  # Storm
+    24: HazardType.WINDSTORM,  # Wind storm
     5: HazardType.COLD_WAVE,
+    6: HazardType.COLD_WAVE,
     9: HazardType.EPIDEMIC,
+    37: HazardType.POLLUTION,
 }
 
 

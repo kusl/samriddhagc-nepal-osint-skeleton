@@ -15,6 +15,12 @@ settings = get_settings()
 
 _start_time = time.time()
 
+BROKEN_INTEGRATION_ENDPOINTS = {
+    "/api/v1/fact-check/my-requests",
+    "/api/v1/fact-check/statements",
+    "/api/v1/fact-check/statement/pending",
+}
+
 
 class SystemHealthService:
     """Aggregates health status from all system components."""
@@ -189,7 +195,6 @@ class SystemHealthService:
     async def get_api_metrics(self, period: str = "24h") -> dict:
         """Get API metrics from api_metrics table."""
         from datetime import datetime, timedelta, timezone
-        from sqlalchemy import select, func
 
         # Parse period
         hours_map = {"1h": 1, "6h": 6, "24h": 24, "7d": 168}
@@ -203,13 +208,20 @@ class SystemHealthService:
                     SELECT
                         COUNT(*) as request_count,
                         COUNT(CASE WHEN status_code >= 400 THEN 1 END) as error_count,
+                        COUNT(CASE WHEN status_code >= 400 AND status_code < 500 THEN 1 END) as client_error_count,
+                        COUNT(CASE WHEN status_code >= 500 THEN 1 END) as platform_error_count,
+                        COUNT(CASE WHEN status_code IN (401, 403) THEN 1 END) as auth_error_count,
+                        COUNT(CASE
+                            WHEN endpoint = ANY(:broken_endpoints)
+                             AND status_code >= 400 AND status_code < 500 THEN 1
+                        END) as broken_integration_count,
                         COALESCE(AVG(response_time_ms), 0) as avg_ms,
                         COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY response_time_ms), 0) as p95_ms,
                         COALESCE(PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY response_time_ms), 0) as p99_ms
                     FROM api_metrics
                     WHERE recorded_at >= :since
                 """),
-                {"since": since},
+                {"since": since, "broken_endpoints": list(BROKEN_INTEGRATION_ENDPOINTS)},
             )
             row = result.fetchone()
 
@@ -218,6 +230,12 @@ class SystemHealthService:
                     "request_count": 0,
                     "error_count": 0,
                     "error_rate": 0.0,
+                    "client_error_count": 0,
+                    "platform_error_count": 0,
+                    "auth_error_count": 0,
+                    "broken_integration_count": 0,
+                    "client_error_rate": 0.0,
+                    "platform_error_rate": 0.0,
                     "avg_response_ms": 0,
                     "p95_response_ms": 0,
                     "p99_response_ms": 0,
@@ -227,6 +245,10 @@ class SystemHealthService:
 
             request_count = row[0]
             error_count = row[1]
+            client_error_count = row[2]
+            platform_error_count = row[3]
+            auth_error_count = row[4]
+            broken_integration_count = row[5]
 
             # Per-endpoint breakdown
             endpoints_result = await self.db.execute(
@@ -236,7 +258,11 @@ class SystemHealthService:
                         COUNT(*) as cnt,
                         ROUND(AVG(response_time_ms)::numeric, 1) as avg_ms,
                         COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY response_time_ms), 0) as p95_ms,
-                        COUNT(CASE WHEN status_code >= 400 THEN 1 END) as errors
+                        COUNT(CASE WHEN status_code >= 400 THEN 1 END) as errors,
+                        COUNT(CASE WHEN status_code >= 400 AND status_code < 500 THEN 1 END) as client_errors,
+                        COUNT(CASE WHEN status_code >= 500 THEN 1 END) as server_errors,
+                        COUNT(CASE WHEN status_code IN (401, 403) THEN 1 END) as auth_errors,
+                        COUNT(CASE WHEN status_code = 404 THEN 1 END) as not_found_errors
                     FROM api_metrics
                     WHERE recorded_at >= :since
                     GROUP BY endpoint, method
@@ -246,25 +272,56 @@ class SystemHealthService:
                 {"since": since},
             )
 
-            endpoints = [
-                {
-                    "path": r[0],
-                    "method": r[1],
-                    "count": r[2],
-                    "avg_ms": float(r[3]),
-                    "p95_ms": float(r[4]),
-                    "errors": r[5],
-                }
-                for r in endpoints_result.fetchall()
-            ]
+            endpoints = []
+            for r in endpoints_result.fetchall():
+                path = r[0]
+                count = r[2]
+                client_errors = r[6]
+                server_errors = r[7]
+                auth_errors = r[8]
+                not_found_errors = r[9]
+                total_errors = r[5]
+                error_rate = (total_errors / count) if count else 0
+                if server_errors > 0:
+                    health = "degraded"
+                elif path in BROKEN_INTEGRATION_ENDPOINTS and client_errors > 0:
+                    health = "broken_integration"
+                elif auth_errors > 0 and server_errors == 0:
+                    health = "auth_misuse"
+                elif error_rate > 0.05:
+                    health = "degraded"
+                else:
+                    health = "healthy"
+
+                endpoints.append(
+                    {
+                        "path": path,
+                        "method": r[1],
+                        "count": count,
+                        "avg_ms": float(r[3]),
+                        "p95_ms": float(r[4]),
+                        "errors": total_errors,
+                        "client_errors": client_errors,
+                        "server_errors": server_errors,
+                        "auth_errors": auth_errors,
+                        "not_found_errors": not_found_errors,
+                        "health": health,
+                    }
+                )
 
             return {
                 "request_count": request_count,
                 "error_count": error_count,
                 "error_rate": round(error_count / request_count, 4) if request_count else 0,
-                "avg_response_ms": round(float(row[2]), 1),
-                "p95_response_ms": round(float(row[3]), 1),
-                "p99_response_ms": round(float(row[4]), 1),
+                "client_error_count": client_error_count,
+                "platform_error_count": platform_error_count,
+                "auth_error_count": auth_error_count,
+                "broken_integration_count": broken_integration_count,
+                "client_error_rate": round(client_error_count / request_count, 4) if request_count else 0,
+                "platform_error_rate": round(platform_error_count / request_count, 4) if request_count else 0,
+                "avg_response_ms": round(float(row[6]), 1),
+                "p95_response_ms": round(float(row[7]), 1),
+                "p99_response_ms": round(float(row[8]), 1),
                 "endpoints": endpoints,
                 "period": period,
             }
@@ -274,6 +331,12 @@ class SystemHealthService:
                 "request_count": 0,
                 "error_count": 0,
                 "error_rate": 0.0,
+                "client_error_count": 0,
+                "platform_error_count": 0,
+                "auth_error_count": 0,
+                "broken_integration_count": 0,
+                "client_error_rate": 0.0,
+                "platform_error_rate": 0.0,
                 "avg_response_ms": 0,
                 "p95_response_ms": 0,
                 "p99_response_ms": 0,

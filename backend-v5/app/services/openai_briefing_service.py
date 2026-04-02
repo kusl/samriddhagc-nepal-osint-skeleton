@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.data.nepal_districts import NEPAL_DISTRICTS, NEPAL_PROVINCES, normalize_district_name
+from app.data.municipality_coordinates import MUNICIPALITY_COORDINATES, NEPALI_MUNICIPALITIES
 from app.models.province_anomaly import ProvinceAnomaly, ProvinceAnomalyRun
 from app.models.situation_brief import ProvinceSitrep, SituationBrief
 from app.models.story import Story
@@ -53,14 +54,34 @@ class OpenAIBriefingService:
         for district in NEPAL_DISTRICTS:
             district_name = district["name_en"].lower()
             self.district_to_province[district_name] = district["province_name"]
-            for alias in {district["name_en"], district.get("name_ne", "")} | set(district.get("aliases", [])):
-                if alias:
-                    self.district_aliases.append((alias.lower(), district_name, district["province_name"]))
+            district_aliases = {district["name_en"], district.get("name_ne", ""), district.get("headquarters", "")}
+            for alias in district_aliases | set(district.get("aliases", [])):
+                for variant in self._alias_variants(alias):
+                    self.district_aliases.append((variant.lower(), district_name, district["province_name"]))
+
+        for alias, municipality_key in NEPALI_MUNICIPALITIES.items():
+            municipality = MUNICIPALITY_COORDINATES.get(municipality_key)
+            if not municipality:
+                continue
+            district_name = str(municipality[2]).lower()
+            province_name = self.district_to_province.get(district_name)
+            if province_name:
+                for variant in self._alias_variants(alias):
+                    self.district_aliases.append((variant.lower(), district_name, province_name))
         self.district_aliases.sort(key=lambda item: len(item[0]), reverse=True)
 
     @staticmethod
     def _normalize_text(*parts: Optional[str]) -> str:
         return " ".join(part for part in parts if part).lower()
+
+    @staticmethod
+    def _alias_variants(value: Optional[str]) -> set[str]:
+        if not value:
+            return set()
+        variants = {value}
+        variants.add(value.replace("ञ्ज", "न्ज"))
+        variants.add(value.replace("गञ्ज", "गन्ज"))
+        return {variant for variant in variants if variant}
 
     @staticmethod
     def _title_case_words(value: Optional[str]) -> Optional[str]:
@@ -79,31 +100,58 @@ class OpenAIBriefingService:
     def _top_categories(counter: Counter, limit: int = 3) -> list[str]:
         return [category for category, _ in counter.most_common(limit)]
 
+    def _extract_geo_from_text(self, text: str) -> tuple[set[str], set[str]]:
+        provinces: set[str] = set()
+        districts: set[str] = set()
+
+        for alias, district, province in self.district_aliases:
+            if alias in text:
+                districts.add(district)
+                provinces.add(province)
+
+        # District-level anchors are more precise than generic province mentions.
+        if not districts:
+            for alias, province in self.province_alias_map.items():
+                if alias in text:
+                    provinces.add(province)
+
+        return provinces, districts
+
     def _extract_story_geo(self, story: dict[str, Any]) -> tuple[list[str], list[str]]:
-        provinces = set(story.get("provinces") or [])
-        districts = set()
+        provinces: set[str] = set()
+        districts: set[str] = set()
+
+        for province in story.get("provinces") or []:
+            normalized = str(province).strip().lower()
+            canonical = self.province_alias_map.get(normalized)
+            if canonical:
+                provinces.add(canonical)
+
         for district in story.get("districts") or []:
             normalized = normalize_district_name(str(district))
             if normalized:
                 districts.add(normalized.lower())
+
+        for district in list(districts):
+            province = self.district_to_province.get(str(district).lower())
+            if province:
+                provinces.add(province)
+
+        # Trust structured geography over fallback text. Source branding is not
+        # geographic evidence and must not leak into province assignment.
+        if provinces or districts:
+            return sorted(str(province) for province in provinces), sorted(str(district) for district in districts)
+
         ai = story.get("ai_summary") if isinstance(story.get("ai_summary"), dict) else {}
         text = self._normalize_text(
             story.get("title"),
             ai.get("summary"),
             ai.get("headline"),
-            story.get("source_name"),
         )
-        for alias, district, province in self.district_aliases:
-            if alias in text:
-                districts.add(district)
-                provinces.add(province)
-        for alias, province in self.province_alias_map.items():
-            if alias in text:
-                provinces.add(province)
-        for district in list(districts):
-            province = self.district_to_province.get(str(district).lower())
-            if province:
-                provinces.add(province)
+        fallback_provinces, fallback_districts = self._extract_geo_from_text(text)
+        provinces.update(fallback_provinces)
+        districts.update(fallback_districts)
+
         return sorted(str(province) for province in provinces), sorted(str(district) for district in districts)
 
     def _extract_tweet_geo(self, tweet: dict[str, Any]) -> tuple[list[str], list[str]]:
@@ -113,14 +161,17 @@ class OpenAIBriefingService:
             normalized = normalize_district_name(str(district))
             if normalized:
                 districts.add(normalized.lower())
+        if provinces or districts:
+            for district in list(districts):
+                province = self.district_to_province.get(str(district).lower())
+                if province:
+                    provinces.add(province)
+            return sorted(str(province) for province in provinces), sorted(str(district) for district in districts)
+
         text = self._normalize_text(tweet.get("text"), tweet.get("author_username"), tweet.get("author_name"))
-        for alias, district, province in self.district_aliases:
-            if alias in text:
-                districts.add(district)
-                provinces.add(province)
-        for alias, province in self.province_alias_map.items():
-            if alias in text:
-                provinces.add(province)
+        fallback_provinces, fallback_districts = self._extract_geo_from_text(text)
+        provinces.update(fallback_provinces)
+        districts.update(fallback_districts)
         for district in list(districts):
             province = self.district_to_province.get(str(district).lower())
             if province:

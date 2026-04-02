@@ -1,13 +1,13 @@
-"""LLM-based cluster validation using Claude or a local fallback."""
+"""LLM-based cluster validation using OpenAI or a safe fallback."""
 import json
 import logging
 from dataclasses import dataclass
 from typing import List, Optional
-from app.services.analyst_agent.claude_runner import call_claude_json, has_available_llm
+
+from app.services.openai_runtime import get_openai_runtime
 
 logger = logging.getLogger(__name__)
 
-# Cache for prompt prefix tokens (Anthropic caches system prompts)
 CLUSTER_VALIDATION_SYSTEM = """You are a news clustering assistant. Your job is to determine if news headlines are about the SAME specific event or topic.
 
 Rules:
@@ -32,8 +32,11 @@ class ClusterValidation:
 
 class LLMClusterValidator:
     """
-    Validates story clusters using the shared LLM runner.
+    Validates story clusters using OpenAI structured output.
     """
+
+    def __init__(self) -> None:
+        self.openai_runtime = get_openai_runtime()
 
     def _get_headers(self) -> dict:
         """Get HTTP headers for API requests."""
@@ -54,12 +57,12 @@ class LLMClusterValidator:
         Returns:
             ClusterValidation result
         """
-        if not has_available_llm():
+        if not self.openai_runtime.clustering_enabled:
             # Fallback: assume valid if we can't validate
             return ClusterValidation(
                 is_valid=True,
                 confidence=0.0,
-                reason="LLM validation disabled (no provider available)",
+                reason="LLM validation disabled (OpenAI unavailable)",
             )
 
         if len(titles) < 2:
@@ -80,18 +83,41 @@ class LLMClusterValidator:
 Headlines:
 {titles_text}
 
-Respond with JSON:
-{{"is_same_event": true/false, "confidence": 0.0-1.0, "reason": "brief explanation", "groups": [[indices that belong together], ...]}}
+Return strict JSON with:
+- is_same_event: boolean
+- confidence: number from 0 to 1
+- reason: short explanation
+- groups: arrays of 1-based headline numbers that belong together
 
-If they're NOT all about the same event, use "groups" to show which headlines (by number) belong together.
-Example: If 1,2,3 are about topic A and 4,5 are about topic B: "groups": [[1,2,3], [4,5]]"""
+If they are not all about the same event, split them into the most precise groups possible.
+Different death counts, different places, different speakers, and different incidents should be split."""
 
         try:
-            result = await call_claude_json(
-                user_prompt,
-                timeout=60,
-                model="haiku",
+            result = await self.openai_runtime.json_completion(
                 system_prompt=CLUSTER_VALIDATION_SYSTEM,
+                user_prompt=user_prompt,
+                schema_name="cluster_validation",
+                schema={
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "is_same_event": {"type": "boolean"},
+                        "confidence": {"type": "number"},
+                        "reason": {"type": "string"},
+                        "groups": {
+                            "type": "array",
+                            "items": {
+                                "type": "array",
+                                "items": {"type": "integer"},
+                            },
+                        },
+                    },
+                    "required": ["is_same_event", "confidence", "reason", "groups"],
+                },
+                model=self.openai_runtime.settings.openai_clustering_model,
+                max_completion_tokens=220,
+                cache_scope="cluster-validation",
+                usage_bucket="structured",
             )
 
             suggested_groups = None

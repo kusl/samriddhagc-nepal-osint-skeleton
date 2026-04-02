@@ -15,7 +15,7 @@ export const triggerNitterHashtags = () =>
 
 // Disasters & Environment
 export const triggerBipadIngestion = () =>
-  apiClient.post('/disasters/ingest')
+  apiClient.post('/disasters/ingest?filter_insignificant=false&alert_limit=200')
 
 export const triggerGeeChangeDetection = () =>
   apiClient.post('/earth-engine/change-detection/run')

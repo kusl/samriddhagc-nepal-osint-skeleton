@@ -4,7 +4,7 @@
  */
 import { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { Search, Layout, ToggleRight, Keyboard } from 'lucide-react';
-import { useDashboardStore, PRESETS, WIDGET_META } from '../../stores/dashboardStore';
+import { useDashboardStore, PRESETS, WIDGET_META, canAccessWidget, getWidgetDisplayName } from '../../stores/dashboardStore';
 import { useAuthStore } from '../../store/slices/authSlice';
 
 interface PaletteItem {
@@ -22,6 +22,7 @@ export const CommandPalette = memo(function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const { applyPreset, activePreset, toggleWidgetVisibility, widgetVisibility } = useDashboardStore();
   const { user } = useAuthStore();
+  const effectiveRole = user?.role ?? 'consumer';
 
   // Build searchable items
   const allItems: PaletteItem[] = [];
@@ -41,8 +42,8 @@ export const CommandPalette = memo(function CommandPalette() {
 
   // Presets
   const presetIds = user?.role === 'analyst' || user?.role === 'dev'
-    ? (['news', 'parliament', 'intelligence'] as const)
-    : (['news', 'parliament'] as const);
+    ? (['news', 'economy', 'parliament', 'intelligence'] as const)
+    : (['news', 'economy', 'parliament'] as const);
   for (const pid of presetIds) {
     const p = PRESETS[pid];
     if (!p) continue;
@@ -58,7 +59,8 @@ export const CommandPalette = memo(function CommandPalette() {
   // Widgets
   for (const [wid, meta] of Object.entries(WIDGET_META)) {
     if (archivedWidgets.has(wid)) continue;
-    const name = meta.consumerName || meta.name;
+    if (!canAccessWidget(wid, effectiveRole)) continue;
+    const name = getWidgetDisplayName(wid, effectiveRole);
     const isVisible = widgetVisibility[wid];
     allItems.push({
       id: `widget:${wid}`,
@@ -74,8 +76,8 @@ export const CommandPalette = memo(function CommandPalette() {
     id: 'shortcut:help',
     label: 'Keyboard Shortcuts',
     description: user?.role === 'analyst' || user?.role === 'dev'
-      ? 'N = News, A = Accountability, I = Intel, K = Search'
-      : 'N = News, A = Accountability, K = Search',
+      ? 'N = News, E = Economy, A = Accountability, I = Intel, K = Search'
+      : 'N = News, E = Economy, A = Accountability, K = Search',
     type: 'shortcut',
     action: () => setOpen(false),
   });
@@ -213,6 +215,7 @@ export const CommandPalette = memo(function CommandPalette() {
           <span><kbd className="font-mono bg-white/[0.06] px-1 py-0.5 rounded">↵</kbd> select</span>
           <span>
             <kbd className="font-mono bg-white/[0.06] px-1 py-0.5 rounded">N</kbd> News{' '}
+            <kbd className="font-mono bg-white/[0.06] px-1 py-0.5 rounded">E</kbd> Economy{' '}
             <kbd className="font-mono bg-white/[0.06] px-1 py-0.5 rounded">A</kbd> Accountability
             {(user?.role === 'analyst' || user?.role === 'dev') ? (
               <>

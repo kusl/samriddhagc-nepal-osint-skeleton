@@ -6,7 +6,3 @@ __pycache__/
 tests/
 *.egg-info/
 .pytest_cache/
-pwtt_lib/.git/
-pwtt_lib/docs/
-pwtt_lib/figs/
-pwtt_lib/*.ipynb

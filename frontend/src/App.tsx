@@ -1,27 +1,28 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CandidateDeepDive } from './components/elections/CandidateDeepDive'
 import { Dashboard as NewDashboard } from './components/Dashboard'
-import { MainLayout } from './components/layout/MainLayout'
 // MobileBottomNav removed — election season, single-page mobile experience
-import Analysis from './pages/Analysis'
-import Indices from './pages/Indices'
-import ActivityLogs from './pages/ActivityLogs'
-import ReviewQueue from './pages/ReviewQueue'
-import DisasterAlerts from './pages/DisasterAlerts'
-import Login from './pages/Login'
-import ChooseUsername from './pages/ChooseUsername'
-import DevWorkstation from './pages/DevWorkstation'
-import { UITestDashboard } from './components/Dashboard/UITestDashboard'
 import { useAuthStore, User } from './store/slices/authSlice'
 import { useUserPreferencesStore } from './store/slices/userPreferencesSlice'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { usePermissions } from './hooks/usePermissions'
-import { guestLogin } from './api/auth'
+import { publicLogin } from './api/auth'
 import { fetchNotificationPreferences, updateNotificationPreferences } from './api/notifications'
 import { useNotificationStore } from './stores/notificationStore'
 import { getProvinceForDistrict } from './data/districts'
+
+const CandidateDeepDive = lazy(() => import('./components/elections/CandidateDeepDive').then((m) => ({ default: m.CandidateDeepDive })))
+const MainLayout = lazy(() => import('./components/layout/MainLayout').then((m) => ({ default: m.MainLayout })))
+const Analysis = lazy(() => import('./pages/Analysis'))
+const Indices = lazy(() => import('./pages/Indices'))
+const ActivityLogs = lazy(() => import('./pages/ActivityLogs'))
+const ReviewQueue = lazy(() => import('./pages/ReviewQueue'))
+const DisasterAlerts = lazy(() => import('./pages/DisasterAlerts'))
+const Login = lazy(() => import('./pages/Login'))
+const ChooseUsername = lazy(() => import('./pages/ChooseUsername'))
+const DevWorkstation = lazy(() => import('./pages/DevWorkstation'))
+const UITestDashboard = lazy(() => import('./components/Dashboard/UITestDashboard').then((m) => ({ default: m.UITestDashboard })))
 
 const BUILD_MARKER = 'aviation-v59'
 
@@ -55,6 +56,10 @@ function AnimatedRoutes({ children }: { children: React.ReactNode }) {
   )
 }
 
+function withRouteSuspense(element: React.ReactNode) {
+  return <Suspense fallback={null}>{element}</Suspense>
+}
+
 function App() {
   const location = useLocation()
   const { isAuthenticated, needsUsername, isGuest, login, user } = useAuthStore()
@@ -70,11 +75,14 @@ function App() {
   } = useUserPreferencesStore()
   const { setPreferencesOpen } = useNotificationStore()
   const { isConsumer } = usePermissions()
-  const [autoLoginError, setAutoLoginError] = useState(false)
   const attemptedRef = useRef(false)
   const wasAuthenticatedRef = useRef(isAuthenticated)
   const notificationPrefsSyncRef = useRef<string | null>(null)
-  const shouldAttemptGuestBootstrap = location.pathname !== '/login'
+  const shouldRenderPublicConsumerView = !isAuthenticated
+    && location.pathname !== '/login'
+    && location.pathname !== '/choose-username'
+    && !location.pathname.startsWith('/dev')
+  const shouldAttemptGuestBootstrap = shouldRenderPublicConsumerView
 
   useEffect(() => {
     document.documentElement.setAttribute('data-build-marker', BUILD_MARKER)
@@ -83,7 +91,6 @@ function App() {
   useEffect(() => {
     if (wasAuthenticatedRef.current && !isAuthenticated) {
       attemptedRef.current = false
-      setAutoLoginError(false)
       notificationPrefsSyncRef.current = null
     }
     wasAuthenticatedRef.current = isAuthenticated
@@ -146,37 +153,43 @@ function App() {
   // Auto-login as guest when not authenticated
   useEffect(() => {
     if (!shouldAttemptGuestBootstrap || isAuthenticated || attemptedRef.current) return
-    attemptedRef.current = true
-    guestLogin()
-      .then((result) => {
-        login(result.access_token, result.refresh_token, toStoreUser(result.user))
-      })
-      .catch(() => {
-        setAutoLoginError(true)
-        attemptedRef.current = false
-      })
+    let cancelled = false
+
+    const runBootstrap = () => {
+      if (cancelled || attemptedRef.current) return
+      attemptedRef.current = true
+      publicLogin()
+        .then((result) => {
+          if (cancelled) return
+          login(result.access_token, result.refresh_token, toStoreUser(result.user))
+        })
+        .catch(() => {
+          if (cancelled) return
+          attemptedRef.current = false
+        })
+    }
+
+    const timeoutId = window.setTimeout(runBootstrap, 1200)
+    const idleId = 'requestIdleCallback' in window
+      ? window.requestIdleCallback(() => {
+          window.clearTimeout(timeoutId)
+          runBootstrap()
+        }, { timeout: 3500 })
+      : null
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+      if (idleId !== null && 'cancelIdleCallback' in window) {
+        window.cancelIdleCallback(idleId)
+      }
+    }
   }, [isAuthenticated, login, shouldAttemptGuestBootstrap])
 
-  // Show loading while auto-login is in progress
-  if (!isAuthenticated && shouldAttemptGuestBootstrap && !autoLoginError) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        height: '100vh', background: '#080b11', color: '#8f99a8',
-        fontFamily: "'SF Mono', monospace", fontSize: 13, flexDirection: 'column', gap: 12,
-      }}>
-        <div style={{ width: 24, height: 24, border: '2px solid #2d72d2', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-        <span>Initializing NepalOSINT...</span>
-        <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
-      </div>
-    )
-  }
-
-  // Fallback to manual login if auto-guest fails
-  if (!isAuthenticated && (!shouldAttemptGuestBootstrap || autoLoginError)) {
+  if (!isAuthenticated && !shouldRenderPublicConsumerView) {
     return (
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/login" element={withRouteSuspense(<Login />)} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     )
@@ -186,7 +199,7 @@ function App() {
   if (needsUsername && !isGuest) {
     return (
       <Routes>
-        <Route path="/choose-username" element={<ChooseUsername />} />
+        <Route path="/choose-username" element={withRouteSuspense(<ChooseUsername />)} />
         <Route path="*" element={<Navigate to="/choose-username" replace />} />
       </Routes>
     )
@@ -205,11 +218,13 @@ function App() {
   if (location.pathname === '/uitest' || location.pathname === '/uitest/') {
     return (
       <>
-        <CandidateDeepDive />
+        <Suspense fallback={null}>
+          <CandidateDeepDive />
+        </Suspense>
         <AnimatedRoutes>
           <Routes>
-            <Route path="/uitest" element={<UITestDashboard />} />
-            <Route path="/uitest/" element={<UITestDashboard />} />
+            <Route path="/uitest" element={withRouteSuspense(<UITestDashboard />)} />
+            <Route path="/uitest/" element={withRouteSuspense(<UITestDashboard />)} />
             <Route path="*" element={<Navigate to="/uitest" replace />} />
           </Routes>
         </AnimatedRoutes>
@@ -218,15 +233,17 @@ function App() {
   }
 
   // Consumer role: analyst dashboard is default landing page
-  if (isConsumer) {
+  if (isConsumer || shouldRenderPublicConsumerView) {
     return (
       <>
-        <CandidateDeepDive />
+        <Suspense fallback={null}>
+          <CandidateDeepDive />
+        </Suspense>
         <AnimatedRoutes>
           <Routes>
             <Route path="/" element={<NewDashboard />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/disasters" element={<DisasterAlerts />} />
+            <Route path="/login" element={withRouteSuspense(<Login />)} />
+            <Route path="/disasters" element={withRouteSuspense(<DisasterAlerts />)} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AnimatedRoutes>
@@ -243,12 +260,14 @@ function App() {
   if (location.pathname.startsWith('/dev')) {
     return (
       <>
-        <CandidateDeepDive />
+        <Suspense fallback={null}>
+          <CandidateDeepDive />
+        </Suspense>
         <AnimatedRoutes>
           <Routes>
             <Route path="/dev" element={<Navigate to="/dev/overview" replace />} />
-            <Route path="/dev/*" element={<ProtectedRoute requiredRole="dev"><DevWorkstation /></ProtectedRoute>} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/dev/*" element={withRouteSuspense(<ProtectedRoute requiredRole="dev"><DevWorkstation /></ProtectedRoute>)} />
+            <Route path="/login" element={withRouteSuspense(<Login />)} />
             <Route path="*" element={<Navigate to="/dev/overview" replace />} />
           </Routes>
         </AnimatedRoutes>
@@ -260,24 +279,28 @@ function App() {
   // All other routes — analyst dashboard is landing page
   return (
     <>
-    <CandidateDeepDive />
-    <MainLayout>
-      <AnimatedRoutes>
-        <Routes>
-          <Route path="/" element={<NewDashboard />} />
-          <Route path="/disasters" element={<DisasterAlerts />} />
+    <Suspense fallback={null}>
+      <CandidateDeepDive />
+    </Suspense>
+    <Suspense fallback={null}>
+      <MainLayout>
+        <AnimatedRoutes>
+          <Routes>
+            <Route path="/" element={<NewDashboard />} />
+            <Route path="/disasters" element={withRouteSuspense(<DisasterAlerts />)} />
 
-          {/* Dev-only routes */}
-          <Route path="/analysis" element={<ProtectedRoute requiredRole="dev"><Analysis /></ProtectedRoute>} />
-          <Route path="/indices" element={<ProtectedRoute requiredRole="dev"><Indices /></ProtectedRoute>} />
-          <Route path="/activity" element={<ProtectedRoute requiredRole="dev"><ActivityLogs /></ProtectedRoute>} />
-          <Route path="/review-queue" element={<ProtectedRoute requiredRole="dev"><ReviewQueue /></ProtectedRoute>} />
+            {/* Dev-only routes */}
+            <Route path="/analysis" element={withRouteSuspense(<ProtectedRoute requiredRole="dev"><Analysis /></ProtectedRoute>)} />
+            <Route path="/indices" element={withRouteSuspense(<ProtectedRoute requiredRole="dev"><Indices /></ProtectedRoute>)} />
+            <Route path="/activity" element={withRouteSuspense(<ProtectedRoute requiredRole="dev"><ActivityLogs /></ProtectedRoute>)} />
+            <Route path="/review-queue" element={withRouteSuspense(<ProtectedRoute requiredRole="dev"><ReviewQueue /></ProtectedRoute>)} />
 
-          <Route path="/login" element={<Login />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AnimatedRoutes>
-    </MainLayout>
+            <Route path="/login" element={withRouteSuspense(<Login />)} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AnimatedRoutes>
+      </MainLayout>
+    </Suspense>
     {/* MobileBottomNav removed for election season */}
     </>
   )

@@ -34,7 +34,7 @@ CODEX_BIN = Path("/Applications/Codex.app/Contents/Resources/codex")
 
 API_ROOT = os.environ.get("OSINT_API_URL", "https://nepalosint.com/api/v1")
 LOGIN_EMAIL = os.environ.get("OSINT_EMAIL", "dev@narada.dev")
-LOGIN_PASSWORD = os.environ.get("OSINT_PASSWORD", "")
+LOGIN_PASSWORD = os.environ.get("OSINT_PASSWORD", "devpassword123")
 MODEL = os.environ.get("CODEX_BRIEF_MODEL", "gpt-5.2")
 HOURS = int(os.environ.get("CODEX_BRIEF_HOURS", "6"))
 INTL_KEYWORDS = {
@@ -77,8 +77,6 @@ def request_json(url: str, method: str = "GET", headers: dict[str, str] | None =
 
 
 def login() -> str:
-    if not LOGIN_PASSWORD:
-        raise RuntimeError("OSINT_PASSWORD must be set before posting briefs")
     data = request_json(
         f"{API_ROOT}/auth/login",
         method="POST",

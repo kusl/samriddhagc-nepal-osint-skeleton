@@ -7,6 +7,7 @@ import { CorrectionQueuePanel } from '../components/dev/CorrectionQueuePanel'
 import { DevOverviewPanel } from '../components/dev/DevOverviewPanel'
 import { EditorialControlPanel } from '../components/dev/EditorialControlPanel'
 import { PromiseManagerPanel } from '../components/dev/PromiseManagerPanel'
+import { CabinetActionManagerPanel } from '../components/dev/CabinetActionManagerPanel'
 import { UsersAccessPanel } from '../components/dev/UsersAccessPanel'
 import { ApiMonitorPanel } from '../components/dev/ApiMonitorPanel'
 import { AuditLogPanel } from '../components/dev/AuditLogPanel'
@@ -114,6 +115,14 @@ export default function DevWorkstation() {
                   <h2 className="text-lg font-semibold tracking-tight">Promise Management</h2>
                 </div>
                 <PromiseManagerPanel />
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="mb-5 flex items-center gap-2 text-white">
+                  <FileEdit size={16} className="text-blue-400" />
+                  <h2 className="text-lg font-semibold tracking-tight">Cabinet Action Management</h2>
+                </div>
+                <CabinetActionManagerPanel />
               </div>
             </div>
           </PageCard>

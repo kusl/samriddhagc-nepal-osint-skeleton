@@ -7,6 +7,7 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import aiohttp
+import requests
 
 from app.config import get_settings
 from app.models.disaster import BIPAD_HAZARD_MAP, HazardType
@@ -323,6 +324,100 @@ class BIPADFetcher:
                     fetch_time_ms=(time.monotonic() - start_time) * 1000,
                 )
 
+    async def fetch_alerts(
+        self,
+        limit: int = 200,
+        days_back: int = 7,
+    ) -> BIPADFetchResult:
+        """Fetch realtime warning alerts from BIPAD's alert endpoint."""
+        start_time = time.monotonic()
+        endpoint = f"{BIPAD_BASE_URL}/alert/"
+        cutoff = datetime.now(timezone.utc) - timedelta(days=days_back)
+        request_limit = max(limit, 300) if limit > 0 else 300
+        max_attempts = 8
+        seen_ids: set[int] = set()
+        alerts: list[FetchedAlert] = []
+        total_count = 0
+
+        async with self._semaphore:
+            try:
+                for _ in range(max_attempts):
+                    params = {
+                        "limit": request_limit,
+                        "ordering": "-createdOn",
+                    }
+                    response = await asyncio.to_thread(
+                        requests.get,
+                        endpoint,
+                        params=params,
+                        timeout=self.timeout.total,
+                    )
+                    if response.status_code != 200:
+                        return BIPADFetchResult(
+                            endpoint="alerts",
+                            success=False,
+                            error=f"HTTP {response.status_code}",
+                            fetch_time_ms=(time.monotonic() - start_time) * 1000,
+                        )
+
+                    data = response.json()
+
+                    total_count = max(total_count, data.get("count", 0) or 0)
+
+                    for item in data.get("results", []):
+                        alert = self._parse_realtime_alert(item)
+                        if not alert or alert.bipad_id in seen_ids:
+                            continue
+
+                        event_time = alert.issued_at or self._parse_datetime(item.get("createdOn"))
+                        if event_time and event_time < cutoff:
+                            continue
+
+                        seen_ids.add(alert.bipad_id)
+                        alerts.append(alert)
+
+                    if any(alert.alert_type == HazardType.POLLUTION.value for alert in alerts):
+                        break
+
+                alerts.sort(
+                    key=lambda alert: alert.issued_at or datetime.min.replace(tzinfo=timezone.utc),
+                    reverse=True,
+                )
+                if limit > 0:
+                    alerts = alerts[:limit]
+
+                return BIPADFetchResult(
+                    endpoint="alerts",
+                    success=True,
+                    alerts=alerts,
+                    total_count=total_count or len(alerts),
+                    fetch_time_ms=(time.monotonic() - start_time) * 1000,
+                )
+
+            except (asyncio.TimeoutError, requests.Timeout):
+                return BIPADFetchResult(
+                    endpoint="alerts",
+                    success=False,
+                    error="Timeout",
+                    fetch_time_ms=(time.monotonic() - start_time) * 1000,
+                )
+            except requests.RequestException as e:
+                logger.warning(f"Error fetching BIPAD alerts: {e}")
+                return BIPADFetchResult(
+                    endpoint="alerts",
+                    success=False,
+                    error=str(e),
+                    fetch_time_ms=(time.monotonic() - start_time) * 1000,
+                )
+            except Exception as e:
+                logger.warning(f"Error fetching BIPAD alerts: {e}")
+                return BIPADFetchResult(
+                    endpoint="alerts",
+                    success=False,
+                    error=str(e),
+                    fetch_time_ms=(time.monotonic() - start_time) * 1000,
+                )
+
     def _parse_fire_incident(self, data: dict) -> Optional[FetchedIncident]:
         """Parse BIPAD fire endpoint response into FetchedIncident."""
         try:
@@ -359,7 +454,7 @@ class BIPADFetcher:
             return FetchedIncident(
                 bipad_id=bipad_id,
                 title=title,
-                hazard_type="fire",
+                hazard_type=HazardType.FOREST_FIRE.value if "forest fire" in title.lower() else HazardType.FIRE.value,
                 hazard_id=10,  # BIPAD fire hazard ID
                 longitude=longitude,
                 latitude=latitude,
@@ -377,8 +472,10 @@ class BIPADFetcher:
         incident_limit: int = 100,
         earthquake_limit: int = 50,
         fire_limit: int = 50,
+        alert_limit: int = 200,
         incident_days_back: int = 30,
         earthquake_days_back: int = 7,
+        alert_days_back: int = 7,
         min_earthquake_magnitude: float = 4.0,
     ) -> list[BIPADFetchResult]:
         """
@@ -399,6 +496,10 @@ class BIPADFetcher:
             ),
             self.fetch_fires(
                 limit=fire_limit,
+            ),
+            self.fetch_alerts(
+                limit=alert_limit,
+                days_back=alert_days_back,
             ),
         ]
 
@@ -583,6 +684,120 @@ class BIPADFetcher:
         except Exception as e:
             logger.warning(f"Error parsing BIPAD earthquake: {e}")
             return None
+
+    def _parse_realtime_alert(self, data: dict) -> Optional[FetchedAlert]:
+        """Parse BIPAD realtime alert rows (river/rain/fire/pollution) into FetchedAlert."""
+        try:
+            bipad_id = data.get("id")
+            if not bipad_id:
+                return None
+
+            title = data.get("title") or f"Alert #{bipad_id}"
+            description = data.get("description")
+            reference_type = str(data.get("referenceType") or "").strip().lower()
+
+            longitude, latitude = None, None
+            point = data.get("point")
+            if point and isinstance(point, dict):
+                coords = point.get("coordinates", [])
+                if len(coords) >= 2:
+                    longitude, latitude = coords[0], coords[1]
+
+            location_name, district = self._extract_location_from_title(title)
+
+            province = None
+            if isinstance(data.get("province"), dict):
+                province = data["province"].get("id")
+            elif isinstance(data.get("province"), int):
+                province = data["province"]
+
+            issued_at = (
+                self._parse_datetime(data.get("startedOn"))
+                or self._parse_datetime(data.get("dateTime"))
+                or self._parse_datetime(data.get("createdOn"))
+                or datetime.now(timezone.utc)
+            )
+            expires_at = self._parse_datetime(data.get("expireOn"))
+
+            alert_type = self._normalize_alert_type(reference_type, title)
+            alert_level = self._derive_alert_level(
+                alert_type=alert_type,
+                description=description,
+                aqi=data.get("aqi"),
+            )
+
+            return FetchedAlert(
+                bipad_id=bipad_id,
+                title=title,
+                description=description,
+                alert_type=alert_type,
+                alert_level=alert_level,
+                longitude=longitude,
+                latitude=latitude,
+                location_name=location_name or title,
+                district=district,
+                province=province,
+                issued_at=issued_at,
+                expires_at=expires_at,
+                raw_data=data,
+            )
+        except Exception as e:
+            logger.warning(f"Error parsing BIPAD realtime alert: {e}")
+            return None
+
+    def _extract_location_from_title(self, title: str) -> tuple[Optional[str], Optional[str]]:
+        """Extract location_name and district from titles like 'Flood warning at X, Y'."""
+        if not title:
+            return None, None
+        location_text = title
+        lower_title = title.lower()
+        if " at " in lower_title:
+            location_text = title.split(" at ", 1)[1].strip()
+        if ", " in location_text:
+            location_name, district = location_text.rsplit(", ", 1)
+            return location_name.strip(), district.strip()
+        return location_text.strip(), None
+
+    def _normalize_alert_type(self, reference_type: str, title: str) -> str:
+        """Normalize BIPAD realtime alert types to UI-friendly hazard codes."""
+        title_lower = (title or "").lower()
+        if reference_type == "river" or "flood warning" in title_lower:
+            return HazardType.FLOOD.value
+        if reference_type == "rain" or "heavy rainfall" in title_lower:
+            return HazardType.HEAVY_RAINFALL.value
+        if reference_type == "pollution" or "pollution alert" in title_lower:
+            return HazardType.POLLUTION.value
+        if reference_type == "fire" or "forest fire" in title_lower:
+            return HazardType.FOREST_FIRE.value
+        if reference_type == "earthquake":
+            return HazardType.EARTHQUAKE.value
+        return reference_type or HazardType.OTHER.value
+
+    def _derive_alert_level(
+        self,
+        *,
+        alert_type: str,
+        description: Optional[str],
+        aqi: Optional[float],
+    ) -> str:
+        """Infer alert severity for non-earthquake realtime alerts."""
+        if alert_type == HazardType.POLLUTION.value:
+            if aqi is not None:
+                if aqi >= 200:
+                    return "critical"
+                if aqi >= 150:
+                    return "high"
+                if aqi >= 100:
+                    return "medium"
+            text = (description or "").lower()
+            if "greater than 150" in text:
+                return "high"
+            return "medium"
+
+        if alert_type in {HazardType.FLOOD.value, HazardType.HEAVY_RAINFALL.value, HazardType.FOREST_FIRE.value}:
+            return "high"
+
+        return "medium"
 
     def _parse_datetime(self, dt_str: str) -> Optional[datetime]:
         """Parse datetime string from BIPAD API."""

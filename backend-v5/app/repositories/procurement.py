@@ -3,10 +3,14 @@ from datetime import datetime, timezone
 from typing import Optional, List
 from uuid import UUID
 
-from sqlalchemy import select, func, desc, and_
+from sqlalchemy import select, func, desc, and_, nulls_last
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.procurement import GovtContract
+from app.services.procurement_entity_classifier import (
+    build_entity_bucket_condition,
+    build_smart_text_condition,
+)
 
 
 class ProcurementRepository:
@@ -125,6 +129,7 @@ class ProcurementRepository:
     async def list_contracts(
         self,
         procuring_entity: Optional[str] = None,
+        entity_bucket: Optional[str] = None,
         procurement_type: Optional[str] = None,
         contractor_name: Optional[str] = None,
         district: Optional[str] = None,
@@ -140,6 +145,7 @@ class ProcurementRepository:
 
         conditions = self._build_conditions(
             procuring_entity=procuring_entity,
+            entity_bucket=entity_bucket,
             procurement_type=procurement_type,
             contractor_name=contractor_name,
             district=district,
@@ -153,7 +159,14 @@ class ProcurementRepository:
             query = query.where(and_(*conditions))
 
         offset = (page - 1) * per_page
-        query = query.order_by(desc(GovtContract.contract_award_date)).offset(offset).limit(per_page)
+        query = (
+            query.order_by(
+                nulls_last(desc(GovtContract.contract_award_date)),
+                desc(GovtContract.fetched_at),
+            )
+            .offset(offset)
+            .limit(per_page)
+        )
 
         result = await self.db.execute(query)
         return list(result.scalars().all())
@@ -161,6 +174,7 @@ class ProcurementRepository:
     async def count(
         self,
         procuring_entity: Optional[str] = None,
+        entity_bucket: Optional[str] = None,
         procurement_type: Optional[str] = None,
         contractor_name: Optional[str] = None,
         district: Optional[str] = None,
@@ -174,6 +188,7 @@ class ProcurementRepository:
 
         conditions = self._build_conditions(
             procuring_entity=procuring_entity,
+            entity_bucket=entity_bucket,
             procurement_type=procurement_type,
             contractor_name=contractor_name,
             district=district,
@@ -192,6 +207,7 @@ class ProcurementRepository:
     def _build_conditions(
         self,
         procuring_entity: Optional[str] = None,
+        entity_bucket: Optional[str] = None,
         procurement_type: Optional[str] = None,
         contractor_name: Optional[str] = None,
         district: Optional[str] = None,
@@ -203,7 +219,16 @@ class ProcurementRepository:
         """Build filter conditions for queries."""
         conditions = []
         if procuring_entity:
-            conditions.append(GovtContract.procuring_entity.ilike(f"%{procuring_entity}%"))
+            smart_entity_condition = build_smart_text_condition(
+                [GovtContract.procuring_entity],
+                procuring_entity,
+            )
+            if smart_entity_condition is not None:
+                conditions.append(smart_entity_condition)
+        if entity_bucket:
+            bucket_condition = build_entity_bucket_condition(GovtContract.procuring_entity, entity_bucket)
+            if bucket_condition is not None:
+                conditions.append(bucket_condition)
         if procurement_type:
             conditions.append(GovtContract.procurement_type == procurement_type)
         if contractor_name:
@@ -217,9 +242,17 @@ class ProcurementRepository:
         if max_amount is not None:
             conditions.append(GovtContract.contract_amount_npr <= max_amount)
         if search:
-            conditions.append(
-                GovtContract.project_name.ilike(f"%{search}%")
+            smart_search_condition = build_smart_text_condition(
+                [
+                    GovtContract.project_name,
+                    GovtContract.procuring_entity,
+                    GovtContract.contractor_name,
+                    GovtContract.ifb_number,
+                ],
+                search,
             )
+            if smart_search_condition is not None:
+                conditions.append(smart_search_condition)
         return conditions
 
     async def get_stats(self) -> dict:
@@ -291,17 +324,48 @@ class ProcurementRepository:
             for row in result.all()
         ]
 
-    async def get_top_procuring_entities(self, limit: int = 10) -> list:
+    async def get_top_procuring_entities(
+        self,
+        limit: int = 10,
+        entity_bucket: Optional[str] = None,
+    ) -> list:
         """Get top procuring entities by total contract value."""
+        query = select(
+            GovtContract.procuring_entity,
+            func.count(GovtContract.id).label("contract_count"),
+            func.coalesce(func.sum(GovtContract.contract_amount_npr), 0.0).label("total_value"),
+        )
+
+        if entity_bucket:
+            bucket_condition = build_entity_bucket_condition(GovtContract.procuring_entity, entity_bucket)
+            if bucket_condition is not None:
+                query = query.where(bucket_condition)
+
+        query = query.group_by(
+            GovtContract.procuring_entity
+        ).order_by(
+            desc(func.coalesce(func.sum(GovtContract.contract_amount_npr), 0.0))
+        ).limit(limit)
+
+        result = await self.db.execute(query)
+        return [
+            {
+                "procuring_entity": row[0],
+                "contract_count": row[1],
+                "total_value": row[2] or 0.0,
+            }
+            for row in result.all()
+        ]
+
+    async def get_entity_rollups(self) -> list[dict]:
+        """Return aggregate stats per procuring entity for higher-level bucketing."""
         query = select(
             GovtContract.procuring_entity,
             func.count(GovtContract.id).label("contract_count"),
             func.coalesce(func.sum(GovtContract.contract_amount_npr), 0.0).label("total_value"),
         ).group_by(
             GovtContract.procuring_entity
-        ).order_by(
-            desc(func.coalesce(func.sum(GovtContract.contract_amount_npr), 0.0))
-        ).limit(limit)
+        )
 
         result = await self.db.execute(query)
         return [

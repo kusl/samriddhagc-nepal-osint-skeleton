@@ -1,75 +1,15 @@
-import { useEffect, useState, createContext, useContext, useRef, useSyncExternalStore, useMemo, lazy, Suspense } from 'react';
+import { useEffect, useState, createContext, useContext, useRef, useSyncExternalStore, useMemo, lazy, Suspense, type ComponentType, type LazyExoticComponent, type ReactNode, type Ref, type RefObject } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getDashboardBootstrap, hydrateDashboardBootstrap, type DashboardBootstrapPreset } from '../../api/dashboard';
+import { queryClient } from '../../lib/queryClient';
 import { DashboardHeader } from './DashboardHeader';
 import { AnalystToolbar } from './AnalystToolbar';
 import { FeedbackPanel } from './FeedbackPanel';
 import { AlertTicker } from './AlertTicker';
-import { useDashboardStore, PRESETS } from '../../stores/dashboardStore';
+import { useDashboardStore, PRESETS, WIDGET_META } from '../../stores/dashboardStore';
 import { useAuthStore, UserRole } from '../../store/slices/authSlice';
 import { useUserPreferencesStore } from '../../store/slices/userPreferencesSlice';
 import { DashboardTour, WelcomeModal, getDashboardTourSteps } from '../onboarding';
-// Lazy load heavy widgets for faster initial paint
-const LazyMapWidget = lazy(() => import('./widgets/MapWidget').then(m => ({ default: m.MapWidget })));
-const LazyElectionsWidget = lazy(() => import('./widgets/ElectionsWidget').then(m => ({ default: m.ElectionsWidget })));
-
-import {
-  ElectionMapWidget,
-  KPIWidget,
-  StoriesWidget,
-  NewsFeedWidget,
-  WeatherWidget,
-  DisastersWidget,
-  MarketWidget,
-  EntitiesWidget,
-  BriefingWidget,
-  SocialWidget,
-  AnnouncementsWidget,
-  ThreatsWidget,
-  SeismicWidget,
-  // Election Monitor Widgets
-  ElectionStatusWidget,
-  SwingAnalysisWidget,
-  CloseRacesWidget,
-  IncumbencyWidget,
-  CandidatesWidget,
-  PartySwitchWidget,
-  // Know Your Neta
-  KnowYourNetaWidget,
-  // Election Live Stream
-  ElectionLiveWidget,
-  ElectionPRWidget,
-  ElectionSeatsWidget,
-  // Collaboration Widgets (Palantir-grade OSINT)
-  ActiveCasesWidget,
-  CollaborationFeedWidget,
-  VerificationQueueWidget,
-  EntityWatchlistWidget,
-  AnalystNotesWidget,
-  SourceReliabilityWidget,
-  AnalystLeaderboardWidget,
-  // Situation Brief (Narada Analyst Agent)
-  SituationBriefWidget,
-  // Situation Monitor Widgets
-  IntelBriefHeroWidget,
-  PoliticalPulseWidget,
-  ProvinceMonitorWidget,
-  NarrativeTrackerWidget,
-  DevelopingStoriesWidget,
-  // Fact-Check Widget
-  FactCheckWidget,
-  // Promise Tracker
-  PromiseTrackerWidget,
-  // Parliament Session
-  ParliamentSessionWidget,
-  // Government Decisions
-  GovtDecisionsWidget,
-  // Govt Loan Tracker
-  GovtLoanTrackerWidget,
-  // Bills Tracker
-  BillTrackerWidget,
-  // Parliamentary Activity (Verbatim)
-  ParliamentaryActivityWidget,
-} from './widgets';
 import { CustomizePanel } from './CustomizePanel';
 import { CommandPalette } from './CommandPalette';
 import '../../styles/dashboard.css';
@@ -86,61 +26,81 @@ interface AnalystModeContextType {
 export const AnalystModeContext = createContext<AnalystModeContextType | null>(null);
 export const useAnalystMode = () => useContext(AnalystModeContext);
 
-// Widget component map
-export const WIDGET_COMPONENTS: Record<string, React.ComponentType> = {
-  map: LazyMapWidget,
-  'election-map': ElectionMapWidget,
-  kpi: KPIWidget,
-  stories: StoriesWidget,
-  newsfeed: NewsFeedWidget,  // Real-time WebSocket feed
-  weather: WeatherWidget,
-  disasters: DisastersWidget,
-  elections: LazyElectionsWidget,
-  market: MarketWidget,
-  entities: EntitiesWidget,
-  briefing: BriefingWidget,
-  social: SocialWidget,
-  govt: AnnouncementsWidget,
-  threats: ThreatsWidget,
-  seismic: SeismicWidget,
-  // Election Monitor Widgets (Palantir-style modular)
-  'election-status': ElectionStatusWidget,
-  'swing-analysis': SwingAnalysisWidget,
-  'close-races': CloseRacesWidget,
-  'incumbency': IncumbencyWidget,
-  'candidates': CandidatesWidget,
-  'party-switch': PartySwitchWidget,
-  // Know Your Neta
-  neta: KnowYourNetaWidget,
-  // Election Live Stream
-  'election-live': ElectionLiveWidget,
-  'election-pr': ElectionPRWidget,
-  'election-seats': ElectionSeatsWidget,
-  // Promise Tracker
-  'promise-tracker': PromiseTrackerWidget,
-  'parliament-session': ParliamentSessionWidget,
-  'govt-decisions': GovtDecisionsWidget,
-  'govt-loan-tracker': GovtLoanTrackerWidget,
-  'bill-tracker': BillTrackerWidget,
-  'parliament-activity': ParliamentaryActivityWidget,
-  // Situation Brief (Narada Analyst Agent)
-  'situation-brief': SituationBriefWidget,
-  // Collaboration Widgets (Palantir-grade OSINT)
-  'cases-active': ActiveCasesWidget,
-  'collab-feed': CollaborationFeedWidget,
-  'verification-queue': VerificationQueueWidget,
-  'entity-watchlist': EntityWatchlistWidget,
-  'analyst-notes': AnalystNotesWidget,
-  'source-reliability': SourceReliabilityWidget,
-  'analyst-leaderboard': AnalystLeaderboardWidget,
-  // Situation Monitor Widgets
-  'intel-brief-hero': IntelBriefHeroWidget,
-  'developing-stories': DevelopingStoriesWidget,
-  'political-pulse': PoliticalPulseWidget,
-  'province-monitor': ProvinceMonitorWidget,
-  'narrative-tracker': NarrativeTrackerWidget,
-  // Fact-Check Widget
-  'fact-check': FactCheckWidget,
+type WidgetLoader = () => Promise<{ default: ComponentType<any> }>;
+
+const WIDGET_LOADERS: Record<string, WidgetLoader> = {
+  map: () => import('./widgets/MapWidget').then((m) => ({ default: m.MapWidget })),
+  elections: () => import('./widgets/ElectionsWidget').then((m) => ({ default: m.ElectionsWidget })),
+  'election-map': () => import('./widgets/ElectionMapWidget').then((m) => ({ default: m.ElectionMapWidget })),
+  kpi: () => import('./widgets/KPIWidget').then((m) => ({ default: m.KPIWidget })),
+  stories: () => import('./widgets/StoriesWidget').then((m) => ({ default: m.StoriesWidget })),
+  newsfeed: () => import('./widgets/NewsFeedWidget').then((m) => ({ default: m.NewsFeedWidget })),
+  weather: () => import('./widgets/WeatherWidget').then((m) => ({ default: m.WeatherWidget })),
+  disasters: () => import('./widgets/DisastersWidget').then((m) => ({ default: m.DisastersWidget })),
+  market: () => import('./widgets/MarketWidget').then((m) => ({ default: m.MarketWidget })),
+  entities: () => import('./widgets').then((m) => ({ default: m.EntitiesWidget })),
+  briefing: () => import('./widgets').then((m) => ({ default: m.BriefingWidget })),
+  social: () => import('./widgets').then((m) => ({ default: m.SocialWidget })),
+  govt: () => import('./widgets/AnnouncementsWidget').then((m) => ({ default: m.AnnouncementsWidget })),
+  threats: () => import('./widgets/ThreatsWidget').then((m) => ({ default: m.ThreatsWidget })),
+  seismic: () => import('./widgets').then((m) => ({ default: m.SeismicWidget })),
+  'election-status': () => import('./widgets/ElectionStatusWidget').then((m) => ({ default: m.ElectionStatusWidget })),
+  'swing-analysis': () => import('./widgets/SwingAnalysisWidget').then((m) => ({ default: m.SwingAnalysisWidget })),
+  'close-races': () => import('./widgets/CloseRacesWidget').then((m) => ({ default: m.CloseRacesWidget })),
+  incumbency: () => import('./widgets/IncumbencyWidget').then((m) => ({ default: m.IncumbencyWidget })),
+  candidates: () => import('./widgets/CandidatesWidget').then((m) => ({ default: m.CandidatesWidget })),
+  'party-switch': () => import('./widgets/PartySwitchWidget').then((m) => ({ default: m.PartySwitchWidget })),
+  neta: () => import('./widgets/KnowYourNetaWidget').then((m) => ({ default: m.KnowYourNetaWidget })),
+  'election-live': () => import('./widgets/ElectionLiveWidget').then((m) => ({ default: m.ElectionLiveWidget })),
+  'election-pr': () => import('./widgets/ElectionPRWidget').then((m) => ({ default: m.ElectionPRWidget })),
+  'election-seats': () => import('./widgets/ElectionSeatsWidget').then((m) => ({ default: m.ElectionSeatsWidget })),
+  'promise-tracker': () => import('./widgets/PromiseTrackerWidget').then((m) => ({ default: m.PromiseTrackerWidget })),
+  'parliament-session': () => import('./widgets/ParliamentSessionWidget').then((m) => ({ default: m.ParliamentSessionWidget })),
+  'govt-decisions': () => import('./widgets/GovtDecisionsWidget').then((m) => ({ default: m.GovtDecisionsWidget })),
+  'cabinet-action-tracker': () => import('./widgets/CabinetActionTrackerWidget').then((m) => ({ default: m.CabinetActionTrackerWidget })),
+  'govt-loan-tracker': () => import('./widgets/GovtLoanTrackerWidget').then((m) => ({ default: m.GovtLoanTrackerWidget })),
+  'debt-tracker': () => import('./widgets/DebtTrackerWidget').then((m) => ({ default: m.DebtTrackerWidget })),
+  'govt-contracts': () => import('./widgets/GovtContractsWidget').then((m) => ({ default: m.GovtContractsWidget })),
+  'economic-news': () => import('./widgets/EconomicNewsWidget').then((m) => ({ default: m.EconomicNewsWidget })),
+  'price-watch': () => import('./widgets/PriceWatchWidget').then((m) => ({ default: m.PriceWatchWidget })),
+  'trade-customs': () => import('./widgets/TradeCustomsWidget').then((m) => ({ default: m.TradeCustomsWidget })),
+  'public-spending': () => import('./widgets/PublicSpendingWidget').then((m) => ({ default: m.PublicSpendingWidget })),
+  'nrb-macro': () => import('./widgets/NrbMacroWidget').then((m) => ({ default: m.NrbMacroWidget })),
+  'nrb-prices': () => import('./widgets/NrbPricesFlowsWidget').then((m) => ({ default: m.NrbPricesFlowsWidget })),
+  'nrb-banking': () => import('./widgets/NrbBankingLiquidityWidget').then((m) => ({ default: m.NrbBankingLiquidityWidget })),
+  'fiscal-position': () => import('./widgets/FiscalPositionWidget').then((m) => ({ default: m.FiscalPositionWidget })),
+  'external-sector': () => import('./widgets/ExternalSectorWidget').then((m) => ({ default: m.ExternalSectorWidget })),
+  'monetary-conditions': () => import('./widgets/MonetaryConditionsWidget').then((m) => ({ default: m.MonetaryConditionsWidget })),
+  'prices-cost-pressure': () => import('./widgets/PricesCostPressureWidget').then((m) => ({ default: m.PricesCostPressureWidget })),
+  rivers: () => import('./widgets/RiverMonitoringWidget').then((m) => ({ default: m.RiverMonitoringWidget })),
+  'bill-tracker': () => import('./widgets/BillTrackerWidget').then((m) => ({ default: m.BillTrackerWidget })),
+  'parliament-activity': () => import('./widgets/ParliamentaryActivityWidget').then((m) => ({ default: m.ParliamentaryActivityWidget })),
+  'situation-brief': () => import('./widgets/SituationBriefWidget').then((m) => ({ default: m.SituationBriefWidget })),
+  'cases-active': () => import('./widgets').then((m) => ({ default: m.ActiveCasesWidget })),
+  'collab-feed': () => import('./widgets').then((m) => ({ default: m.CollaborationFeedWidget })),
+  'verification-queue': () => import('./widgets').then((m) => ({ default: m.VerificationQueueWidget })),
+  'entity-watchlist': () => import('./widgets').then((m) => ({ default: m.EntityWatchlistWidget })),
+  'analyst-notes': () => import('./widgets').then((m) => ({ default: m.AnalystNotesWidget })),
+  'source-reliability': () => import('./widgets').then((m) => ({ default: m.SourceReliabilityWidget })),
+  'analyst-leaderboard': () => import('./widgets').then((m) => ({ default: m.AnalystLeaderboardWidget })),
+  'intel-brief-hero': () => import('./widgets/IntelBriefHeroWidget').then((m) => ({ default: m.IntelBriefHeroWidget })),
+  'developing-stories': () => import('./widgets/DevelopingStoriesWidget').then((m) => ({ default: m.DevelopingStoriesWidget })),
+  'political-pulse': () => import('./widgets/PoliticalPulseWidget').then((m) => ({ default: m.PoliticalPulseWidget })),
+  'province-monitor': () => import('./widgets/ProvinceMonitorWidget').then((m) => ({ default: m.ProvinceMonitorWidget })),
+  'narrative-tracker': () => import('./widgets/NarrativeTrackerWidget').then((m) => ({ default: m.NarrativeTrackerWidget })),
+  'fact-check': () => import('./widgets/FactCheckWidget').then((m) => ({ default: m.FactCheckWidget })),
+};
+
+export const WIDGET_COMPONENTS: Record<string, LazyExoticComponent<ComponentType<any>>> = Object.fromEntries(
+  Object.entries(WIDGET_LOADERS).map(([widgetId, loader]) => [widgetId, lazy(loader)]),
+) as Record<string, LazyExoticComponent<ComponentType<any>>>;
+
+const BOOTSTRAP_PRESETS = new Set<DashboardBootstrapPreset>(['news', 'economy', 'parliament', 'intelligence']);
+const IMMEDIATE_WIDGETS_BY_PRESET: Record<string, string[]> = {
+  news: ['situation-brief', 'kpi', 'developing-stories', 'newsfeed'],
+  economy: ['economic-news', 'market', 'nrb-macro', 'fiscal-position'],
+  parliament: ['parliament-session', 'govt-decisions', 'promise-tracker', 'bill-tracker'],
+  intelligence: ['situation-brief', 'kpi', 'developing-stories', 'province-monitor'],
 };
 
 const MOBILE_WIDGETS_BY_PRESET: Record<string, string[]> = {
@@ -148,7 +108,8 @@ const MOBILE_WIDGETS_BY_PRESET: Record<string, string[]> = {
   analyst: ['election-map', 'situation-brief', 'newsfeed', 'election-status', 'fact-check'],
   intelligence: ['map', 'situation-brief', 'developing-stories', 'fact-check', 'province-monitor'],
   elections: ['election-seats', 'election-status', 'election-pr', 'election-live'],
-  parliament: ['promise-tracker', 'bill-tracker', 'parliament-activity', 'govt-loan-tracker', 'govt-decisions', 'parliament-session'],
+  economy: ['economic-news', 'market', 'trade-customs', 'fiscal-position', 'external-sector', 'monetary-conditions', 'prices-cost-pressure', 'govt-loan-tracker', 'govt-contracts', 'debt-tracker'],
+  parliament: ['promise-tracker', 'bill-tracker', 'parliament-activity', 'govt-decisions', 'neta', 'parliament-session'],
   disaster: ['map', 'disasters', 'weather', 'newsfeed', 'govt'],
 };
 
@@ -189,8 +150,135 @@ function getMobileWidgetOrder(presetId: string, visibleWidgets: string[]): strin
   return visibleWidgets.filter((id) => WIDGET_COMPONENTS[id]).slice(0, 5);
 }
 
+function getImmediateWidgetIds(presetId: string, visibleWidgets: string[]): string[] {
+  const preferred = IMMEDIATE_WIDGETS_BY_PRESET[presetId];
+  if (!preferred) {
+    return visibleWidgets.filter((id) => WIDGET_COMPONENTS[id]).slice(0, 4);
+  }
+
+  const visibleSet = new Set(visibleWidgets);
+  const ordered = preferred.filter((id) => visibleSet.has(id) && WIDGET_COMPONENTS[id]);
+  return ordered.length > 0 ? ordered : visibleWidgets.filter((id) => WIDGET_COMPONENTS[id]).slice(0, 4);
+}
+
+function DashboardWidgetPlaceholder({
+  widgetId,
+  size,
+  containerRef,
+}: {
+  widgetId: string;
+  size?: string;
+  containerRef?: Ref<HTMLDivElement>;
+}) {
+  const sizeClass = `widget-${size || 'medium'}`;
+  const widgetLabel = WIDGET_META[widgetId]?.consumerName || WIDGET_META[widgetId]?.name || widgetId;
+  return (
+    <div ref={containerRef} className={`widget ${sizeClass} dashboard-shell-widget`} aria-hidden="true">
+      <div className="widget-header">
+        <span className="widget-drag-handle" />
+        <span className="widget-title">
+          <span className="widget-title-text">{widgetLabel}</span>
+        </span>
+      </div>
+      <div className="widget-body">
+        <div className="widget-skeleton">
+          <div className="widget-skeleton-topline">
+            <div className="widget-skeleton-chip" />
+          </div>
+          <div className="widget-skeleton-grid">
+            <div className="widget-skeleton-card">
+              <div className="widget-skeleton-label" />
+              <div className="widget-skeleton-value" />
+              <div className="widget-skeleton-meta" />
+            </div>
+            <div className="widget-skeleton-card">
+              <div className="widget-skeleton-label" />
+              <div className="widget-skeleton-value short" />
+              <div className="widget-skeleton-meta" />
+            </div>
+            <div className="widget-skeleton-card">
+              <div className="widget-skeleton-label" />
+              <div className="widget-skeleton-value short" />
+              <div className="widget-skeleton-meta short" />
+            </div>
+          </div>
+          <div className="widget-skeleton-list">
+            <div className="widget-skeleton-row">
+              <div className="widget-skeleton-line headline" />
+              <div className="widget-skeleton-line" />
+            </div>
+            <div className="widget-skeleton-row">
+              <div className="widget-skeleton-line headline medium" />
+              <div className="widget-skeleton-line medium" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DeferredDashboardWidget({
+  widgetId,
+  size,
+  canMount,
+  eager,
+  resetKey,
+  rootRef,
+  children,
+}: {
+  widgetId: string;
+  size?: string;
+  canMount: boolean;
+  eager: boolean;
+  resetKey: string;
+  rootRef: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  const placeholderRef = useRef<HTMLDivElement | null>(null);
+  const [ready, setReady] = useState(canMount && eager);
+
+  useEffect(() => {
+    if (!canMount) {
+      setReady(false);
+      return;
+    }
+    setReady(eager);
+  }, [canMount, eager, resetKey]);
+
+  useEffect(() => {
+    if (!canMount || eager || ready) return;
+    const node = placeholderRef.current;
+    if (!node) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      const timeoutId = window.setTimeout(() => setReady(true), 1500);
+      return () => window.clearTimeout(timeoutId);
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting || entry.intersectionRatio > 0)) {
+        setReady(true);
+        observer.disconnect();
+      }
+    }, {
+      root: rootRef.current,
+      rootMargin: '360px 0px',
+    });
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [canMount, eager, ready, rootRef, resetKey]);
+
+  if (ready) {
+    return <>{children}</>;
+  }
+
+  return <DashboardWidgetPlaceholder widgetId={widgetId} size={size} containerRef={placeholderRef} />;
+}
+
 export function Dashboard() {
-  const { widgetOrder, widgetVisibility, applyPreset, activePreset, theme } = useDashboardStore();
+  const { widgetOrder, widgetVisibility, widgetSizes, applyPreset, activePreset, theme } = useDashboardStore();
   const { user, isGuest } = useAuthStore();
   const {
     clearTourReplay,
@@ -210,6 +298,8 @@ export function Dashboard() {
   const [feedbackPanelStory, setFeedbackPanelStory] = useState<any>(null);
   const [showWelcome, setShowWelcome] = useState(false);
   const [tourOpen, setTourOpen] = useState(false);
+  const [bootstrapStatus, setBootstrapStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const widgetGridRef = useRef<HTMLDivElement | null>(null);
 
   const isAnalystOrDev = user?.role === 'analyst' || user?.role === 'dev';
   const onboardingUserKey = useMemo(() => {
@@ -237,7 +327,7 @@ export function Dashboard() {
     initializedForRole.current = user.role;
   }, [user?.role, applyPreset, activePreset, isMobile]);
 
-  // Keyboard shortcuts: N → News, A → Accountability, I → Intelligence
+  // Keyboard shortcuts: N → News, E → Economy, A → Accountability, I → Intelligence
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -246,6 +336,9 @@ export function Dashboard() {
       if (key === 'n') {
         e.preventDefault();
         applyPreset('news');
+      } else if (key === 'e') {
+        e.preventDefault();
+        applyPreset('economy');
       } else if (key === 'a') {
         e.preventDefault();
         applyPreset('parliament');
@@ -294,6 +387,15 @@ export function Dashboard() {
   const visibleWidgets = isMobile
     ? getMobileWidgetOrder(activePreset, allVisible)
     : allVisible;
+  const immediateWidgetIds = useMemo(
+    () => new Set(getImmediateWidgetIds(activePreset, visibleWidgets)),
+    [activePreset, visibleWidgets],
+  );
+  const widgetMountResetKey = `${activePreset}:${visibleWidgets.join(',')}`;
+  const bootstrapPreset = BOOTSTRAP_PRESETS.has(activePreset as DashboardBootstrapPreset)
+    ? activePreset as DashboardBootstrapPreset
+    : null;
+  const bootstrapReady = !bootstrapPreset || bootstrapStatus !== 'loading';
   // Analyst mode context value — memoized to prevent unnecessary consumer re-renders
   const analystModeValue = useMemo<AnalystModeContextType>(() => ({
     feedbackMode,
@@ -303,6 +405,31 @@ export function Dashboard() {
   }), [feedbackMode, selectedStories]);
 
   const themeClass = theme === 'bloomberg' ? 'bloomberg-theme' : '';
+
+  useEffect(() => {
+    if (!bootstrapPreset) {
+      setBootstrapStatus('ready');
+      return;
+    }
+
+    let cancelled = false;
+    setBootstrapStatus('loading');
+
+    getDashboardBootstrap(bootstrapPreset)
+      .then((payload) => {
+        if (cancelled) return;
+        hydrateDashboardBootstrap(queryClient, payload);
+        setBootstrapStatus('ready');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setBootstrapStatus('error');
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [bootstrapPreset]);
 
   useEffect(() => {
     if (!onboardingUserKey || user?.role !== 'consumer') return;
@@ -363,7 +490,7 @@ export function Dashboard() {
     navigate('/login', { state: { mode: 'signup' } });
   };
 
-  const handleTourStepChange = (step: { presetId?: 'news' | 'parliament' | 'elections' }) => {
+  const handleTourStepChange = (step: { presetId?: 'news' | 'economy' | 'parliament' | 'elections' }) => {
     if (step.presetId && activePreset !== step.presetId) {
       applyPreset(step.presetId)
     }
@@ -391,14 +518,30 @@ export function Dashboard() {
         )}
 
         <main className="dashboard-main">
-          <div className="widget-grid">
-            <Suspense fallback={null}>
-              {visibleWidgets.map(widgetId => {
-                const WidgetComponent = WIDGET_COMPONENTS[widgetId];
-                if (!WidgetComponent) return null;
-                return <WidgetComponent key={widgetId} />;
-              })}
-            </Suspense>
+          <div className="widget-grid" ref={widgetGridRef}>
+            {visibleWidgets.map(widgetId => {
+              const WidgetComponent = WIDGET_COMPONENTS[widgetId];
+              if (!WidgetComponent) return null;
+              const isImmediate = immediateWidgetIds.has(widgetId);
+
+              return (
+                <DeferredDashboardWidget
+                  key={widgetId}
+                  widgetId={widgetId}
+                  size={widgetSizes[widgetId]}
+                  canMount={bootstrapReady}
+                  eager={isImmediate}
+                  resetKey={widgetMountResetKey}
+                  rootRef={widgetGridRef}
+                >
+                  <Suspense
+                    fallback={<DashboardWidgetPlaceholder widgetId={widgetId} size={widgetSizes[widgetId]} />}
+                  >
+                    <WidgetComponent />
+                  </Suspense>
+                </DeferredDashboardWidget>
+              );
+            })}
           </div>
         </main>
 

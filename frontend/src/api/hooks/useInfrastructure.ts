@@ -6,7 +6,7 @@ import type { InfrastructureStatus, BorderCrossingStatusResponse } from '../infr
 export const infrastructureKeys = {
   all: ['infrastructure'] as const,
   status: (days: number) => [...infrastructureKeys.all, 'status', days] as const,
-  borders: () => [...infrastructureKeys.all, 'borders'] as const,
+  borders: () => [...infrastructureKeys.all, 'borders', 'v2'] as const,
 };
 
 /**

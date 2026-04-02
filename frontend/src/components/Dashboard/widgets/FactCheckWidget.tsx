@@ -317,8 +317,8 @@ export const FactCheckWidget = memo(function FactCheckWidget() {
   const isSignedIn = isAuthenticated && !isGuest;
 
   const { data: results, isLoading: resultsLoading, error: resultsError, refetch } = useFactCheckResults({ limit: 20, hours: 720 });
-  const { data: statements } = useUserStatements();
-  const { data: pendingRequests } = useMyStoryRequests();
+  const statements: StatementFactCheck[] = [];
+  const pendingRequests: PendingStoryRequest[] = [];
 
   if (resultsLoading) {
     return (
@@ -359,7 +359,17 @@ export const FactCheckWidget = memo(function FactCheckWidget() {
       badge={totalCount > 0 ? (falseCount > 0 ? `${falseCount} flagged` : `${totalCount}`) : undefined}
     >
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {isSignedIn && <StatementInput remaining={remaining} />}
+        {isSignedIn ? (
+          <div style={{
+            padding: '8px 10px',
+            borderBottom: '1px solid var(--border-subtle)',
+            background: 'var(--bg-surface, #111113)',
+            fontSize: '10px',
+            color: 'var(--text-muted)',
+          }}>
+            Custom statement submission is temporarily disabled while the dashboard uses the stable story-result flow only.
+          </div>
+        ) : null}
 
         <div style={{ flex: 1, overflowY: 'auto' }}>
           {/* Pending story requests first */}

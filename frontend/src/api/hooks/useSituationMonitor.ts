@@ -1,7 +1,7 @@
 /**
  * React Query hooks for Situation Monitor widgets.
  */
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { getClusterTimeline, getDevelopingStories, getProvinceAnomalies, getStoryTracker } from '../situationMonitor';
 import type { ClusterTimelineEntry, DevelopingStoryEntry, ProvinceAnomalyLatest, StoryTrackerEntry } from '../situationMonitor';
 
@@ -27,6 +27,10 @@ export function useClusterTimeline(params: {
     queryFn: () => getClusterTimeline(params),
     staleTime: 3 * 60 * 1000,          // 3 minutes
     refetchInterval: 10 * 60 * 1000,   // 10 minutes
+    gcTime: 30 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -37,6 +41,10 @@ export function useDevelopingStories() {
     queryFn: () => getDevelopingStories({ hours: 72, limit: 15 }),
     staleTime: 10 * 60 * 1000,
     refetchInterval: 20 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -51,6 +59,10 @@ export function useStoryTracker(params: {
     queryFn: () => getStoryTracker(params),
     staleTime: 30 * 60 * 1000,
     refetchInterval: 60 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -61,5 +73,9 @@ export function useProvinceAnomalies() {
     queryFn: () => getProvinceAnomalies(),
     staleTime: 5 * 60 * 1000,          // 5 minutes
     refetchInterval: 10 * 60 * 1000,   // 10 minutes
+    gcTime: 30 * 60 * 1000,
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
   });
 }

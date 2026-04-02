@@ -8,14 +8,10 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" && pwd)"
 VENV="$DIR/venv/bin/python"
+export OSINT_PASSWORD="devpassword123"
 export PATH="/usr/local/bin:/opt/homebrew/bin:$HOME/.local/bin:$PATH"
 
 JOB="${1:-all}"
-
-if [ -z "${OSINT_PASSWORD:-}" ]; then
-  echo "Set OSINT_PASSWORD before running local agents."
-  exit 1
-fi
 
 echo ""
 echo "=== $(date) — Running $JOB ==="

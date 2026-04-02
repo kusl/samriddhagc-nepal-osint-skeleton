@@ -337,6 +337,8 @@ class OpenAITextEmbedder(MultilingualTextEmbedder):
         return
 
     def _post_embeddings(self, inputs: List[str]) -> List[List[float]]:
+        model_name = self.config["name"]
+        dimensions = self.config["dim"]
         response = httpx.post(
             f"{self.settings.openai_base_url.rstrip('/')}/embeddings",
             headers={
@@ -344,9 +346,9 @@ class OpenAITextEmbedder(MultilingualTextEmbedder):
                 "Content-Type": "application/json",
             },
             json={
-                "model": self.settings.openai_embedding_model,
+                "model": model_name,
                 "input": inputs,
-                "dimensions": self.settings.openai_embedding_dimensions,
+                "dimensions": dimensions,
             },
             timeout=60.0,
         )
@@ -405,11 +407,11 @@ class OpenAITextEmbedder(MultilingualTextEmbedder):
 
     @property
     def model_name(self) -> str:
-        return self.settings.openai_embedding_model
+        return self.config["name"]
 
     @property
     def model_version(self) -> str:
-        return f"openai-{self.settings.openai_embedding_dimensions}"
+        return f"openai-{self.config['dim']}"
 
 
 # ============================================================

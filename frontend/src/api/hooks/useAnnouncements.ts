@@ -17,8 +17,8 @@ import type {
 // Query keys - centralized for cache invalidation
 export const announcementKeys = {
   all: ['announcements'] as const,
-  summary: (limit: number, hours?: number, provinces?: string[]) =>
-    [...announcementKeys.all, 'summary', limit, hours, provinces?.join(',') ?? 'all'] as const,
+  summary: (limit: number, hours?: number, provinces?: string[], scope?: string) =>
+    [...announcementKeys.all, 'summary', limit, hours, provinces?.join(',') ?? 'all', scope ?? 'all'] as const,
   list: (params: Record<string, unknown>) => [...announcementKeys.all, 'list', params] as const,
   detail: (id: string) => [...announcementKeys.all, 'detail', id] as const,
   sources: () => [...announcementKeys.all, 'sources'] as const,
@@ -32,10 +32,15 @@ export const announcementKeys = {
  * @param hours - Filter by hours (24=1d, 72=3d, 168=7d). Undefined for all time.
  * @param provinces - Filter by province(s). Undefined for all provinces.
  */
-export function useAnnouncementSummary(limit: number = 5, hours?: number, provinces?: string[]) {
+export function useAnnouncementSummary(
+  limit: number = 5,
+  hours?: number,
+  provinces?: string[],
+  scope?: string,
+) {
   return useQuery<AnnouncementSummary>({
-    queryKey: announcementKeys.summary(limit, hours, provinces),
-    queryFn: () => getAnnouncementSummary(limit, hours, provinces),
+    queryKey: announcementKeys.summary(limit, hours, provinces, scope),
+    queryFn: () => getAnnouncementSummary(limit, hours, provinces, scope),
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: 10 * 60 * 1000, // Auto-refresh every 10 minutes
   });

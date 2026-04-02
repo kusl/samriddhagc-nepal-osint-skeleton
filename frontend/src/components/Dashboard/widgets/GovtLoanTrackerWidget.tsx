@@ -207,7 +207,7 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
   useEffect(() => {
     const timer = window.setInterval(() => {
       setNow(Date.now());
-    }, 250);
+    }, 1000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -309,7 +309,7 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
     ];
   }, [currency, data]);
 
-  if (isLoading) {
+  if (isLoading && !data) {
     return (
       <Widget id="govt-loan-tracker" icon={<Landmark size={14} />} badge="LIVE">
         <LoadingState />

@@ -5,9 +5,9 @@ Scrapes HoR bill PDFs, OCRs locally, summarizes via Claude CLI (Sonnet 4.6),
 and pushes results to VPS.
 
 Usage:
-    OSINT_PASSWORD=your-osint-password python3 run_local_bill_ocr.py
-    OSINT_PASSWORD=your-osint-password python3 run_local_bill_ocr.py --limit 5
-    OSINT_PASSWORD=your-osint-password python3 run_local_bill_ocr.py --limit 5 --skip-ocr
+    OSINT_PASSWORD=devpassword123 python3 run_local_bill_ocr.py
+    OSINT_PASSWORD=devpassword123 python3 run_local_bill_ocr.py --limit 5
+    OSINT_PASSWORD=devpassword123 python3 run_local_bill_ocr.py --limit 5 --skip-ocr
 """
 import argparse
 import io

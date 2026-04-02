@@ -17,6 +17,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",
     )
 
     # Application
@@ -88,6 +89,10 @@ class Settings(BaseSettings):
     bipad_min_earthquake_magnitude: float = 4.0
     bipad_significance_death_threshold: int = 0  # Store if deaths > 0
     bipad_significance_loss_threshold: float = 2_500_000  # Store if loss > 25 lakhs NPR
+    river_monitoring_enabled: bool = True
+    river_poll_interval_seconds: int = 1800  # 30 minutes
+    river_cleanup_interval_seconds: int = 86400  # 24 hours
+    river_retention_days: int = 21
 
     # Paths
     sources_config_path: str = "config/sources.yaml"
@@ -110,6 +115,8 @@ class Settings(BaseSettings):
     openai_embedding_dimensions: int = 1024
     openai_clustering_model: str = "gpt-5-mini"
     openai_embedding_enabled: bool = False
+    openai_story_classification_enabled: bool = False
+    openai_story_classification_min_confidence: float = 0.58
     openai_clustering_enabled: bool = False
     openai_source_reliability_enabled: bool = True
     openai_source_reliability_story_sample_size: int = 3
@@ -134,6 +141,10 @@ class Settings(BaseSettings):
     openai_max_embedding_texts_per_day: int = 600
     openai_max_structured_calls_per_hour: int = 8
     openai_max_structured_calls_per_day: int = 36
+    openai_max_govt_decision_calls_per_hour: int = 6
+    openai_max_govt_decision_calls_per_day: int = 24
+    openai_max_cabinet_action_calls_per_hour: int = 240
+    openai_max_cabinet_action_calls_per_day: int = 1200
     openai_max_agent_calls_per_hour: int = 1
     openai_max_agent_calls_per_day: int = 4
     openai_max_embedding_chars_per_text: int = 1400
@@ -194,8 +205,8 @@ class Settings(BaseSettings):
     resend_api_key: Optional[str] = None
     resend_from_email: str = "NepalOSINT <noreply@narada.dev>"
 
-    # Haiku relevance filter — AI verification for borderline Nepal stories
-    haiku_relevance_filter_enabled: bool = True
+    # Haiku relevance filter — legacy Anthropic path, disabled in favor of OpenAI-only workflows
+    haiku_relevance_filter_enabled: bool = False
     haiku_relevance_model: str = "claude-3-haiku-20240307"
     haiku_relevance_timeout: int = 10  # seconds
 

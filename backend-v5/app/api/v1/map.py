@@ -39,6 +39,12 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/map", tags=["Map"])
 
+NEPALI_LOCATION_SUFFIXES = [
+    "बाटै", "हरुमा", "हरूमा", "हरुका", "हरूका", "हरुको", "हरूको",
+    "सम्म", "सँग", "बाट", "देखि", "भित्र", "माथि", "तर्फ", "नजिक", "अघि", "पछि",
+    "मा", "मै", "को", "का", "की", "ले",
+]
+
 
 # =============================================================================
 # HAZARD TO CATEGORY MAPPING
@@ -288,34 +294,6 @@ NEPALI_SUFFIXES = [
     "बाट", "मा", "को", "ले", "लाई", "सँग", "देखि",  # Case markers
 ]
 
-# Source name to district mapping for regional news sources
-# This provides location fallback when article text doesn't have explicit location
-SOURCE_TO_DISTRICT: Dict[str, str] = {
-    # Ratopati regional editions
-    "ratopati gandaki": "kaski",
-    "ratopati bagmati": "kathmandu",
-    "ratopati lumbini": "rupandehi",
-    "ratopati koshi": "morang",
-    "ratopati madhesh": "dhanusha",
-    "ratopati sudurpashchim": "kailali",
-    "ratopati karnali": "surkhet",
-    # Other regional sources
-    "himalayan times": "kathmandu",
-    "kathmandu post": "kathmandu",
-    "the kathmandu post": "kathmandu",
-    "rising nepal": "kathmandu",
-    "the rising nepal": "kathmandu",
-    "kantipur": "kathmandu",
-    "kantipur tv": "kathmandu",
-    "nagarik": "kathmandu",
-    "republica": "kathmandu",
-    "onlinekhabar": "kathmandu",
-    "setopati": "kathmandu",
-    "ekantipur": "kathmandu",
-    # Provincial papers
-    "gorkhapatra": "kathmandu",
-}
-
 # Province seat counts for constituency validation
 CONSTITUENCY_SEATS: Dict[str, int] = {
     "taplejung": 1, "panchthar": 2, "ilam": 3, "jhapa": 8, "morang": 10,
@@ -528,13 +506,11 @@ def extract_location_from_text(
 
         # 2. Nepali district names (with suffix handling)
         for nepali_name, eng_name in NEPALI_DISTRICTS.items():
-            # Check with common suffixes
-            for suffix in ["", "मा", "को", "ले", "बाट"]:
-                if nepali_name + suffix in text:
-                    coords = DISTRICT_COORDINATES.get(eng_name)
-                    if coords:
-                        jittered = jitter_coordinates(coords[0], coords[1], f"{eng_name}-{text[:20]}")
-                        return (eng_name.title(), jittered)
+            if _contains_nepali_place_alias(text, nepali_name):
+                coords = DISTRICT_COORDINATES.get(eng_name)
+                if coords:
+                    jittered = jitter_coordinates(coords[0], coords[1], f"{eng_name}-{text[:20]}")
+                    return (eng_name.title(), jittered)
 
         # 3. English district names
         text_lower = text.lower()
@@ -566,6 +542,12 @@ def extract_location_from_text(
                     return (district.title(), jittered)
 
     return None
+
+
+def _contains_nepali_place_alias(text: str, alias: str) -> bool:
+    suffix_pattern = "|".join(sorted((re.escape(s) for s in NEPALI_LOCATION_SUFFIXES), key=len, reverse=True))
+    pattern = rf"(?<![\u0900-\u097F]){re.escape(alias)}(?:{suffix_pattern})?(?![\u0900-\u097F])"
+    return re.search(pattern, text) is not None
 
 
 def get_coordinates_for_district(district: Optional[str]) -> Optional[Tuple[float, float]]:
@@ -1079,18 +1061,6 @@ async def get_map_events(
                     district = tactical.municipality.replace("_", " ").title()
 
             # Priority 2: Enhanced text extraction using multi-level search
-            if not coordinates and story.districts:
-                for raw_district in story.districts:
-                    if not isinstance(raw_district, str) or not raw_district.strip():
-                        continue
-                    coords = get_coordinates_for_district(raw_district)
-                    if coords:
-                        district = to_display_district(raw_district)
-                        jittered = jitter_coordinates(coords[0], coords[1], str(story.id))
-                        coordinates = [jittered[1], jittered[0]]
-                        break
-
-            # Priority 3: Enhanced text extraction using multi-level search
             if not coordinates:
                 # Use enhanced extraction that handles Nepali, cities, constituencies
                 location_result = extract_location_from_text(
@@ -1104,19 +1074,21 @@ async def get_map_events(
                     district, (lat, lng) = location_result
                     coordinates = [lng, lat]  # GeoJSON format [lng, lat]
 
-            # Priority 4: Infer from source name (regional news sources)
-            if not coordinates and story.source_name:
-                source_lower = story.source_name.lower()
-                for source_pattern, source_district in SOURCE_TO_DISTRICT.items():
-                    if source_pattern in source_lower:
-                        coords = DISTRICT_COORDINATES.get(source_district)
-                        if coords:
-                            district = to_display_district(source_district)
-                            jittered = jitter_coordinates(coords[0], coords[1], str(story.id))
-                            coordinates = [jittered[1], jittered[0]]
-                            break
+            # Priority 3: Stored district fallback only after live text extraction.
+            # This prevents stale source-brand leaks (e.g. Gorkhapatra -> Gorkha)
+            # from overriding clearer title/summary/content signals.
+            if not coordinates and story.districts:
+                for raw_district in story.districts:
+                    if not isinstance(raw_district, str) or not raw_district.strip():
+                        continue
+                    coords = get_coordinates_for_district(raw_district)
+                    if coords:
+                        district = to_display_district(raw_district)
+                        jittered = jitter_coordinates(coords[0], coords[1], str(story.id))
+                        coordinates = [jittered[1], jittered[0]]
+                        break
 
-            # Priority 5: Province-level fallback when district extraction is unavailable.
+            # Priority 4: Province-level fallback when district extraction is unavailable.
             if not coordinates and story.provinces:
                 for raw_province in story.provinces:
                     normalized_province = normalize_province_name(raw_province)
@@ -1130,7 +1102,7 @@ async def get_map_events(
                         coordinates = [jittered[1], jittered[0]]
                         break
 
-            # Priority 6: Default to Kathmandu for Nepal domestic news (capital city)
+            # Priority 5: Default to Kathmandu for Nepal domestic news (capital city)
             # This ensures all Nepal news appears on the map with clustering
             if not coordinates and story.nepal_relevance == "NEPAL_DOMESTIC":
                 coords = DISTRICT_COORDINATES["kathmandu"]

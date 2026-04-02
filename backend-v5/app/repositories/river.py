@@ -1,12 +1,12 @@
 """River monitoring repository for database operations."""
+from collections import defaultdict
 import math
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, desc
+from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.models.river import RiverStation, RiverReading
 
@@ -92,20 +92,37 @@ class RiverStationRepository:
 
     async def get_all_with_latest_reading(self) -> list[dict]:
         """Get all stations with their latest reading."""
-        # Get all active stations
         stations = await self.list_active()
+        if not stations:
+            return []
+
+        station_ids = [station.id for station in stations]
+        ranked_readings = (
+            select(
+                RiverReading.id.label("reading_id"),
+                func.row_number().over(
+                    partition_by=RiverReading.station_id,
+                    order_by=desc(RiverReading.reading_at),
+                ).label("row_num"),
+            )
+            .where(RiverReading.station_id.in_(station_ids))
+            .subquery()
+        )
+
+        readings_result = await self.db.execute(
+            select(RiverReading, ranked_readings.c.row_num)
+            .join(ranked_readings, RiverReading.id == ranked_readings.c.reading_id)
+            .where(ranked_readings.c.row_num <= 5)
+            .order_by(RiverReading.station_id, desc(RiverReading.reading_at))
+        )
+        readings_by_station: dict[UUID, list[RiverReading]] = defaultdict(list)
+        for reading, _row_num in readings_result.all():
+            readings_by_station[reading.station_id].append(reading)
 
         result = []
         now_utc = datetime.now(timezone.utc)
         for station in stations:
-            # Get a few latest readings so we can skip stale/anomalous values.
-            reading_result = await self.db.execute(
-                select(RiverReading)
-                .where(RiverReading.station_id == station.id)
-                .order_by(desc(RiverReading.reading_at))
-                .limit(5)
-            )
-            reading_candidates = list(reading_result.scalars().all())
+            reading_candidates = readings_by_station.get(station.id, [])
             latest_observed = reading_candidates[0] if reading_candidates else None
             latest_reading = next(
                 (
@@ -194,9 +211,10 @@ class RiverStationRepository:
         )
         return [row[0] for row in result.all()]
 
-    async def count_by_status(self) -> dict[str, int]:
+    async def count_by_status(self, stations: Optional[list[dict]] = None) -> dict[str, int]:
         """Count stations by their latest reading status."""
-        stations = await self.get_all_with_latest_reading()
+        if stations is None:
+            stations = await self.get_all_with_latest_reading()
         counts = {"danger": 0, "warning": 0, "normal": 0, "unknown": 0}
         for s in stations:
             status = (s.get("current_status") or "").upper()
@@ -270,27 +288,20 @@ class RiverReadingRepository:
         cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
 
         result = await self.db.execute(
-            select(RiverReading)
+            select(RiverReading, RiverStation)
+            .join(RiverStation, RiverStation.id == RiverReading.station_id)
             .where(
                 RiverReading.reading_at >= cutoff,
                 RiverReading.status.in_(["DANGER", "WARNING"]),
             )
             .order_by(desc(RiverReading.reading_at))
         )
-        readings = result.scalars().all()
-
-        # Join with station data
         output = []
-        for reading in readings:
-            station_result = await self.db.execute(
-                select(RiverStation).where(RiverStation.id == reading.station_id)
-            )
-            station = station_result.scalar_one_or_none()
-            if station:
-                output.append({
-                    **reading.to_dict(),
-                    "station": station.to_dict(),
-                })
+        for reading, station in result.all():
+            output.append({
+                **reading.to_dict(),
+                "station": station.to_dict(),
+            })
         return output
 
     async def cleanup_old_readings(self, days: int = 30) -> int:
