@@ -1,6 +1,14 @@
-# Nepal OSINT v5 Backend
+# Nepal OSINT
 
-Clean, professional FastAPI backend for the Nepal OSINT platform with real-time news aggregation, story clustering, and WebSocket support.
+Open-source Nepal OSINT platform with a React frontend, FastAPI backend, local agent runners, and deployment infrastructure for real-time monitoring, accountability tracking, and public-data analysis.
+
+## Repository Layout
+
+- `frontend/`: React + Vite dashboard and public monitoring interface
+- `backend-v5/`: FastAPI API, services, schedulers, models, tests, and backend docs
+- `agents/`: thin local runner entrypoints that delegate to backend-managed agent scripts
+- `infrastructure/`: Nginx, Docker, and deployment support files
+- Root config files: Docker, Compose, Python requirements, and Alembic config kept at the root for build and deploy workflows
 
 ## Architecture Overview
 
