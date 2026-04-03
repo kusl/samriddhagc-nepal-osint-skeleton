@@ -2,16 +2,9 @@ import { memo, useMemo, useState } from 'react';
 import { ArrowDownRight, ArrowUpRight, BusFront, RefreshCw, Search } from 'lucide-react';
 import { Widget } from '../Widget';
 import { useBorderCrossingStatus } from '../../../api/hooks';
+import { useSettingsStore } from '../../../store/slices/settingsSlice';
+import { buildNprDisplay } from '../../../utils/currency';
 import { WidgetEmpty, WidgetError, WidgetSkeleton } from './shared';
-
-function formatCompactNprThousands(value: number): string {
-  const npr = value * 1_000;
-  const abs = Math.abs(npr);
-  if (abs >= 1_000_000_000) return `Nrs ${(npr / 1_000_000_000).toFixed(2).replace(/\.00$/, '')}B`;
-  if (abs >= 1_000_000) return `Nrs ${(npr / 1_000_000).toFixed(2).replace(/\.00$/, '')}M`;
-  if (abs >= 1_000) return `Nrs ${(npr / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
-  return `Nrs ${Math.round(npr).toLocaleString('en-US')}`;
-}
 
 function formatDelta(current: number, previous: number): string {
   if (!previous) return 'New';
@@ -23,6 +16,7 @@ function formatDelta(current: number, previous: number): string {
 export const TradeCustomsWidget = memo(function TradeCustomsWidget() {
   const { data, isLoading, isError, refetch } = useBorderCrossingStatus();
   const [search, setSearch] = useState('');
+  const { nprNumberingSystem } = useSettingsStore();
 
   const items = useMemo(
     () =>
@@ -136,14 +130,20 @@ export const TradeCustomsWidget = memo(function TradeCustomsWidget() {
             >
               {[
                 { label: 'Operational', value: `${operationalCount}`, meta: `${items.length} tracked routes` },
-                { label: 'Trade Value', value: formatCompactNprThousands(totalValue), meta: data?.period?.fiscal_year_bs || 'Current period' },
-                { label: 'Lead Crossing', value: leadRoute?.name || 'None', meta: leadRoute?.route || 'No route', compact: true },
+                {
+                  label: 'Trade Value',
+                  value: buildNprDisplay(totalValue * 1_000, { system: nprNumberingSystem }).text,
+                  valueTitle: buildNprDisplay(totalValue * 1_000, { system: nprNumberingSystem }).title,
+                  meta: data?.period?.fiscal_year_bs || 'Current period',
+                },
+                { label: 'Lead Customs', value: leadRoute?.name || 'None', meta: leadRoute?.route || 'No route', compact: true },
               ].map((card) => (
                 <div key={card.label} style={{ background: 'var(--bg-surface)', padding: '10px 11px', minHeight: 80 }}>
                   <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 7 }}>
                     {card.label}
                   </div>
                   <div
+                    title={card.valueTitle}
                     style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: card.compact ? 13 : 18,
@@ -191,7 +191,7 @@ export const TradeCustomsWidget = memo(function TradeCustomsWidget() {
                           marginBottom: 4,
                         }}
                       >
-                        {formatCompactNprThousands(item.current_month_value_npr_thousands)}
+                        {buildNprDisplay(item.current_month_value_npr_thousands * 1_000, { system: nprNumberingSystem }).text}
                       </div>
                       <div
                         style={{

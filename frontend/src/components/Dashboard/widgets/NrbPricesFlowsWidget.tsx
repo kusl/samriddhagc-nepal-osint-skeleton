@@ -2,6 +2,8 @@ import { memo } from 'react';
 import { BarChart3, RefreshCw } from 'lucide-react';
 import { Widget } from '../Widget';
 import { useNepalDebtClock } from '../../../api/hooks';
+import { useSettingsStore } from '../../../store/slices/settingsSlice';
+import { buildNprDisplay } from '../../../utils/currency';
 import { WidgetEmpty, WidgetError, WidgetSkeleton } from './shared';
 
 function formatPercent(value: number | null | undefined): string {
@@ -9,24 +11,33 @@ function formatPercent(value: number | null | undefined): string {
   return `${value.toFixed(2)}%`;
 }
 
-function formatCompactBillionNpr(value: number | null | undefined): string {
-  if (value == null) return 'N/A';
-  if (value >= 1_000) {
-    return `Nrs ${(value / 1_000).toFixed(2).replace(/\.00$/, '')}T`;
-  }
-  return `Nrs ${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}B`;
-}
-
 export const NrbPricesFlowsWidget = memo(function NrbPricesFlowsWidget() {
   const { data, isLoading, isError, refetch } = useNepalDebtClock();
+  const { nprNumberingSystem, showUsdEquivalents } = useSettingsStore();
+  const remittanceDisplay = buildNprDisplay(
+    data?.remittance_inflow_billion_npr == null ? null : data.remittance_inflow_billion_npr * 1_000_000_000,
+    {
+      system: nprNumberingSystem,
+      usdPerNpr: data?.fx_usd_per_lcy,
+      showUsdEquivalent: showUsdEquivalents,
+    },
+  );
+  const bopDisplay = buildNprDisplay(
+    data?.bop_surplus_billion_npr == null ? null : data.bop_surplus_billion_npr * 1_000_000_000,
+    {
+      system: nprNumberingSystem,
+      usdPerNpr: data?.fx_usd_per_lcy,
+      showUsdEquivalent: showUsdEquivalents,
+    },
+  );
 
   const cards = data
     ? [
         { label: 'Inflation', value: formatPercent(data.inflation_pct), meta: data.inflation_label || 'Latest NRB release' },
         { label: 'Food Inflation', value: formatPercent(data.food_inflation_pct), meta: data.food_inflation_label || 'Latest NRB release' },
         { label: 'Non-food Inflation', value: formatPercent(data.non_food_inflation_pct), meta: data.non_food_inflation_label || 'Latest NRB release' },
-        { label: 'Remittance Inflow', value: formatCompactBillionNpr(data.remittance_inflow_billion_npr), meta: data.remittance_inflow_label || 'Latest NRB release' },
-        { label: 'BOP Surplus', value: formatCompactBillionNpr(data.bop_surplus_billion_npr), meta: data.bop_surplus_label || 'Latest NRB release' },
+        { label: 'Remittance Inflow', value: remittanceDisplay.text, valueTitle: remittanceDisplay.title, meta: data.remittance_inflow_label || 'Latest NRB release' },
+        { label: 'BOP Surplus', value: bopDisplay.text, valueTitle: bopDisplay.title, meta: data.bop_surplus_label || 'Latest NRB release' },
         { label: 'GDP Growth', value: formatPercent(data.gdp_growth_pct), meta: data.growth_label || 'Latest IMF projection' },
       ]
     : [];
@@ -100,6 +111,7 @@ export const NrbPricesFlowsWidget = memo(function NrbPricesFlowsWidget() {
                   {card.label}
                 </div>
                 <div
+                  title={card.valueTitle}
                   style={{
                     fontFamily: 'var(--font-mono)',
                     fontSize: 19,

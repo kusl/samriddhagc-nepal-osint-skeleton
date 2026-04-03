@@ -2,7 +2,7 @@ import { memo, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   MapPin, RefreshCw, Filter, Clock, ChevronRight, ChevronLeft,
   Radio, AlertTriangle, Map, X, Layers, ZoomIn, ZoomOut,
-  Crosshair, Activity, Eye, EyeOff, ChevronDown, ExternalLink,
+  Crosshair, Activity, ChevronDown, ExternalLink,
   Vote, Users, TrendingUp, ShieldCheck, CheckCircle, Rss
 } from 'lucide-react';
 import { Widget } from '../Widget';
@@ -25,7 +25,7 @@ import {
 } from '../../../data/districts';
 import { useDashboardStore } from '../../../stores/dashboardStore';
 import { useElectionStore, type MapColorMode } from '../../../stores/electionStore';
-import { useDistrictMapData, useNationalSummary, useLatestBrief, useRequestFactCheck } from '../../../api/hooks';
+import { useDistrictMapData, useNationalSummary, useProvinceAnomalies, useRequestFactCheck } from '../../../api/hooks';
 import type { DistrictElectionData } from '../../../api/elections';
 import { loadElectionData, type ElectionData, type RawConstituencyResult, type RawCandidate } from '../../elections/electionDataLoader';
 import { ElectionMapContent } from './ElectionMapWidget';
@@ -159,6 +159,9 @@ const PRO_THEME = {
   accentMuted: 'var(--pro-accent-muted, rgba(99, 102, 241, 0.15))',
 } as const;
 
+const COMMAND_ACCENT = 'var(--bloomberg-orange, var(--pro-accent, #FF6B00))';
+const COMMAND_ACCENT_MUTED = 'rgba(255, 107, 0, 0.12)';
+
 const TIME_FILTERS = [
   { label: '1H', value: 1, desc: 'Last hour' },
   { label: '6H', value: 6, desc: 'Last 6 hours' },
@@ -180,6 +183,8 @@ const CATEGORY_CONFIG: Record<string, {
   GOVERNMENT: { color: '#5c7cba', label: 'Govt', icon: 'M3 11l18-5v12L3 14v-3zM11.6 16.8a3 3 0 11-5.8-1.6' },
   GENERAL: { color: '#64748b', label: 'General', icon: 'M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z' },
 };
+
+const FILTERABLE_CATEGORIES = Object.keys(CATEGORY_CONFIG).filter((key) => key !== 'GENERAL');
 
 // =============================================================================
 // NEPAL POLITICAL PARTY COLORS
@@ -400,6 +405,8 @@ function SituationMapWidget() {
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const districtLayerRef = useRef<L.GeoJSON | null>(null);
   const openEventTooltipMarkerRef = useRef<L.Marker | null>(null);
+  const filterPanelRef = useRef<HTMLDivElement | null>(null);
+  const filterToggleRef = useRef<HTMLButtonElement | null>(null);
 
   // Get widget size and active preset for mode detection
   const { widgetSizes, activePreset: currentPreset } = useDashboardStore();
@@ -409,7 +416,7 @@ function SituationMapWidget() {
   const [loading, setLoading] = useState(true);
   const [hours, setHours] = useState(6);
   const [activeCategories, setActiveCategories] = useState<Set<string>>(
-    new Set(['DISASTER', 'POLITICAL', 'ECONOMIC', 'SECURITY', 'SOCIAL', 'GOVERNMENT'])
+    new Set(FILTERABLE_CATEGORIES)
   );
   const [showFilters, setShowFilters] = useState(true);
   // Collapse sidebar by default in compact mode
@@ -425,25 +432,25 @@ function SituationMapWidget() {
   const [factCheckRequested, setFactCheckRequested] = useState<Set<string>>(new Set());
   const factCheckMutation = useRequestFactCheck();
 
-  // Analyst brief data for province threat-level choropleth
-  const { data: latestBrief } = useLatestBrief();
+  // Province anomaly data for province threat-level choropleth
+  const { data: provinceAnomalyData } = useProvinceAnomalies();
   const provinceThreatColors = useMemo(() => {
     const map: Record<string, string> = {};
-    if (latestBrief?.province_sitreps) {
+    if (provinceAnomalyData?.provinces) {
       const colors: Record<string, string> = {
-        critical: '#CD4246',
-        elevated: '#C87619',
-        guarded: '#D1980B',
-        low: '#238551',
+        CRITICAL: '#CD4246',
+        ELEVATED: '#C87619',
+        GUARDED: '#D1980B',
+        LOW: '#238551',
       };
-      for (const s of latestBrief.province_sitreps) {
-        if (s.province_name && s.threat_level) {
-          map[s.province_name] = colors[s.threat_level] || '#64748b';
+      for (const province of provinceAnomalyData.provinces) {
+        if (province.province_name && province.threat_level) {
+          map[province.province_name] = colors[province.threat_level.toUpperCase()] || '#64748b';
         }
       }
     }
     return map;
-  }, [latestBrief]);
+  }, [provinceAnomalyData]);
 
   // Cluster panel state
   const [clusterEvents, setClusterEvents] = useState<MapEvent[]>([]);
@@ -748,30 +755,10 @@ function SituationMapWidget() {
     }));
   }, [mapAnnouncements]);
 
-  // Filter events (including government announcements)
-  // Clustering handles visual density, so show all severity levels
-  const filteredEvents = useMemo(() => {
-    // Combine regular events with announcement events
-    const allEvents = [...events, ...announcementEvents];
-
-    const filtered = allEvents.filter(e => {
-      if (!activeCategories.has(e.category)) return false;
-      if (selectedDistrictNames && e.district) {
-        if (!selectedDistrictNames.has(normalizeDistrictName(e.district))) return false;
-      }
-      if (selectedDistrict && e.district) {
-        if (normalizeDistrictName(e.district) !== normalizeDistrictName(selectedDistrict)) return false;
-      }
-      return true;
-    });
-
-    return filtered;
-  }, [events, announcementEvents, activeCategories, selectedDistrictNames, selectedDistrict]);
-
-  const dedupedFilteredEvents = useMemo(() => {
+  const dedupeMapEvents = useCallback((items: MapEvent[]) => {
     const grouped = new globalThis.Map<string, MapEvent>();
 
-    filteredEvents.forEach((event) => {
+    items.forEach((event) => {
       const groupKey = getMapEventGroupKey(event);
       const existing = grouped.get(groupKey);
 
@@ -797,7 +784,40 @@ function SituationMapWidget() {
     });
 
     return Array.from(grouped.values());
-  }, [filteredEvents, getMapEventGroupKey, getSeverityRank]);
+  }, [getMapEventGroupKey, getSeverityRank]);
+
+  // Filter events (including government announcements)
+  // Geography is scoped first, then category focus is applied.
+  const scopedEvents = useMemo(() => {
+    // Combine regular events with announcement events
+    const allEvents = [...events, ...announcementEvents];
+
+    return allEvents.filter(e => {
+      if (selectedDistrictNames && e.district) {
+        if (!selectedDistrictNames.has(normalizeDistrictName(e.district))) return false;
+      }
+      if (selectedDistrict && e.district) {
+        if (normalizeDistrictName(e.district) !== normalizeDistrictName(selectedDistrict)) return false;
+      }
+      return true;
+    });
+  }, [events, announcementEvents, selectedDistrictNames, selectedDistrict]);
+
+  const filteredEvents = useMemo(() => {
+    return scopedEvents.filter((event) => activeCategories.has(event.category));
+  }, [scopedEvents, activeCategories]);
+
+  const dedupedScopedEvents = useMemo(() => dedupeMapEvents(scopedEvents), [scopedEvents, dedupeMapEvents]);
+
+  const dedupedFilteredEvents = useMemo(() => dedupeMapEvents(filteredEvents), [filteredEvents, dedupeMapEvents]);
+
+  const availableCategoryCounts = useMemo(() => {
+    const byCategory: Record<string, number> = {};
+    dedupedScopedEvents.forEach((event) => {
+      byCategory[event.category] = (byCategory[event.category] || 0) + 1;
+    });
+    return byCategory;
+  }, [dedupedScopedEvents]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -1406,18 +1426,51 @@ function SituationMapWidget() {
 
   const toggleCategory = (cat: string) => {
     setActiveCategories(prev => {
+      if (prev.size === FILTERABLE_CATEGORIES.length) {
+        return new Set([cat]);
+      }
+
       const next = new Set(prev);
-      next.has(cat) ? next.delete(cat) : next.add(cat);
+      if (next.has(cat)) {
+        if (next.size === 1) {
+          return new Set(FILTERABLE_CATEGORIES);
+        }
+        next.delete(cat);
+        return next;
+      }
+
+      next.add(cat);
       return next;
     });
   };
 
   const toggleProvince = (province: Province) => {
     setSelectedProvinces(prev => {
+      if (prev.size === PROVINCES.length) {
+        return new Set<Province>([province]);
+      }
+
       const next = new Set(prev);
-      next.has(province) ? next.delete(province) : next.add(province);
+      if (next.has(province)) {
+        if (next.size === 1) {
+          return new Set<Province>(PROVINCES);
+        }
+        next.delete(province);
+        return next;
+      }
+
+      next.add(province);
       return next;
     });
+    setSelectedDistrict(null);
+  };
+
+  const showAllCategories = () => {
+    setActiveCategories(new Set(FILTERABLE_CATEGORIES));
+  };
+
+  const showAllProvinces = () => {
+    setSelectedProvinces(new Set(PROVINCES));
     setSelectedDistrict(null);
   };
 
@@ -1441,6 +1494,31 @@ function SituationMapWidget() {
     setShowClusterPanel(false);
     setExpandedClusterId(null);
   }, [isElectionMode]);
+
+  useEffect(() => {
+    if (!showFiltersDropdown) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (filterPanelRef.current?.contains(target)) return;
+      if (filterToggleRef.current?.contains(target)) return;
+      setShowFiltersDropdown(false);
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowFiltersDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showFiltersDropdown]);
 
   const [feedLimit, setFeedLimit] = useState(50);
   const recentEvents = useMemo(() => {
@@ -1497,14 +1575,36 @@ function SituationMapWidget() {
     return selectedEvent?.source_count || 1;
   }, [selectedEventGroup, selectedEvent, clusterSizeLookup]);
 
+  const isAllCategoriesSelected = activeCategories.size === FILTERABLE_CATEGORIES.length;
+  const isAllProvincesSelected = selectedProvinces.size === PROVINCES.length;
+  const selectedCategoryLabels = useMemo(
+    () => FILTERABLE_CATEGORIES.filter((category) => activeCategories.has(category)).map((category) => CATEGORY_CONFIG[category].label),
+    [activeCategories],
+  );
+  const selectedProvinceLabels = useMemo(
+    () => PROVINCES.filter((province) => selectedProvinces.has(province)),
+    [selectedProvinces],
+  );
+  const categoryScopeLabel = useMemo(() => {
+    if (isAllCategoriesSelected) return 'All categories';
+    if (selectedCategoryLabels.length === 1) return selectedCategoryLabels[0];
+    return `${selectedCategoryLabels.length} active`;
+  }, [isAllCategoriesSelected, selectedCategoryLabels]);
+  const regionScopeLabel = useMemo(() => {
+    if (selectedDistrict) return selectedDistrict;
+    if (isAllProvincesSelected) return 'All Nepal';
+    if (selectedProvinceLabels.length === 1) return selectedProvinceLabels[0];
+    return `${selectedProvinceLabels.length} provinces`;
+  }, [isAllProvincesSelected, selectedDistrict, selectedProvinceLabels]);
+
   // Count active filters
   const activeFilterCount = useMemo(() => {
     let count = 0;
-    if (activeCategories.size < 6) count += 1;
-    if (selectedProvinces.size < PROVINCES.length) count += 1;
+    if (!isAllCategoriesSelected) count += 1;
+    if (!isAllProvincesSelected) count += 1;
     if (selectedDistrict) count += 1;
     return count;
-  }, [activeCategories, selectedProvinces, selectedDistrict]);
+  }, [isAllCategoriesSelected, isAllProvincesSelected, selectedDistrict]);
 
   return (
     <Widget id="map" title={isElectionMode ? 'Election Map' : undefined} icon={isElectionMode ? <Vote size={14} /> : <MapPin size={14} />} actions={
@@ -1701,7 +1801,8 @@ function SituationMapWidget() {
                 {/* Filters Button - Hidden in compact mode (auto-filtered to HIGH/CRITICAL) */}
                 {!isCompactMode && (
                   <button
-                    onClick={() => setShowFiltersDropdown(!showFiltersDropdown)}
+                    ref={filterToggleRef}
+                    onClick={() => setShowFiltersDropdown((open) => !open)}
                     style={{
                       display: 'flex',
                       alignItems: 'center',
@@ -1781,29 +1882,163 @@ function SituationMapWidget() {
 
           {/* Filters Dropdown Panel - Only in normal mode */}
           {!isElectionMode && showFiltersDropdown && (
-            <div style={{
+            <div ref={filterPanelRef} style={{
               position: 'absolute',
-              top: '52px',
+              top: '50px',
               left: '12px',
-              width: '320px',
-              maxHeight: '400px',
+              width: '352px',
+              maxHeight: '430px',
               overflowY: 'auto',
-              background: PRO_THEME.bg.elevated,
+              background: 'linear-gradient(180deg, rgba(24, 25, 29, 0.985) 0%, rgba(16, 17, 20, 0.985) 100%)',
               border: `1px solid ${PRO_THEME.border.default}`,
-              borderRadius: '8px',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+              borderTop: `2px solid ${COMMAND_ACCENT}`,
+              borderRadius: '6px',
+              boxShadow: '0 18px 40px rgba(0,0,0,0.44)',
               zIndex: 1100,
-              padding: '12px',
+              padding: 0,
             }}>
-              {/* Categories Section */}
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '9px', color: PRO_THEME.text.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                  Categories
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: '12px',
+                padding: '12px 14px 10px',
+                borderBottom: `1px solid ${PRO_THEME.border.subtle}`,
+                background: 'linear-gradient(180deg, rgba(255, 107, 0, 0.06) 0%, rgba(255, 107, 0, 0.02) 100%)',
+              }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div style={{
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    color: PRO_THEME.text.muted,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    marginBottom: '8px',
+                  }}>
+                    Filter Control
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      minWidth: 0,
+                      padding: '4px 7px',
+                      borderRadius: '4px',
+                      border: `1px solid ${PRO_THEME.border.subtle}`,
+                      background: 'rgba(255,255,255,0.02)',
+                    }}>
+                      <span style={{
+                        fontSize: '8px',
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        color: PRO_THEME.text.muted,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        Category
+                      </span>
+                      <span style={{
+                        fontSize: '10px',
+                        color: PRO_THEME.text.primary,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {categoryScopeLabel}
+                      </span>
+                    </div>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      minWidth: 0,
+                      padding: '4px 7px',
+                      borderRadius: '4px',
+                      border: `1px solid ${PRO_THEME.border.subtle}`,
+                      background: 'rgba(255,255,255,0.02)',
+                    }}>
+                      <span style={{
+                        fontSize: '8px',
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        color: PRO_THEME.text.muted,
+                        whiteSpace: 'nowrap',
+                      }}>
+                        Region
+                      </span>
+                      <span style={{
+                        fontSize: '10px',
+                        color: PRO_THEME.text.primary,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {regionScopeLabel}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {Object.entries(CATEGORY_CONFIG).filter(([k]) => k !== 'GENERAL').map(([key, config]) => {
-                    const isActive = activeCategories.has(key);
-                    const count = stats.byCategory[key] || 0;
+                {activeFilterCount > 0 && (
+                  <button
+                    onClick={() => {
+                      showAllCategories();
+                      showAllProvinces();
+                    }}
+                    style={{
+                      padding: '5px 10px',
+                      fontSize: '10px',
+                      fontWeight: 600,
+                      borderRadius: '4px',
+                      border: `1px solid ${PRO_THEME.border.default}`,
+                      cursor: 'pointer',
+                      background: 'rgba(255,255,255,0.02)',
+                      color: PRO_THEME.text.secondary,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              <div style={{ padding: '12px 14px 14px' }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  marginBottom: '8px',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '9px', color: PRO_THEME.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                      Categories
+                    </div>
+                    <div style={{ marginTop: '2px', fontSize: '10px', color: PRO_THEME.text.secondary }}>
+                      {isAllCategoriesSelected ? 'All live events' : `${selectedCategoryLabels.length} selected`}
+                    </div>
+                  </div>
+                  <button
+                    onClick={showAllCategories}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '9px',
+                      fontWeight: 600,
+                      borderRadius: '4px',
+                      border: `1px solid ${isAllCategoriesSelected ? COMMAND_ACCENT : PRO_THEME.border.subtle}`,
+                      cursor: 'pointer',
+                      background: isAllCategoriesSelected ? COMMAND_ACCENT_MUTED : 'transparent',
+                      color: isAllCategoriesSelected ? COMMAND_ACCENT : PRO_THEME.text.secondary,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    All
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  {FILTERABLE_CATEGORIES.map((key) => {
+                    const config = CATEGORY_CONFIG[key];
+                    const isFocused = !isAllCategoriesSelected && activeCategories.has(key);
+                    const count = availableCategoryCounts[key] || 0;
                     return (
                       <button
                         key={key}
@@ -1811,36 +2046,86 @@ function SituationMapWidget() {
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '5px',
-                          padding: '4px 8px',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          width: '100%',
+                          padding: '8px 10px',
                           fontSize: '10px',
                           fontWeight: 500,
-                          borderRadius: '4px',
-                          border: `1px solid ${isActive ? config.color + '50' : PRO_THEME.border.subtle}`,
+                          borderRadius: '5px',
+                          border: `1px solid ${isFocused ? COMMAND_ACCENT : PRO_THEME.border.subtle}`,
                           cursor: 'pointer',
-                          background: isActive ? config.color + '15' : 'transparent',
-                          color: isActive ? config.color : PRO_THEME.text.muted,
-                          opacity: isActive ? 1 : 0.7,
+                          background: isFocused
+                            ? 'linear-gradient(180deg, rgba(255, 107, 0, 0.10) 0%, rgba(255, 107, 0, 0.05) 100%)'
+                            : 'linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)',
+                          color: isFocused ? PRO_THEME.text.primary : PRO_THEME.text.secondary,
+                          boxShadow: isFocused ? `inset 2px 0 0 ${config.color}` : 'inset 2px 0 0 transparent',
                           transition: 'all 0.15s',
                         }}
                       >
-                        <div style={{ width: '6px', height: '6px', borderRadius: '2px', background: config.color }} />
-                        {config.label}
-                        {count > 0 && <span style={{ opacity: 0.7 }}>({count})</span>}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: config.color }} />
+                          {config.label}
+                        </span>
+                        <span style={{
+                          padding: '2px 7px',
+                          borderRadius: '4px',
+                          fontSize: '9px',
+                          fontWeight: 700,
+                          background: isFocused ? 'rgba(255, 107, 0, 0.12)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${isFocused ? 'rgba(255, 107, 0, 0.16)' : 'transparent'}`,
+                          color: isFocused ? COMMAND_ACCENT : PRO_THEME.text.muted,
+                          minWidth: '32px',
+                          textAlign: 'center',
+                        }}>
+                          {count}
+                        </span>
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Regions Section */}
-              <div style={{ marginBottom: '12px' }}>
-                <div style={{ fontSize: '9px', color: PRO_THEME.text.muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>
-                  Regions
+              <div style={{
+                margin: '0 14px 14px',
+                paddingTop: '12px',
+                borderTop: `1px solid ${PRO_THEME.border.subtle}`,
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                  marginBottom: '8px',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '9px', color: PRO_THEME.text.muted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+                      Regions
+                    </div>
+                    <div style={{ marginTop: '2px', fontSize: '10px', color: PRO_THEME.text.secondary }}>
+                      {selectedDistrict ? 'District focus' : isAllProvincesSelected ? 'All Nepal' : `${selectedProvinceLabels.length} selected`}
+                    </div>
+                  </div>
+                  <button
+                    onClick={showAllProvinces}
+                    style={{
+                      padding: '4px 8px',
+                      fontSize: '9px',
+                      fontWeight: 600,
+                      borderRadius: '4px',
+                      border: `1px solid ${isAllProvincesSelected ? COMMAND_ACCENT : PRO_THEME.border.subtle}`,
+                      cursor: 'pointer',
+                      background: isAllProvincesSelected ? COMMAND_ACCENT_MUTED : 'transparent',
+                      color: isAllProvincesSelected ? COMMAND_ACCENT : PRO_THEME.text.secondary,
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    All
+                  </button>
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   {PROVINCES.map(province => {
-                    const isActive = selectedProvinces.has(province);
+                    const isFocused = !isAllProvincesSelected && selectedProvinces.has(province);
                     const color = PROVINCE_COLORS[province];
                     const eventCount = stats.byProvince[province] || 0;
                     return (
@@ -1850,22 +2135,39 @@ function SituationMapWidget() {
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: '5px',
-                          padding: '4px 8px',
+                          justifyContent: 'space-between',
+                          gap: '10px',
+                          padding: '8px 10px',
                           fontSize: '10px',
                           fontWeight: 500,
-                          borderRadius: '4px',
-                          border: `1px solid ${isActive ? color + '50' : PRO_THEME.border.subtle}`,
+                          borderRadius: '5px',
+                          border: `1px solid ${isFocused ? COMMAND_ACCENT : PRO_THEME.border.subtle}`,
                           cursor: 'pointer',
-                          background: isActive ? color + '15' : 'transparent',
-                          color: isActive ? color : PRO_THEME.text.muted,
-                          opacity: isActive ? 1 : 0.5,
+                          background: isFocused
+                            ? 'linear-gradient(180deg, rgba(255, 107, 0, 0.10) 0%, rgba(255, 107, 0, 0.05) 100%)'
+                            : 'linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)',
+                          color: isFocused ? PRO_THEME.text.primary : PRO_THEME.text.secondary,
+                          boxShadow: isFocused ? `inset 2px 0 0 ${color}` : 'inset 2px 0 0 transparent',
                           transition: 'all 0.15s',
                         }}
                       >
-                        <div style={{ width: '6px', height: '6px', borderRadius: '2px', background: color, opacity: isActive ? 1 : 0.5 }} />
-                        {province}
-                        {eventCount > 0 && <span style={{ opacity: 0.7 }}>({eventCount})</span>}
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '999px', background: color }} />
+                          {province}
+                        </span>
+                        <span style={{
+                          padding: '2px 7px',
+                          borderRadius: '4px',
+                          fontSize: '9px',
+                          fontWeight: 700,
+                          background: isFocused ? 'rgba(255, 107, 0, 0.12)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${isFocused ? 'rgba(255, 107, 0, 0.16)' : 'transparent'}`,
+                          color: isFocused ? COMMAND_ACCENT : PRO_THEME.text.muted,
+                          minWidth: '32px',
+                          textAlign: 'center',
+                        }}>
+                          {eventCount}
+                        </span>
                       </button>
                     );
                   })}
@@ -1878,43 +2180,26 @@ function SituationMapWidget() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '8px 10px',
-                  background: PRO_THEME.accentMuted,
-                  borderRadius: '4px',
-                  marginBottom: '12px',
+                  gap: '10px',
+                  margin: '0 14px 14px',
+                  padding: '10px 12px',
+                  background: 'linear-gradient(180deg, rgba(255, 107, 0, 0.10) 0%, rgba(255, 107, 0, 0.05) 100%)',
+                  borderRadius: '5px',
+                  border: `1px solid ${COMMAND_ACCENT}`,
+                  boxShadow: 'inset 2px 0 0 var(--bloomberg-orange, #FF6B00)',
                 }}>
-                  <span style={{ fontSize: '11px', fontWeight: 500, color: PRO_THEME.accent }}>
-                    District: {selectedDistrict}
-                  </span>
+                  <div>
+                    <div style={{ fontSize: '9px', color: PRO_THEME.text.muted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '3px' }}>
+                      District Focus
+                    </div>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: PRO_THEME.text.primary }}>
+                      {selectedDistrict}
+                    </span>
+                  </div>
                   <button onClick={() => setSelectedDistrict(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex' }}>
-                    <X size={14} color={PRO_THEME.accent} />
+                    <X size={14} color={COMMAND_ACCENT} />
                   </button>
                 </div>
-              )}
-
-              {/* Clear All */}
-              {activeFilterCount > 0 && (
-                <button
-                  onClick={() => {
-                    setActiveCategories(new Set(['DISASTER', 'POLITICAL', 'ECONOMIC', 'SECURITY', 'SOCIAL', 'GOVERNMENT']));
-                    setSelectedProvinces(new Set(PROVINCES));
-                    setSelectedDistrict(null);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '8px',
-                    fontSize: '11px',
-                    fontWeight: 500,
-                    borderRadius: '4px',
-                    border: `1px solid ${PRO_THEME.border.subtle}`,
-                    cursor: 'pointer',
-                    background: 'transparent',
-                    color: PRO_THEME.text.secondary,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  Clear All Filters
-                </button>
               )}
             </div>
           )}

@@ -1663,15 +1663,8 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # VPS OpenAI briefing cycle at fixed Nepal times every 12 hours: 08:00 and 20:00 NPT.
-    if settings.openai_briefing_enabled:
-        scheduler.add_job(
-            run_openai_vps_briefing,
-            trigger=CronTrigger(hour="8,20", minute=0, timezone="Asia/Kathmandu"),
-            id="run_openai_vps_briefing",
-            name="Run VPS OpenAI Briefing",
-            replace_existing=True,
-        )
+    # National Assessment generation is retired from the public VPS.
+    # Provincial Monitor continues to run on its own schedule above.
 
     scheduler.add_job(
         run_govt_decision_generation,
@@ -1809,7 +1802,6 @@ def start_scheduler():
         29
         + (1 if settings.gee_change_detection_enabled else 0)
         + (1 if settings.haiku_relevance_filter_enabled else 0)
-        + (1 if settings.openai_briefing_enabled else 0)
         + 1
     )
     logger.info(f"Background scheduler started with {job_count} jobs")

@@ -44,6 +44,11 @@ const ARCHIVED_ELECTION_WIDGET_IDS = new Set([
   'election-live',
 ]);
 
+const RETIRED_NATIONAL_ASSESSMENT_WIDGET_IDS = new Set([
+  'situation-brief',
+  'intel-brief-hero',
+]);
+
 function moveBottomWidgetsToEnd(order: string[]): string[] {
   const pinnedBottomWidgets = ['disasters', 'govt'];
   const filtered = order.filter((id) => !pinnedBottomWidgets.includes(id));
@@ -63,7 +68,6 @@ export const WIDGET_META: Record<string, {
   wip?: boolean;         // Work in progress (hardcoded/placeholder data)
 }> = {
   // Core widgets - available to all (REAL DATA)
-  'situation-brief': { name: 'National Assessment', category: 'core', consumerName: 'National Assessment' },
   map: { name: 'Situation Map', category: 'core', consumerName: 'News Map' },
   'election-map': { name: 'Election Map', category: 'elections', consumerName: 'Election Map' },
   kpi: { name: 'Key Metrics', category: 'core', consumerName: 'Today\'s Stats' },
@@ -130,7 +134,6 @@ export const WIDGET_META: Record<string, {
   'election-live': { name: 'Election Live', category: 'elections', consumerName: 'Live Coverage' },
 
   // Situation Monitor Widgets
-  'intel-brief-hero': { name: 'Situation Overview', category: 'core', consumerName: 'Situation Summary' },
   'political-pulse': { name: 'Political Pulse', category: 'media', consumerName: 'Political Activity' },
   'province-monitor': { name: 'Provincial Monitor', category: 'core', consumerName: 'Provincial Monitor' },
   'narrative-tracker': { name: 'Story Tracker', category: 'core', consumerName: 'Story Clusters' },
@@ -138,7 +141,7 @@ export const WIDGET_META: Record<string, {
   'fact-check': { name: 'Fact Check', category: 'core', consumerName: 'Fact Checker' },
 
   // Parliament & Accountability
-  'promise-tracker': { name: 'Promise Tracker', category: 'parliament', consumerName: 'Manifesto Tracker' },
+  'promise-tracker': { name: 'Accountability Tracker', category: 'parliament', consumerName: 'Cabinet & Manifesto Tracker' },
   'parliament-session': { name: 'Parliamentary Summary', category: 'parliament', consumerName: 'Parliament Summary' },
   'govt-decisions': { name: 'Government Decisions', category: 'parliament', consumerName: 'Govt Decisions' },
   'govt-loan-tracker': { name: 'Nepal Debt Clock', category: 'parliament', consumerName: 'Debt Clock' },
@@ -186,14 +189,14 @@ export const PRESETS: Record<string, Preset> = {
   news: {
     id: 'news',
     name: 'News Dashboard',
-    description: 'News Map with stats, assessment, live feed, fact-check, clusters, provinces, markets, alerts and govt updates',
+    description: 'News Map with stats, provincial monitor, live feed, fact-check, clusters, markets, alerts and govt updates',
     order: [
-      'map', 'kpi', 'situation-brief', 'newsfeed', 'developing-stories',
+      'map', 'kpi', 'newsfeed', 'developing-stories',
       'fact-check', 'stories', 'social', 'narrative-tracker', 'province-monitor', 'market',
       'weather', 'source-reliability', 'disasters', 'govt'
     ],
     visibility: {
-      map: true, 'election-live': false, kpi: true, 'situation-brief': true, newsfeed: true,
+      map: true, 'election-live': false, kpi: true, newsfeed: true,
       'developing-stories': true, 'fact-check': true, stories: true, social: true,
       'narrative-tracker': true, 'province-monitor': true, market: true,
       disasters: true, govt: true, weather: true, 'source-reliability': true,
@@ -201,13 +204,12 @@ export const PRESETS: Record<string, Preset> = {
       'election-map': false, 'election-status': false,
       'political-pulse': false, briefing: false, entities: false,
       seismic: false, elections: false,
-      threats: false,      neta: false, 'intel-brief-hero': false,
+      threats: false, neta: false,
     },
     sizes: {
       map: 'situation',               // Row 1: 12 cols, double height (news map)
       'election-live': 'hero',        // Row 2: 12 cols (2x2 live streams)
       kpi: 'full',                    // Row 3: 12 cols
-      'situation-brief': 'hero',      // Row 4: 12 cols (national assessment)
       newsfeed: 'large',              // Row 4: 8 cols (live feed)
       'developing-stories': 'small',  // Row 4: 4 cols (8+4=12)
       'fact-check': 'medium',         // Row 5: 6 cols
@@ -229,29 +231,28 @@ export const PRESETS: Record<string, Preset> = {
   analyst: {
     id: 'analyst',
     name: 'Analyst Election Monitor',
-    description: 'Election coverage with intel brief, news feeds & social monitoring',
+    description: 'Election coverage with live feeds, verification surfaces and social signals',
     order: [
-      'election-map', 'kpi', 'situation-brief', 'newsfeed', 'developing-stories',
-      'stories', 'social', 'election-status', 'fact-check'
+      'election-map', 'kpi', 'newsfeed', 'developing-stories',
+      'stories', 'fact-check', 'social', 'election-status'
     ],
     visibility: {
-      'election-map': true, kpi: true, 'situation-brief': true, newsfeed: true,
+      'election-map': true, kpi: true, newsfeed: true,
       'developing-stories': true, stories: true, social: true, 'election-status': true,
       'fact-check': true,
       // Hidden
       map: false, market: false, weather: false, govt: false, threats: false,
-      disasters: false, elections: false, seismic: false,
+      disasters: false, elections: false, seismic: false, 'province-monitor': false,
       briefing: false, entities: false
     },
     sizes: {
       'election-map': 'situation',
       kpi: 'full',
-      'situation-brief': 'hero',
       newsfeed: 'large',
       'developing-stories': 'small',
       stories: 'medium',
       social: 'medium',
-      'election-status': 'full',
+      'election-status': 'medium',
       'fact-check': 'medium',
     }
   },
@@ -259,33 +260,32 @@ export const PRESETS: Record<string, Preset> = {
   intelligence: {
     id: 'intelligence',
     name: 'Intelligence Monitor',
-    description: 'Tactical situation map, national brief, developing stories, fact-checks & provincial monitor',
-    // Layout: situation(12) -> full(12) -> brief(12) -> medium+medium(6+6) x2
+    description: 'Tactical situation map, provincial monitor, developing stories, fact-checks & narrative tracking',
+    // Layout: situation(12) -> full(12) -> full(12) -> medium+medium(6+6) x2
     order: [
-      'map', 'kpi', 'situation-brief', 'developing-stories', 'fact-check', 'province-monitor',
+      'map', 'kpi', 'developing-stories', 'fact-check', 'province-monitor',
       'newsfeed', 'narrative-tracker', 'social'
     ],
     visibility: {
-      map: true, kpi: true, 'situation-brief': true, 'developing-stories': true, 'fact-check': true,
-      'province-monitor': true, newsfeed: true, 'narrative-tracker': true, social: true,
+      map: true, kpi: true, 'province-monitor': true, 'developing-stories': true, 'fact-check': true,
+      newsfeed: true, 'narrative-tracker': true, social: true,
       // Hidden
       stories: false, weather: false, disasters: false, elections: false,
       market: false, govt: false, threats: false, briefing: false, entities: false,
       seismic: false,
       'election-map': false, 'election-status': false, 'swing-analysis': false,
       'close-races': false, 'incumbency': false, 'candidates': false, 'party-switch': false,
-      neta: false, 'intel-brief-hero': false, 'political-pulse': false,
+      neta: false, 'political-pulse': false,
     },
     sizes: {
       map: 'situation',                // Row 1: 12 cols, double height (tactical map)
       kpi: 'full',                    // Row 2: 12 cols
-      'situation-brief': 'hero',      // Row 3: 12 cols (national assessment)
-      'developing-stories': 'medium', // Row 4: 6 cols
-      'fact-check': 'medium',         // Row 4: 6 cols (6+6=12)
-      'province-monitor': 'full',     // Row 5: 12 cols
-      newsfeed: 'medium',             // Row 6: 6 cols
-      'narrative-tracker': 'medium',  // Row 6: 6 cols (6+6=12)
-      social: 'full',                 // Row 7: 12 cols
+      'developing-stories': 'medium', // Row 3: 6 cols
+      'fact-check': 'medium',         // Row 3: 6 cols (6+6=12)
+      'province-monitor': 'full',     // Row 4: 12 cols
+      newsfeed: 'medium',             // Row 5: 6 cols
+      'narrative-tracker': 'medium',  // Row 5: 6 cols (6+6=12)
+      social: 'full',                 // Row 6: 12 cols
     }
   },
 
@@ -563,20 +563,19 @@ export const PRESETS: Record<string, Preset> = {
   'situation-monitor': {
     id: 'situation-monitor',
     name: 'Situation Monitor',
-    description: 'At-a-glance intelligence platform — political, economic, security',
-    // Layout: full(12) -> hero(12) -> brief(12) -> full(12) -> medium+medium(6+6=12)
+    description: 'At-a-glance intelligence platform — geographic, provincial, political and narrative monitoring',
+    // Layout: situation(12) -> full(12) -> hero(12) -> full(12) -> full(12)
     order: [
-      'intel-brief-hero', 'developing-stories', 'political-pulse', 'province-monitor',
-      'narrative-tracker', 'social', 'map'
+      'map', 'developing-stories', 'political-pulse', 'province-monitor',
+      'narrative-tracker', 'social'
     ],
     visibility: {
-      'intel-brief-hero': true,
+      map: true,
       'developing-stories': true,
       'political-pulse': true,
       'province-monitor': true,
       'narrative-tracker': true,
       social: true,
-      map: true,
       // Hide everything else
       kpi: false, 'situation-brief': false, stories: false, newsfeed: false,
       weather: false, disasters: false, elections: false, market: false,
@@ -589,13 +588,12 @@ export const PRESETS: Record<string, Preset> = {
       'analyst-notes': false, 'source-reliability': false, 'analyst-leaderboard': false,
     },
     sizes: {
-      'intel-brief-hero': 'full',       // Row 1: 12 cols
+      map: 'situation',                 // Row 1: 12 cols
       'developing-stories': 'full',     // Row 2: 12 cols
       'political-pulse': 'hero',        // Row 3: 12 cols (tall)
-      'province-monitor': 'brief',      // Row 4: 12 cols (tall)
+      'province-monitor': 'full',       // Row 4: 12 cols
       'narrative-tracker': 'full',      // Row 5: 12 cols
-      social: 'medium',                 // Row 6: 6 cols
-      map: 'medium',                    // Row 6: 6 cols (6+6=12)
+      social: 'full',                   // Row 6: 12 cols
     }
   }
 };
@@ -717,14 +715,63 @@ export const useDashboardStore = create<DashboardState>()(
         })),
     }),
     {
-      name: 'rta-dashboard-v14',  // v59: replace legacy NRB panels with workbook-backed economy widgets
-      version: 59,
+      name: 'rta-dashboard-v14',  // v61: restore province monitor to its original placement and size
+      version: 61,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as DashboardState;
         }
 
         const state = persistedState as DashboardState;
+
+        if (version < 61) {
+          if (state.activePreset === 'news' || state.activePreset === 'analyst' || state.activePreset === 'intelligence') {
+            const preset = PRESETS[state.activePreset];
+            return {
+              ...state,
+              activePreset: state.activePreset,
+              widgetOrder: [...preset.order],
+              widgetVisibility: { ...preset.visibility },
+              widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+              widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+            };
+          }
+        }
+
+        if (version < 60) {
+          const sanitizedOrder = Array.isArray(state.widgetOrder)
+            ? state.widgetOrder.filter((id) => !RETIRED_NATIONAL_ASSESSMENT_WIDGET_IDS.has(id))
+            : [];
+          const sanitizedVisibility = Object.fromEntries(
+            Object.entries(state.widgetVisibility || {}).map(([id, visible]) => [
+              id,
+              RETIRED_NATIONAL_ASSESSMENT_WIDGET_IDS.has(id) ? false : visible,
+            ]),
+          ) as Record<string, boolean>;
+          const sanitizedSizes = Object.fromEntries(
+            Object.entries(state.widgetSizes || {}).filter(([id]) => !RETIRED_NATIONAL_ASSESSMENT_WIDGET_IDS.has(id)),
+          ) as Record<string, WidgetSize>;
+
+          if (state.activePreset === 'news' || state.activePreset === 'analyst' || state.activePreset === 'intelligence' || state.activePreset === 'situation-monitor') {
+            const preset = PRESETS[state.activePreset];
+            return {
+              ...state,
+              activePreset: state.activePreset,
+              widgetOrder: [...preset.order],
+              widgetVisibility: { ...preset.visibility },
+              widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+              widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+            };
+          }
+
+          return {
+            ...state,
+            widgetOrder: sanitizedOrder,
+            widgetVisibility: sanitizedVisibility,
+            widgetSizes: sanitizedSizes,
+            widgetDimensions: dimensionsFromSizes(sanitizedSizes),
+          };
+        }
 
         if (version < 59 && state.activePreset === 'economy') {
           const preset = PRESETS.economy;

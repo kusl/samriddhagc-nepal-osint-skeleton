@@ -2,6 +2,8 @@ import { memo } from 'react';
 import { BarChart3, RefreshCw } from 'lucide-react';
 import { Widget } from '../Widget';
 import { useNepalDebtClock } from '../../../api/hooks';
+import { useSettingsStore } from '../../../store/slices/settingsSlice';
+import { buildNprDisplay } from '../../../utils/currency';
 import { WidgetEmpty, WidgetError, WidgetSkeleton } from './shared';
 
 function formatPercent(value: number | null | undefined): string {
@@ -14,16 +16,25 @@ function formatInteger(value: number | null | undefined): string {
   return Math.round(value).toLocaleString('en-US');
 }
 
-function formatCompactBillionNpr(value: number | null | undefined): string {
-  if (value == null) return 'N/A';
-  if (value >= 1_000) {
-    return `Nrs ${(value / 1_000).toFixed(2).replace(/\.00$/, '')}T`;
-  }
-  return `Nrs ${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}B`;
-}
-
 export const NrbMacroWidget = memo(function NrbMacroWidget() {
   const { data, isLoading, isError, refetch } = useNepalDebtClock();
+  const { nprNumberingSystem, showUsdEquivalents } = useSettingsStore();
+  const remittanceDisplay = buildNprDisplay(
+    data?.remittance_inflow_billion_npr == null ? null : data.remittance_inflow_billion_npr * 1_000_000_000,
+    {
+      system: nprNumberingSystem,
+      usdPerNpr: data?.fx_usd_per_lcy,
+      showUsdEquivalent: showUsdEquivalents,
+    },
+  );
+  const bopDisplay = buildNprDisplay(
+    data?.bop_surplus_billion_npr == null ? null : data.bop_surplus_billion_npr * 1_000_000_000,
+    {
+      system: nprNumberingSystem,
+      usdPerNpr: data?.fx_usd_per_lcy,
+      showUsdEquivalent: showUsdEquivalents,
+    },
+  );
 
   const cards = data
     ? [
@@ -54,12 +65,14 @@ export const NrbMacroWidget = memo(function NrbMacroWidget() {
         },
         {
           label: 'Remittance Inflow',
-          value: formatCompactBillionNpr(data.remittance_inflow_billion_npr),
+          value: remittanceDisplay.text,
+          valueTitle: remittanceDisplay.title,
           meta: data.remittance_inflow_label || 'Latest NRB release',
         },
         {
           label: 'BOP Surplus',
-          value: formatCompactBillionNpr(data.bop_surplus_billion_npr),
+          value: bopDisplay.text,
+          valueTitle: bopDisplay.title,
           meta: data.bop_surplus_label || 'Latest NRB release',
         },
         {
@@ -196,6 +209,7 @@ export const NrbMacroWidget = memo(function NrbMacroWidget() {
                     marginBottom: 6,
                     wordBreak: 'break-word',
                   }}
+                  title={card.valueTitle}
                 >
                   {card.value}
                 </div>

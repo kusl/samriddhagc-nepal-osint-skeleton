@@ -14,6 +14,7 @@ export const PROVINCES = [
 ] as const
 
 export type Province = (typeof PROVINCES)[number]
+export type NprNumberingSystem = 'vedic' | 'international'
 
 // Get districts for a province
 export function getDistrictsForProvince(province: Province): string[] {
@@ -29,6 +30,8 @@ interface SettingsState {
   // Province filter settings
   selectedProvinces: Province[]
   isProvinceFilterEnabled: boolean
+  nprNumberingSystem: NprNumberingSystem
+  showUsdEquivalents: boolean
 
   // Actions
   toggleProvince: (province: Province) => void
@@ -36,6 +39,8 @@ interface SettingsState {
   selectAllProvinces: () => void
   clearAllProvinces: () => void
   toggleProvinceFilter: (enabled?: boolean) => void
+  setNprNumberingSystem: (system: NprNumberingSystem) => void
+  setShowUsdEquivalents: (enabled: boolean) => void
 
   // Computed helpers (not stored, derived)
   getSelectedDistricts: () => string[]
@@ -48,6 +53,8 @@ export const useSettingsStore = create<SettingsState>()(
       // Default: all provinces selected, filter disabled (show everything)
       selectedProvinces: [...PROVINCES],
       isProvinceFilterEnabled: false,
+      nprNumberingSystem: 'vedic',
+      showUsdEquivalents: true,
 
       toggleProvince: (province) => {
         const { selectedProvinces } = get()
@@ -99,6 +106,14 @@ export const useSettingsStore = create<SettingsState>()(
         }))
       },
 
+      setNprNumberingSystem: (system) => {
+        set({ nprNumberingSystem: system })
+      },
+
+      setShowUsdEquivalents: (enabled) => {
+        set({ showUsdEquivalents: enabled })
+      },
+
       // Derived helpers
       getSelectedDistricts: () => {
         const { selectedProvinces, isProvinceFilterEnabled } = get()
@@ -122,6 +137,8 @@ export const useSettingsStore = create<SettingsState>()(
       partialize: (state) => ({
         selectedProvinces: state.selectedProvinces,
         isProvinceFilterEnabled: state.isProvinceFilterEnabled,
+        nprNumberingSystem: state.nprNumberingSystem,
+        showUsdEquivalents: state.showUsdEquivalents,
       }),
     }
   )

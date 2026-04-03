@@ -2,6 +2,9 @@ import { memo, useMemo, useState } from 'react';
 import { Briefcase, Building2, Landmark, RefreshCw, Search, Shield } from 'lucide-react';
 import { Widget } from '../Widget';
 import { useProcurementWidgetSummary } from '../../../api/hooks/useProcurement';
+import { useSettingsStore } from '../../../store/slices/settingsSlice';
+import { buildNprDisplay } from '../../../utils/currency';
+import { WidgetSkeleton } from './shared';
 
 const FILTER_GROUP_STYLE = {
   display: 'flex',
@@ -30,16 +33,6 @@ const ENTITY_FILTER_PRIORITY = [
   'local_government',
   'department_or_office',
 ] as const;
-
-function formatCompactNpr(value: number | null | undefined): string {
-  if (!value) return 'Nrs 0';
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000_000_000) return `Nrs ${(value / 1_000_000_000_000).toFixed(2).replace(/\.00$/, '')}T`;
-  if (abs >= 1_000_000_000) return `Nrs ${(value / 1_000_000_000).toFixed(2).replace(/\.00$/, '')}B`;
-  if (abs >= 1_000_000) return `Nrs ${(value / 1_000_000).toFixed(2).replace(/\.00$/, '')}M`;
-  if (abs >= 1_000) return `Nrs ${(value / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
-  return `Nrs ${Math.round(value).toLocaleString('en-US')}`;
-}
 
 function formatAwardDate(
   value: string | null,
@@ -93,6 +86,7 @@ export const GovtContractsWidget = memo(function GovtContractsWidget() {
   const [entityBucket, setEntityBucket] = useState<string>('all');
   const [procurementType, setProcurementType] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const { nprNumberingSystem } = useSettingsStore();
 
   const trimmedSearch = search.trim();
 
@@ -132,13 +126,44 @@ export const GovtContractsWidget = memo(function GovtContractsWidget() {
     return ['all', ...types];
   }, [summary?.stats.by_procurement_type]);
 
-  const summaryCards = summary?.cards || [];
   const isLoading = summaryQuery.isLoading;
   const hasError = summaryQuery.isError;
   const contracts = summary?.contracts || [];
   const hasResolvedData = Boolean(summary);
   const showInitialLoading = isLoading && !hasResolvedData;
   const showRefreshing = !showInitialLoading && summaryQuery.isFetching;
+  const displayedBucketValue = useMemo(() => {
+    if (!summary?.stats) return null;
+    if (entityBucket !== 'all') {
+      const matched = summary.entity_buckets.find((bucket) => bucket.bucket === entityBucket);
+      return matched?.total_value ?? null;
+    }
+    return summary.stats.total_value_npr;
+  }, [entityBucket, summary?.entity_buckets, summary?.stats]);
+  const topEntity = summary?.top_entities?.[0] || null;
+  const summaryCards = useMemo(() => {
+    if (!summary?.stats) return [];
+
+    return [
+      {
+        label: 'Contracts',
+        value: String(summary.total),
+        meta: entityBucket !== 'all' || procurementType !== 'all' || trimmedSearch ? 'Filtered view' : 'All tracked awards',
+      },
+      {
+        label: 'Awarded Value',
+        value: buildNprDisplay(displayedBucketValue, { system: nprNumberingSystem }).text,
+        valueTitle: buildNprDisplay(displayedBucketValue, { system: nprNumberingSystem }).title,
+        meta: entityBucket !== 'all' ? 'Current bucket' : 'All tracked awards',
+      },
+      {
+        label: 'Top Entity',
+        value: topEntity?.procuring_entity || 'None',
+        meta: topEntity ? `${topEntity.contract_count} awards` : 'No ranked entity',
+        compact: true,
+      },
+    ];
+  }, [displayedBucketValue, entityBucket, nprNumberingSystem, procurementType, summary?.stats, summary?.total, topEntity, trimmedSearch]);
 
   return (
     <Widget
@@ -324,7 +349,7 @@ export const GovtContractsWidget = memo(function GovtContractsWidget() {
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                 }}
-                title={item.value}
+                title={item.valueTitle || item.value}
               >
                 {item.value}
               </div>
@@ -337,7 +362,7 @@ export const GovtContractsWidget = memo(function GovtContractsWidget() {
 
         <div style={{ flex: 1, overflow: 'auto' }}>
           {showInitialLoading ? (
-            <div style={{ padding: 12, color: 'var(--text-muted)', fontSize: 11 }}>Loading contract data...</div>
+            <WidgetSkeleton />
           ) : hasError ? (
             <div style={{ padding: 12, color: 'var(--status-critical)', fontSize: 11 }}>
               Failed to load contract data
@@ -436,6 +461,7 @@ export const GovtContractsWidget = memo(function GovtContractsWidget() {
 
                 <div style={{ minWidth: 108, textAlign: 'right', flexShrink: 0 }}>
                   <div
+                    title={buildNprDisplay(contract.contract_amount_npr, { system: nprNumberingSystem }).title}
                     style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: 14,
@@ -445,7 +471,7 @@ export const GovtContractsWidget = memo(function GovtContractsWidget() {
                       marginBottom: 4,
                     }}
                   >
-                    {formatCompactNpr(contract.contract_amount_npr)}
+                    {buildNprDisplay(contract.contract_amount_npr, { system: nprNumberingSystem }).text}
                   </div>
                   <div style={{ fontSize: 9, color: 'var(--text-disabled)', marginBottom: 5 }}>
                     {formatAwardDate(contract.contract_award_date, {

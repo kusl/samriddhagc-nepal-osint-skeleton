@@ -2,20 +2,13 @@ import { memo } from 'react';
 import { Landmark, RefreshCw } from 'lucide-react';
 import { Widget } from '../Widget';
 import { useProcurementWidgetSummary } from '../../../api/hooks';
+import { useSettingsStore } from '../../../store/slices/settingsSlice';
+import { buildNprDisplay } from '../../../utils/currency';
 import { WidgetEmpty, WidgetError, WidgetSkeleton } from './shared';
-
-function formatCompactNpr(value: number | null | undefined): string {
-  if (!value) return 'Nrs 0';
-  const abs = Math.abs(value);
-  if (abs >= 1_000_000_000_000) return `Nrs ${(value / 1_000_000_000_000).toFixed(2).replace(/\.00$/, '')}T`;
-  if (abs >= 1_000_000_000) return `Nrs ${(value / 1_000_000_000).toFixed(2).replace(/\.00$/, '')}B`;
-  if (abs >= 1_000_000) return `Nrs ${(value / 1_000_000).toFixed(2).replace(/\.00$/, '')}M`;
-  if (abs >= 1_000) return `Nrs ${(value / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
-  return `Nrs ${Math.round(value).toLocaleString('en-US')}`;
-}
 
 export const PublicSpendingWidget = memo(function PublicSpendingWidget() {
   const summaryQuery = useProcurementWidgetSummary({ per_page: 10 });
+  const { nprNumberingSystem } = useSettingsStore();
 
   const summary = summaryQuery.data;
   const stats = summary?.stats;
@@ -71,15 +64,26 @@ export const PublicSpendingWidget = memo(function PublicSpendingWidget() {
               }}
             >
               {[
-                { label: 'Tracked Value', value: formatCompactNpr(stats.total_value_npr), meta: 'Procurement awards' },
+                {
+                  label: 'Tracked Value',
+                  value: buildNprDisplay(stats.total_value_npr, { system: nprNumberingSystem }).text,
+                  valueTitle: buildNprDisplay(stats.total_value_npr, { system: nprNumberingSystem }).title,
+                  meta: 'Procurement awards',
+                },
                 { label: 'Awards', value: `${stats.total_contracts}`, meta: 'Bolpatra contracts' },
-                { label: 'Lead Bucket', value: topBucket?.label || 'None', meta: topBucket ? formatCompactNpr(topBucket.total_value) : 'No bucket', compact: true },
+                {
+                  label: 'Lead Bucket',
+                  value: topBucket?.label || 'None',
+                  meta: topBucket ? buildNprDisplay(topBucket.total_value, { system: nprNumberingSystem }).text : 'No bucket',
+                  compact: true,
+                },
               ].map((card) => (
                 <div key={card.label} style={{ background: 'var(--bg-surface)', padding: '10px 11px', minHeight: 80 }}>
                   <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 7 }}>
                     {card.label}
                   </div>
                   <div
+                    title={card.valueTitle}
                     style={{
                       fontFamily: 'var(--font-mono)',
                       fontSize: card.compact ? 13 : 18,
@@ -138,7 +142,7 @@ export const PublicSpendingWidget = memo(function PublicSpendingWidget() {
                         flexShrink: 0,
                       }}
                     >
-                      {formatCompactNpr(entity.total_value)}
+                      {buildNprDisplay(entity.total_value, { system: nprNumberingSystem }).text}
                     </div>
                   </div>
                 ))

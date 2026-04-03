@@ -8,6 +8,7 @@ import { useUserPreferencesStore } from '../../store/slices/userPreferencesSlice
 import { useNotificationStore } from '../../stores/notificationStore';
 import { subscribeViewerCount, getViewerCountSnapshot, getViewerCountServerSnapshot } from '../../api/websocket';
 import { NotificationBell } from '../common/NotificationBell';
+import { DisplayPreferencesDrawer } from '../common/DisplayPreferencesDrawer';
 
 const PRESET_TABS = [
   { id: 'news', label: 'News' },
@@ -58,6 +59,7 @@ const Clock = memo(function Clock() {
 
 export const DashboardHeader = memo(function DashboardHeader() {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [displayPreferencesOpen, setDisplayPreferencesOpen] = useState(false);
   const { setCustomizePanelOpen, customizePanelOpen, applyPreset, activePreset } = useDashboardStore();
   const { user, logout, isGuest } = useAuthStore();
   const { isDev } = usePermissions();
@@ -280,21 +282,55 @@ export const DashboardHeader = memo(function DashboardHeader() {
 
               <div style={{ padding: '4px 0' }}>
                 {isGuestLike ? (
-                  <button
-                    onClick={handleGoToLogin}
-                    style={{
-                      width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 14px', background: 'transparent', border: 'none',
-                      fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
-                      textAlign: 'left', fontFamily: 'var(--font-sans)',
-                    }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                  >
-                    Sign In / Create Account
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        setAccountMenuOpen(false)
+                        setDisplayPreferencesOpen(true)
+                      }}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 14px', background: 'transparent', border: 'none',
+                        fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
+                        textAlign: 'left', fontFamily: 'var(--font-sans)',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >
+                      Display preferences
+                    </button>
+                    <button
+                      onClick={handleGoToLogin}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 14px', background: 'transparent', border: 'none',
+                        fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
+                        textAlign: 'left', fontFamily: 'var(--font-sans)',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >
+                      Sign In / Create Account
+                    </button>
+                  </>
                 ) : (
                   <>
+                    <button
+                      onClick={() => {
+                        setAccountMenuOpen(false)
+                        setDisplayPreferencesOpen(true)
+                      }}
+                      style={{
+                        width: '100%', display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 14px', background: 'transparent', border: 'none',
+                        fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer',
+                        textAlign: 'left', fontFamily: 'var(--font-sans)',
+                      }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                    >
+                      Display preferences
+                    </button>
                     <button
                       onClick={() => {
                         setAccountMenuOpen(false)
@@ -332,6 +368,11 @@ export const DashboardHeader = memo(function DashboardHeader() {
           )}
         </div>
       </div>
+
+      <DisplayPreferencesDrawer
+        open={displayPreferencesOpen}
+        onClose={() => setDisplayPreferencesOpen(false)}
+      />
     </header>
   );
 });

@@ -1,0 +1,1933 @@
+"""Story clustering service using Union-Find algorithm."""
+import json
+import logging
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime, timezone, timedelta
+from types import SimpleNamespace
+from typing import Optional, Dict, List, Set, Tuple
+from uuid import UUID, uuid4
+
+import numpy as np
+from sqlalchemy import select, and_, text, func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from app.models.story import Story
+from app.models.story_cluster import StoryCluster
+from app.models.story_feature import StoryFeature
+from app.models.story_embedding import StoryEmbedding
+from app.models.tweet import Tweet
+from app.services.clustering.similarity_engine import SimilarityEngine, HybridSimilarityScore
+from app.services.clustering.blocking import BlockingRules, HierarchicalBlocker
+from app.services.clustering.feature_extractor import (
+    StoryFeatures,
+    get_feature_extractor,
+)
+from app.services.clustering.llm_validator import get_llm_validator
+from app.services.corroboration.corroboration_service import CorroborationService
+from app.services.intelligence.intelligence_scorer import IntelligenceScorer
+from app.services.severity_service import SeverityService
+from app.services.embeddings.text_embedder import get_multilingual_embedder, bytes_to_embedding
+from app.services.openai_runtime import get_openai_runtime
+from app.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ClusterCandidate:
+    """Candidate story for clustering."""
+    id: UUID
+    title: str
+    summary: Optional[str]
+    content: Optional[str] = None
+    category: Optional[str] = None
+    severity: Optional[str] = None
+    source_id: str = ""
+    published_at: Optional[datetime] = None
+    language: Optional[str] = None  # For cross-lingual tracking
+    # Extracted features
+    features: Optional[StoryFeatures] = None
+    # E5-Large embedding for hybrid similarity (Palantir-grade)
+    embedding: Optional[List[float]] = None
+
+
+class UnionFind:
+    """Union-Find (Disjoint Set Union) data structure."""
+
+    def __init__(self):
+        self.parent: dict[UUID, UUID] = {}
+        self.rank: dict[UUID, int] = {}
+
+    def find(self, x: UUID) -> UUID:
+        """Find root with path compression."""
+        if x not in self.parent:
+            self.parent[x] = x
+            self.rank[x] = 0
+        if self.parent[x] != x:
+            self.parent[x] = self.find(self.parent[x])
+        return self.parent[x]
+
+    def union(self, x: UUID, y: UUID) -> bool:
+        """Union by rank. Returns True if merged, False if already same set."""
+        root_x = self.find(x)
+        root_y = self.find(y)
+
+        if root_x == root_y:
+            return False
+
+        if self.rank[root_x] < self.rank[root_y]:
+            root_x, root_y = root_y, root_x
+
+        self.parent[root_y] = root_x
+        if self.rank[root_x] == self.rank[root_y]:
+            self.rank[root_x] += 1
+
+        return True
+
+    def get_clusters(self) -> dict[UUID, list[UUID]]:
+        """Get all clusters as dict of root -> members."""
+        clusters: dict[UUID, list[UUID]] = defaultdict(list)
+        for item in self.parent:
+            root = self.find(item)
+            clusters[root].append(item)
+        return dict(clusters)
+
+
+class ClusteringService:
+    """
+    Service for clustering related news stories.
+
+    Uses:
+    - SimilarityEngine for computing story similarity (v3 4-component formula)
+    - BlockingRules for hard clustering constraints
+    - HierarchicalBlocker for efficient candidate generation
+    - FeatureExtractor for MinHash and geographic features
+    - Union-Find for efficient cluster formation
+
+    Palantir-grade v4 features:
+    - Hybrid semantic clustering with E5-Large embeddings
+    - 3-component formula: 45% semantic + 30% lexical + 25% structural
+    - Cross-lingual story grouping (English + Nepali)
+    - Corroboration tracking ("Story backed by N sources")
+    """
+
+    # Similarity threshold for clustering
+    SIMILARITY_THRESHOLD = 0.6
+
+    # Smart clustering threshold - INCREASED for much tighter clusters
+    # Only stories that are clearly about the same event should cluster
+    SMART_THRESHOLD = 0.70
+
+    # Hybrid clustering threshold (Palantir-grade)
+    # 0.72 catches same-event stories with different wording (especially Nepali)
+    # LLM validation at threshold 2 acts as safety net
+    HYBRID_THRESHOLD = 0.72
+
+    # Minimum semantic similarity (embedding cosine) required
+    # 0.55 allows Nepali cross-referential titles (city vs district naming)
+    MIN_SEMANTIC_SIMILARITY = 0.55
+
+    # LLM validation threshold - validate clusters larger than this
+    # Lowered to 2 so Haiku validates almost all clusters for accuracy
+    LLM_VALIDATION_THRESHOLD = 2
+
+    # Maximum cluster size - hard limit to prevent mega-clusters
+    MAX_CLUSTER_SIZE = 30
+
+    def __init__(
+        self,
+        db: AsyncSession,
+        similarity_threshold: float = SIMILARITY_THRESHOLD,
+        use_smart_clustering: bool = True,
+        use_llm_validation: bool = True,
+        use_hybrid_semantic: bool = True,  # Palantir-grade hybrid clustering
+    ):
+        """
+        Initialize clustering service.
+
+        Args:
+            db: Database session
+            similarity_threshold: Minimum similarity to cluster (0.0-1.0)
+            use_smart_clustering: Use v3 smart clustering with features
+            use_hybrid_semantic: Use Palantir-grade hybrid semantic clustering with E5
+        """
+        self.db = db
+        self.similarity_threshold = similarity_threshold
+        self.use_smart_clustering = use_smart_clustering
+        self.use_llm_validation = use_llm_validation
+        self.use_hybrid_semantic = use_hybrid_semantic
+        self.similarity_engine = SimilarityEngine()
+        self.blocking_rules = BlockingRules()
+        self.hierarchical_blocker = HierarchicalBlocker()
+        self.feature_extractor = get_feature_extractor()
+        self.corroboration_service = CorroborationService()
+        self.intelligence_scorer = IntelligenceScorer()
+        self.severity_service = SeverityService()
+        self.llm_validator = get_llm_validator() if use_llm_validation else None
+        self._embedder = None  # Lazy-loaded E5-Large embedder
+        self.settings = get_settings()
+        self.openai_runtime = get_openai_runtime()
+        self.smart_threshold = float(getattr(self.settings, "clustering_smart_threshold", self.SMART_THRESHOLD))
+        self.hybrid_threshold = float(getattr(self.settings, "clustering_hybrid_threshold", self.HYBRID_THRESHOLD))
+        self.gray_zone_low = float(getattr(self.settings, "openai_cluster_gray_zone_low", 0.68))
+        self.gray_zone_high = float(getattr(self.settings, "openai_cluster_gray_zone_high", 0.82))
+        self._table_columns_cache: dict[str, set[str]] = {}
+
+    async def cluster_stories(
+        self,
+        hours: int = 72,
+        min_cluster_size: int = 2,
+    ) -> dict[str, int]:
+        """
+        Run clustering on recent stories.
+
+        Args:
+            hours: Process stories from last N hours
+            min_cluster_size: Minimum stories to form a cluster
+
+        Returns:
+            Stats dict with counts
+        """
+        stats = {
+            "stories_processed": 0,
+            "clusters_created": 0,
+            "clusters_updated": 0,
+            "stories_clustered": 0,
+            "stories_unclustered": 0,
+            "candidate_pairs": 0,
+            "edges_created": 0,
+            "hybrid_mode": self.use_hybrid_semantic,
+            "cross_lingual_pairs": 0,
+        }
+
+        # Fetch candidate stories
+        candidates = await self._fetch_candidates(hours)
+        stats["stories_processed"] = len(candidates)
+
+        if len(candidates) < 2:
+            logger.info(f"Only {len(candidates)} stories, skipping clustering")
+            return stats
+
+        # Extract features for all candidates
+        await self._extract_all_features(candidates)
+
+        # Load embeddings if using hybrid semantic clustering (Palantir-grade)
+        if self.use_hybrid_semantic:
+            await self._load_embeddings(candidates)
+            embedding_count = sum(1 for c in candidates if c.embedding is not None)
+            logger.info(f"Loaded embeddings for {embedding_count}/{len(candidates)} candidates")
+            stats["embeddings_loaded"] = embedding_count
+
+        # Release the read transaction before the expensive similarity/OpenAI pass.
+        # Otherwise PostgreSQL can kill the session for being idle-in-transaction while
+        # we spend tens of seconds in gray-zone clustering judgments.
+        await self.db.rollback()
+
+        # Use Palantir-grade hybrid clustering if enabled
+        if self.use_hybrid_semantic:
+            return await self._hybrid_cluster(candidates, min_cluster_size, stats)
+        elif self.use_smart_clustering:
+            return await self._smart_cluster(candidates, min_cluster_size, stats)
+        else:
+            return await self._legacy_cluster(candidates, min_cluster_size, stats)
+
+    async def refresh_recent_cluster_operational_fields(self, hours: int = 168) -> dict[str, int]:
+        """
+        Recompute event-level operational metadata for recent clusters.
+
+        Useful after tweet backfills or feature refreshes, without forcing a full
+        recluster of the entire recent story set.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+        result = await self.db.execute(
+            select(StoryCluster)
+            .where(StoryCluster.last_updated >= cutoff)
+            .order_by(StoryCluster.last_updated.desc().nullslast())
+        )
+        clusters = list(result.scalars().all())
+        updated = 0
+        for cluster in clusters:
+            story_result = await self.db.execute(
+                select(Story)
+                .options(selectinload(Story.features))
+                .where(Story.cluster_id == cluster.id)
+            )
+            stories = list(story_result.scalars().all())
+            if len(stories) < 1:
+                continue
+
+            candidates: List[ClusterCandidate] = []
+            for story in stories:
+                features = story.features or self.feature_extractor.extract(
+                    title=story.title,
+                    summary=story.summary,
+                    content=story.content,
+                    story_id=str(story.id),
+                    published_at=story.published_at,
+                )
+                candidates.append(
+                    ClusterCandidate(
+                        id=story.id,
+                        title=story.title,
+                        summary=story.summary,
+                        content=story.content,
+                        category=story.category,
+                        severity=story.severity,
+                        source_id=story.source_id,
+                        published_at=story.published_at,
+                        language=story.language,
+                        features=features,
+                    )
+                )
+
+            payload = await self._build_cluster_payload(candidates)
+            cluster.headline = payload["headline"]
+            cluster.summary = payload["summary"]
+            cluster.category = payload["category"]
+            cluster.severity = payload["severity"]
+            cluster.event_type = payload["event_type"]
+            cluster.primary_province = payload["primary_province"]
+            cluster.primary_district = payload["primary_district"]
+            cluster.primary_municipality = payload["primary_municipality"]
+            cluster.geo_confidence = payload["geo_confidence"]
+            cluster.main_entities = payload["main_entities"]
+            cluster.novelty_score = payload["novelty_score"]
+            cluster.heat_score = payload["heat_score"]
+            cluster.spread_score = payload["spread_score"]
+            cluster.event_confidence = payload["event_confidence"]
+            cluster.actionability = payload["actionability"]
+            cluster.intelligence_score = payload["intelligence_score"]
+            cluster.story_count = payload["story_count"]
+            cluster.source_count = payload["source_count"]
+            cluster.unique_sources = payload["unique_sources"]
+            cluster.diversity_score = payload["diversity_score"]
+            cluster.confirmation_chain = payload["confirmation_chain"]
+            cluster.confidence_level = payload["confidence_level"]
+            cluster.languages = payload["languages"]
+            cluster.cross_lingual_match = payload["cross_lingual_match"]
+            cluster.social_post_count = payload["social_post_count"]
+            cluster.official_confirmation_count = payload["official_confirmation_count"]
+            cluster.first_published = payload["first_published"]
+            cluster.last_updated = payload["last_updated"]
+            updated += 1
+
+        await self.db.commit()
+        return {"clusters_scanned": len(clusters), "clusters_updated": updated}
+
+    async def _smart_cluster(
+        self,
+        candidates: List[ClusterCandidate],
+        min_cluster_size: int,
+        stats: dict,
+    ) -> dict:
+        """
+        Smart clustering using hierarchical blocking and v3 features.
+        """
+        # Build index for feature lookup
+        story_map: Dict[UUID, ClusterCandidate] = {c.id: c for c in candidates}
+
+        # Generate candidate pairs using hierarchical blocking
+        blocking_input = [
+            (c.id, c.features, c.category, c.published_at)
+            for c in candidates
+            if c.features is not None
+        ]
+
+        candidate_pairs = self.hierarchical_blocker.get_candidate_pairs(blocking_input)
+        stats["candidate_pairs"] = len(candidate_pairs)
+
+        logger.info(f"Hierarchical blocking generated {len(candidate_pairs)} candidate pairs")
+
+        # Build similarity graph
+        uf = UnionFind()
+        edges_created = 0
+
+        for id1, id2 in candidate_pairs:
+            story1 = story_map.get(id1)
+            story2 = story_map.get(id2)
+
+            if not story1 or not story2 or not story1.features or not story2.features:
+                continue
+
+            # Check hard blocking rules with features
+            blocked, reason = self.blocking_rules.should_block_with_features(
+                story1.features,
+                story2.features,
+                story1.category,
+                story2.category,
+                story1.published_at,
+                story2.published_at,
+            )
+
+            if blocked:
+                continue
+
+            # Compute similarity using v3 4-component formula
+            time_diff = self.blocking_rules.get_time_diff_hours(
+                story1.published_at, story2.published_at
+            )
+
+            similarity = self.similarity_engine.compute_similarity_with_features(
+                story1.features,
+                story2.features,
+                story1.category,
+                story2.category,
+                time_diff,
+            )
+
+            # If similar enough, union
+            if similarity.overall >= self.smart_threshold:
+                uf.union(story1.id, story2.id)
+                edges_created += 1
+
+        stats["edges_created"] = edges_created
+        logger.info(f"Created {edges_created} similarity edges")
+
+        # Get clusters
+        cluster_groups = uf.get_clusters()
+
+        # Filter to clusters with min size
+        valid_clusters = {
+            root: members
+            for root, members in cluster_groups.items()
+            if len(members) >= min_cluster_size
+        }
+
+        logger.info(f"Found {len(valid_clusters)} clusters with >={min_cluster_size} stories")
+
+        # LLM validation for large clusters
+        if self.use_llm_validation and self.llm_validator:
+            validated_clusters = await self._validate_clusters_with_llm(
+                valid_clusters, story_map
+            )
+            stats["llm_validated"] = len(validated_clusters)
+            stats["llm_split"] = len(validated_clusters) - len(valid_clusters)
+        else:
+            validated_clusters = valid_clusters
+
+        # Create/update cluster records
+        for root_id, member_ids in validated_clusters.items():
+            cluster_stories = [story_map[sid] for sid in member_ids]
+            is_new, cluster = await self._create_or_update_cluster(cluster_stories)
+
+            if cluster:
+                if is_new:
+                    stats["clusters_created"] += 1
+                else:
+                    stats["clusters_updated"] += 1
+                stats["stories_clustered"] += len(member_ids)
+                await self._assign_stories_to_cluster(member_ids, cluster.id)
+
+        # Count unclustered
+        clustered_ids: Set[UUID] = set()
+        for members in valid_clusters.values():
+            clustered_ids.update(members)
+
+        stats["stories_unclustered"] = len(candidates) - len(clustered_ids)
+
+        await self.db.commit()
+        return stats
+
+    # ============================================================
+    # Palantir-Grade Hybrid Semantic Clustering
+    # ============================================================
+
+    async def _load_embeddings(self, candidates: List[ClusterCandidate]) -> None:
+        """
+        Load E5-Large embeddings for all candidates from database.
+
+        Missing embeddings are left empty and handled by lexical/structural scoring.
+        Embeddings are generated by the scheduled embedding job to keep OpenAI
+        usage predictable and capped.
+        """
+        story_ids = [c.id for c in candidates]
+
+        # Fetch existing embeddings from database
+        result = await self.db.execute(
+            select(StoryEmbedding)
+            .where(StoryEmbedding.story_id.in_(story_ids))
+        )
+        embeddings_map: Dict[UUID, StoryEmbedding] = {
+            e.story_id: e for e in result.scalars().all()
+        }
+
+        # Build map of candidates needing embeddings
+        need_embedding: List[ClusterCandidate] = []
+
+        for candidate in candidates:
+            emb_record = embeddings_map.get(candidate.id)
+            if emb_record and emb_record.embedding_vector is not None:
+                try:
+                    candidate.embedding = list(emb_record.embedding_vector)
+                    continue
+                except Exception as e:
+                    logger.warning(f"Failed to read vector embedding for {candidate.id}: {e}")
+            if emb_record and emb_record.embedding is not None:
+                try:
+                    candidate.embedding = bytes_to_embedding(emb_record.embedding)
+                    continue
+                except Exception as e:
+                    logger.warning(f"Failed to decode embedding for {candidate.id}: {e}")
+            need_embedding.append(candidate)
+
+        if need_embedding:
+            logger.info(
+                "Skipping on-the-fly embeddings for %s stories; scheduled embedding job will backfill them",
+                len(need_embedding),
+            )
+
+    async def _hybrid_cluster(
+        self,
+        candidates: List[ClusterCandidate],
+        min_cluster_size: int,
+        stats: dict,
+    ) -> dict:
+        """
+        Palantir-grade hybrid clustering using E5-Large semantic similarity.
+
+        Formula: 0.45*semantic + 0.30*lexical + 0.25*structural
+
+        Benefits over smart clustering:
+        - Cross-lingual: Groups English and Nepali stories about same event
+        - Semantic: Understands meaning, not just surface-level text
+        - Robust: MinHash catches exact quotes, structural catches entities
+        """
+        # Build index for feature lookup
+        story_map: Dict[UUID, ClusterCandidate] = {c.id: c for c in candidates}
+
+        # Generate candidate pairs using hierarchical blocking
+        blocking_input = [
+            (c.id, c.features, c.category, c.published_at)
+            for c in candidates
+            if c.features is not None
+        ]
+
+        candidate_pairs = self.hierarchical_blocker.get_candidate_pairs(blocking_input)
+        stats["candidate_pairs"] = len(candidate_pairs)
+
+        logger.info(f"Hierarchical blocking generated {len(candidate_pairs)} candidate pairs for hybrid clustering")
+
+        # Build similarity graph
+        uf = UnionFind()
+        edges_created = 0
+        cross_lingual_pairs = 0
+
+        for id1, id2 in candidate_pairs:
+            story1 = story_map.get(id1)
+            story2 = story_map.get(id2)
+
+            if not story1 or not story2 or not story1.features or not story2.features:
+                continue
+
+            # Compute time difference
+            time_diff = self.blocking_rules.get_time_diff_hours(
+                story1.published_at, story2.published_at
+            )
+
+            # Compute hybrid similarity with blocking rules
+            similarity = self.similarity_engine.compute_hybrid_similarity_with_blocking(
+                story1.features,
+                story2.features,
+                story1.embedding,
+                story2.embedding,
+                time_diff,
+                story1.category,
+                story2.category,
+            )
+
+            # Skip blocked pairs
+            if similarity.blocked:
+                continue
+
+            # CRITICAL: Require minimum semantic similarity to prevent lexical-only matches
+            # This prevents stories that share keywords but are about different topics
+            if similarity.semantic < self.MIN_SEMANTIC_SIMILARITY:
+                continue
+
+            # Track cross-lingual matches
+            is_cross_lingual = (
+                story1.language and story2.language and
+                story1.language != story2.language
+            )
+            if is_cross_lingual and similarity.overall >= self.hybrid_threshold:
+                cross_lingual_pairs += 1
+                logger.debug(
+                    f"Cross-lingual match ({story1.language}<->{story2.language}): "
+                    f"similarity={similarity.overall:.3f}, semantic={similarity.semantic:.3f}"
+                )
+
+            # If similar enough, union
+            should_merge = similarity.overall >= self.hybrid_threshold
+            if (
+                not should_merge and
+                self._should_run_openai_pair_check(story1, story2, similarity)
+            ):
+                should_merge = await self._openai_same_event_judgment(story1, story2, similarity)
+
+            if should_merge:
+                uf.union(story1.id, story2.id)
+                edges_created += 1
+
+        stats["edges_created"] = edges_created
+        stats["cross_lingual_pairs"] = cross_lingual_pairs
+        logger.info(f"Created {edges_created} similarity edges ({cross_lingual_pairs} cross-lingual)")
+
+        # Get clusters
+        cluster_groups = uf.get_clusters()
+
+        # Filter to clusters with min size AND enforce max size
+        valid_clusters = {}
+        oversized_count = 0
+
+        for root, members in cluster_groups.items():
+            if len(members) < min_cluster_size:
+                continue
+
+            if len(members) > self.MAX_CLUSTER_SIZE:
+                # CRITICAL: Discard oversized clusters - they're caused by transitive chaining
+                # A cluster with 100+ stories about "elections" + "gold prices" + "accidents" is wrong
+                oversized_count += 1
+                logger.warning(
+                    f"Oversized cluster detected: {len(members)} stories. "
+                    f"This indicates transitive chaining - discarding cluster."
+                )
+                continue
+
+            valid_clusters[root] = members
+
+        logger.info(
+            f"Found {len(valid_clusters)} valid clusters with {min_cluster_size}-{self.MAX_CLUSTER_SIZE} stories "
+            f"({oversized_count} oversized clusters discarded)"
+        )
+
+        # LLM validation for large clusters
+        if self.use_llm_validation and self.llm_validator:
+            validated_clusters = await self._validate_clusters_with_llm(
+                valid_clusters, story_map
+            )
+            stats["llm_validated"] = len(validated_clusters)
+            stats["llm_split"] = len(validated_clusters) - len(valid_clusters)
+        else:
+            validated_clusters = valid_clusters
+
+        # Create/update cluster records with corroboration tracking
+        for root_id, member_ids in validated_clusters.items():
+            cluster_stories = [story_map[sid] for sid in member_ids]
+            is_new, cluster = await self._create_or_update_cluster_with_corroboration(cluster_stories)
+
+            if cluster:
+                if is_new:
+                    stats["clusters_created"] += 1
+                else:
+                    stats["clusters_updated"] += 1
+                stats["stories_clustered"] += len(member_ids)
+                await self._assign_stories_to_cluster(member_ids, cluster.id)
+
+        # Count unclustered
+        clustered_ids: Set[UUID] = set()
+        for members in valid_clusters.values():
+            clustered_ids.update(members)
+
+        stats["stories_unclustered"] = len(candidates) - len(clustered_ids)
+
+        await self.db.commit()
+        return stats
+
+    def _should_run_openai_pair_check(
+        self,
+        story1: ClusterCandidate,
+        story2: ClusterCandidate,
+        similarity: HybridSimilarityScore,
+    ) -> bool:
+        """Only spend GPT-5 mini on ambiguous, high-value candidate pairs."""
+        if not self.openai_runtime.clustering_enabled:
+            return False
+        if similarity.blocked:
+            return False
+        if similarity.semantic < self.MIN_SEMANTIC_SIMILARITY:
+            return False
+        if similarity.overall < self.gray_zone_low or similarity.overall > self.gray_zone_high:
+            return False
+
+        cross_lingual = bool(story1.language and story2.language and story1.language != story2.language)
+        semantic_lexical_gap = similarity.semantic >= 0.72 and similarity.lexical <= 0.35
+        low_structural = similarity.structural <= 0.45
+        return cross_lingual or semantic_lexical_gap or low_structural
+
+    async def _openai_same_event_judgment(
+        self,
+        story1: ClusterCandidate,
+        story2: ClusterCandidate,
+        similarity: HybridSimilarityScore,
+    ) -> bool:
+        """Resolve gray-zone event matches with strict JSON output."""
+        schema = {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "same_event": {"type": "boolean"},
+                "confidence": {"type": "number"},
+                "reason": {"type": "string"},
+                "canonical_headline": {"type": ["string", "null"]},
+            },
+            "required": ["same_event", "confidence", "reason", "canonical_headline"],
+        }
+        districts1 = sorted(set((story1.features.districts if story1.features else []) + ([story1.features.title_district] if story1.features and story1.features.title_district else [])))
+        districts2 = sorted(set((story2.features.districts if story2.features else []) + ([story2.features.title_district] if story2.features and story2.features.title_district else [])))
+        user_prompt = (
+            "Decide whether these two Nepal-relevant news stories describe the same specific event.\n"
+            "Be strict: same broad topic is not enough.\n\n"
+            f"Story A\n"
+            f"- Title: {story1.title}\n"
+            f"- Summary: {(story1.summary or '')[:280]}\n"
+            f"- Category: {story1.category or 'unknown'}\n"
+            f"- Language: {story1.language or 'unknown'}\n"
+            f"- Districts: {', '.join(districts1) or 'none'}\n\n"
+            f"Story B\n"
+            f"- Title: {story2.title}\n"
+            f"- Summary: {(story2.summary or '')[:280]}\n"
+            f"- Category: {story2.category or 'unknown'}\n"
+            f"- Language: {story2.language or 'unknown'}\n"
+            f"- Districts: {', '.join(districts2) or 'none'}\n\n"
+            f"Signals\n"
+            f"- semantic_similarity: {similarity.semantic:.3f}\n"
+            f"- lexical_similarity: {similarity.lexical:.3f}\n"
+            f"- structural_similarity: {similarity.structural:.3f}\n"
+            f"- overall_similarity: {similarity.overall:.3f}"
+        )
+        try:
+            result = await self.openai_runtime.json_completion(
+                system_prompt=(
+                    "You are a strict event clustering judge for a Nepal OSINT system. "
+                    "Only merge when two stories describe the same concrete event or development window."
+                ),
+                user_prompt=user_prompt,
+                schema_name="cluster_same_event_judgment",
+                schema=schema,
+                model=self.settings.openai_clustering_model,
+                max_completion_tokens=180,
+                temperature=0.0,
+                cache_scope="cluster-pair:" + ":".join(sorted([str(story1.id), str(story2.id)])),
+            )
+            return bool(result.get("same_event")) and float(result.get("confidence", 0.0)) >= 0.60
+        except Exception:
+            logger.warning(
+                "OpenAI gray-zone clustering judgment failed for stories %s/%s",
+                story1.id,
+                story2.id,
+                exc_info=True,
+            )
+            return False
+
+    async def _create_or_update_cluster_with_corroboration(
+        self,
+        stories: List[ClusterCandidate],
+    ) -> Tuple[bool, Optional[StoryCluster]]:
+        """
+        Create or update a cluster with corroboration tracking.
+
+        Computes:
+        - source_count: Number of unique sources
+        - Unique sources list
+        - Languages in cluster (for cross-lingual tracking)
+
+        Returns:
+            Tuple of (is_new, cluster)
+        """
+        if not stories:
+            return False, None
+
+        # Check if any stories are already in a cluster
+        story_ids = [s.id for s in stories]
+        existing_cluster_id = await self._find_existing_cluster_id(story_ids)
+        payload = await self._build_cluster_payload(stories)
+
+        if existing_cluster_id:
+            await self._upsert_cluster_row(existing_cluster_id, payload, is_new=False)
+            return False, SimpleNamespace(id=existing_cluster_id)
+
+        cluster_id = uuid4()
+        await self._upsert_cluster_row(cluster_id, payload, is_new=True)
+        return True, SimpleNamespace(id=cluster_id)
+
+    async def _legacy_cluster(
+        self,
+        candidates: List[ClusterCandidate],
+        min_cluster_size: int,
+        stats: dict,
+    ) -> dict:
+        """
+        Legacy O(n^2) clustering without hierarchical blocking.
+        """
+        uf = UnionFind()
+        edges_created = 0
+
+        # Compare all pairs
+        for i, story1 in enumerate(candidates):
+            for j in range(i + 1, len(candidates)):
+                story2 = candidates[j]
+
+                # Check blocking rules first
+                blocked, reason = self.blocking_rules.should_block(
+                    story1.category, story2.category,
+                    story1.published_at, story2.published_at,
+                    story1.source_id, story2.source_id,
+                )
+                if blocked:
+                    continue
+
+                # Compute similarity
+                time_diff = self.blocking_rules.get_time_diff_hours(
+                    story1.published_at, story2.published_at
+                )
+
+                similarity = self.similarity_engine.compute_similarity(
+                    story1.title, story2.title,
+                    story1.summary, story2.summary,
+                    story1.category, story2.category,
+                    time_diff,
+                )
+
+                if similarity.overall >= self.similarity_threshold:
+                    uf.union(story1.id, story2.id)
+                    edges_created += 1
+
+        stats["edges_created"] = edges_created
+        logger.info(f"Created {edges_created} similarity edges")
+
+        # Get clusters
+        cluster_groups = uf.get_clusters()
+        valid_clusters = {
+            root: members
+            for root, members in cluster_groups.items()
+            if len(members) >= min_cluster_size
+        }
+
+        logger.info(f"Found {len(valid_clusters)} clusters with >={min_cluster_size} stories")
+
+        story_id_map = {c.id: c for c in candidates}
+
+        for root_id, member_ids in valid_clusters.items():
+            cluster_stories = [story_id_map[sid] for sid in member_ids]
+            is_new, cluster = await self._create_or_update_cluster(cluster_stories)
+
+            if cluster:
+                if is_new:
+                    stats["clusters_created"] += 1
+                else:
+                    stats["clusters_updated"] += 1
+                stats["stories_clustered"] += len(member_ids)
+                await self._assign_stories_to_cluster(member_ids, cluster.id)
+
+        clustered_ids: Set[UUID] = set()
+        for members in valid_clusters.values():
+            clustered_ids.update(members)
+
+        stats["stories_unclustered"] = len(candidates) - len(clustered_ids)
+
+        await self.db.commit()
+        return stats
+
+    async def _validate_clusters_with_llm(
+        self,
+        clusters: Dict[UUID, List[UUID]],
+        story_map: Dict[UUID, ClusterCandidate],
+    ) -> Dict[UUID, List[UUID]]:
+        """
+        Validate clusters using LLM and split invalid ones.
+
+        Args:
+            clusters: Dict of root_id -> member_ids
+            story_map: Dict of story_id -> ClusterCandidate
+
+        Returns:
+            Validated clusters (may be more clusters if splits occurred)
+        """
+        validated = {}
+        cluster_idx = 0
+
+        for root_id, member_ids in clusters.items():
+            # Skip small clusters - they don't need LLM validation
+            if len(member_ids) <= self.LLM_VALIDATION_THRESHOLD:
+                validated[root_id] = member_ids
+                continue
+
+            # Get titles for LLM validation
+            titles = [story_map[mid].title for mid in member_ids]
+            story_ids = [str(mid) for mid in member_ids]
+
+            logger.info(f"LLM validating cluster with {len(titles)} stories")
+
+            # Validate with LLM
+            validation = await self.llm_validator.validate_cluster(titles)
+
+            # If confidence is 0, LLM is disabled - keep the cluster
+            if validation.confidence == 0.0:
+                validated[root_id] = member_ids
+                logger.info(f"LLM disabled, keeping cluster: {validation.reason}")
+            elif validation.is_valid and validation.confidence >= 0.7:
+                # Cluster is valid
+                validated[root_id] = member_ids
+                logger.info(f"Cluster validated: {validation.reason}")
+            elif validation.suggested_groups:
+                # Split into suggested groups
+                for i, group_indices in enumerate(validation.suggested_groups):
+                    if len(group_indices) >= 2:
+                        group_ids = [member_ids[idx] for idx in group_indices if idx < len(member_ids)]
+                        if len(group_ids) >= 2:
+                            # Use first member ID as new root
+                            validated[group_ids[0]] = group_ids
+                            cluster_idx += 1
+                            logger.info(f"Split cluster: group {i+1} has {len(group_ids)} stories")
+            else:
+                # LLM says not valid but no suggestions - skip this cluster
+                logger.info(f"Cluster rejected: {validation.reason}")
+
+        return validated
+
+    async def _fetch_candidates(self, hours: int) -> List[ClusterCandidate]:
+        """Fetch candidate stories for clustering.
+
+        Filters by published_at (when the story was published) not created_at
+        (when it was added to database). This prevents old stories from being
+        clustered just because they were recently ingested.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        result = await self.db.execute(
+            select(Story)
+            .where(
+                and_(
+                    # Filter by PUBLISHED date, not ingestion date
+                    Story.published_at >= cutoff,
+                    Story.nepal_relevance.in_(["NEPAL_DOMESTIC", "NEPAL_NEIGHBOR"]),
+                )
+            )
+            .order_by(Story.published_at.desc().nullslast())
+        )
+
+        stories = result.scalars().all()
+
+        candidates = []
+        for story in stories:
+            candidates.append(ClusterCandidate(
+                id=story.id,
+                title=story.title,
+                summary=story.summary,
+                content=story.content,
+                category=story.category,
+                severity=story.severity,
+                source_id=story.source_id,
+                published_at=story.published_at,
+                language=getattr(story, 'language', None),  # Cross-lingual support
+            ))
+
+        return candidates
+
+    async def _extract_all_features(self, candidates: List[ClusterCandidate]) -> None:
+        """Extract features for all candidates."""
+        for candidate in candidates:
+            # Try to load cached features from DB
+            cached = await self._get_cached_features(candidate.id)
+
+            if cached:
+                candidate.features = StoryFeatures(
+                    story_id=str(candidate.id),
+                    content_minhash=list(cached.content_minhash or []),
+                    title_tokens=list(cached.title_tokens or []),
+                    districts=list(cached.districts or []),
+                    provinces=list(getattr(cached, "provinces", None) or []),
+                    municipalities=list(getattr(cached, "municipalities", None) or []),
+                    place_mentions=list(getattr(cached, "place_mentions", None) or []),
+                    constituencies=list(cached.constituencies or []),
+                    geo_confidence=float(getattr(cached, "geo_confidence", 0.0) or 0.0),
+                    primary_province=getattr(cached, "primary_province", None),
+                    primary_municipality=getattr(cached, "primary_municipality", None),
+                    key_terms=list(cached.key_terms or []),
+                    named_people=list(getattr(cached, "named_people", None) or []),
+                    named_orgs=list(getattr(cached, "named_orgs", None) or []),
+                    named_parties=list(getattr(cached, "named_parties", None) or []),
+                    named_infrastructure=list(getattr(cached, "named_infrastructure", None) or []),
+                    international_countries=list(getattr(cached, 'international_countries', None) or []),
+                    topic=getattr(cached, 'topic', None),
+                    event_type=getattr(cached, "event_type", None),
+                    operational_domain=getattr(cached, "operational_domain", None),
+                    event_time=getattr(cached, "event_time", None),
+                    freshness_score=float(getattr(cached, "freshness_score", 0.0) or 0.0),
+                    # PALANTIR-GRADE entity blocking fields
+                    title_district=getattr(cached, 'title_district', None),
+                    title_country=getattr(cached, 'title_country', None),
+                    title_entities=list(getattr(cached, 'title_entities', None) or []),
+                    title_action=getattr(cached, 'title_action', None),
+                )
+                await self._sync_story_intelligence_fields(candidate.id, candidate.features)
+            else:
+                # Extract fresh features
+                candidate.features = self.feature_extractor.extract(
+                    title=candidate.title,
+                    summary=candidate.summary,
+                    content=candidate.content,
+                    story_id=str(candidate.id),
+                    published_at=candidate.published_at,
+                )
+
+                # Cache features
+                await self._cache_features(candidate.id, candidate.features)
+                await self._sync_story_intelligence_fields(candidate.id, candidate.features)
+
+    async def _get_cached_features(self, story_id: UUID):
+        """Get cached features from database, tolerating older VPS schemas."""
+        available_columns = await self._get_table_columns("story_features")
+        selectable_columns = [
+            column_name
+            for column_name in [
+                "story_id",
+                "content_minhash",
+                "title_tokens",
+                "districts",
+                "provinces",
+                "municipalities",
+                "place_mentions",
+                "constituencies",
+                "geo_confidence",
+                "primary_province",
+                "primary_municipality",
+                "key_terms",
+                "named_people",
+                "named_orgs",
+                "named_parties",
+                "named_infrastructure",
+                "international_countries",
+                "topic",
+                "event_type",
+                "operational_domain",
+                "event_time",
+                "freshness_score",
+                "title_district",
+                "title_country",
+                "title_entities",
+                "title_action",
+            ]
+            if column_name in available_columns
+        ]
+        if not selectable_columns:
+            return None
+
+        result = await self.db.execute(
+            select(*[StoryFeature.__table__.c[column_name] for column_name in selectable_columns])
+            .where(StoryFeature.story_id == story_id)
+        )
+        row = result.mappings().first()
+        return SimpleNamespace(**row) if row else None
+
+    async def _get_table_columns(self, table_name: str) -> set[str]:
+        """Fetch available columns for a live database table and cache the result."""
+        cached = self._table_columns_cache.get(table_name)
+        if cached is not None:
+            return cached
+
+        result = await self.db.execute(
+            text(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = :table_name
+                """
+            ),
+            {"table_name": table_name},
+        )
+        columns = {row[0] for row in result.fetchall()}
+        self._table_columns_cache[table_name] = columns
+        return columns
+
+    async def _filter_cluster_payload_for_schema(self, payload: dict) -> dict:
+        available_columns = await self._get_table_columns("story_clusters")
+        return {key: value for key, value in payload.items() if key in available_columns}
+
+    async def _find_existing_cluster_id(self, story_ids: List[UUID]) -> Optional[UUID]:
+        """Find an existing cluster ID that contains any of the given stories."""
+        result = await self.db.execute(
+            select(Story.cluster_id)
+            .where(
+                and_(
+                    Story.id.in_(story_ids),
+                    Story.cluster_id.isnot(None),
+                )
+            )
+            .limit(1)
+        )
+        row = result.first()
+        return row[0] if row and row[0] else None
+
+    async def _upsert_cluster_row(self, cluster_id: UUID, payload: dict, *, is_new: bool) -> None:
+        supported_payload = await self._filter_cluster_payload_for_schema(payload)
+        if supported_payload.get("confirmation_chain") is not None:
+            supported_payload["confirmation_chain"] = json.dumps(
+                supported_payload["confirmation_chain"],
+                ensure_ascii=False,
+            )
+        if is_new:
+            insert_columns = ["id", *supported_payload.keys()]
+            insert_values = [":id"]
+            for column in supported_payload.keys():
+                if column == "confirmation_chain":
+                    insert_values.append("CAST(:confirmation_chain AS jsonb)")
+                else:
+                    insert_values.append(f":{column}")
+            await self.db.execute(
+                text(
+                    f"""
+                    INSERT INTO story_clusters ({", ".join(insert_columns)})
+                    VALUES ({", ".join(insert_values)})
+                    """
+                ),
+                {"id": cluster_id, **supported_payload},
+            )
+            return
+
+        if not supported_payload:
+            return
+
+        assignments = ", ".join(
+            (
+                f"{column} = CAST(:{column} AS jsonb)"
+                if column == "confirmation_chain"
+                else f"{column} = :{column}"
+            )
+            for column in supported_payload.keys()
+        )
+        await self.db.execute(
+            text(f"UPDATE story_clusters SET {assignments} WHERE id = :id"),
+            {"id": cluster_id, **supported_payload},
+        )
+
+    async def _cache_features(self, story_id: UUID, features: StoryFeatures) -> None:
+        """Cache features to database."""
+        available_columns = await self._get_table_columns("story_features")
+        payload = {
+            "story_id": story_id,
+            "content_minhash": features.content_minhash,
+            "title_tokens": features.title_tokens,
+            "districts": features.districts,
+            "provinces": features.provinces,
+            "municipalities": features.municipalities,
+            "place_mentions": features.place_mentions,
+            "constituencies": features.constituencies,
+            "geo_confidence": features.geo_confidence,
+            "primary_province": features.primary_province,
+            "primary_municipality": features.primary_municipality,
+            "key_terms": features.key_terms,
+            "named_people": features.named_people if features.named_people else None,
+            "named_orgs": features.named_orgs if features.named_orgs else None,
+            "named_parties": features.named_parties if features.named_parties else None,
+            "named_infrastructure": features.named_infrastructure if features.named_infrastructure else None,
+            "international_countries": features.international_countries,
+            "topic": features.topic,
+            "event_type": features.event_type,
+            "operational_domain": features.operational_domain,
+            "event_time": features.event_time,
+            "freshness_score": features.freshness_score,
+            "title_district": features.title_district,
+            "title_country": features.title_country,
+            "title_entities": features.title_entities if features.title_entities else None,
+            "title_action": features.title_action,
+        }
+        supported_payload = {
+            key: value for key, value in payload.items() if key in available_columns
+        }
+        if "story_id" not in supported_payload:
+            return
+
+        try:
+            update_payload = {
+                key: value for key, value in supported_payload.items() if key != "story_id"
+            }
+            async with self.db.begin_nested():
+                statement = pg_insert(StoryFeature.__table__).values(**supported_payload)
+                if update_payload:
+                    statement = statement.on_conflict_do_update(
+                        index_elements=[StoryFeature.story_id],
+                        set_=update_payload,
+                    )
+                else:
+                    statement = statement.on_conflict_do_nothing(
+                        index_elements=[StoryFeature.story_id]
+                    )
+                await self.db.execute(statement)
+        except Exception as e:
+            # Feature caching is optional, log and continue
+            logger.debug(f"Failed to cache features for {story_id}: {e}")
+
+    async def _sync_story_intelligence_fields(self, story_id: UUID, features: StoryFeatures) -> None:
+        """Keep normalized geography on the story row for downstream products."""
+        try:
+            result = await self.db.execute(select(Story).where(Story.id == story_id))
+            story = result.scalar_one_or_none()
+            if not story:
+                return
+            story.districts = features.districts or None
+            story.provinces = features.provinces or None
+        except Exception as e:
+            logger.debug("Failed to sync intelligence fields for %s: %s", story_id, e)
+
+    def _aggregate_event_metadata(self, stories: List[ClusterCandidate]) -> dict:
+        district_counts: Counter[str] = Counter()
+        province_counts: Counter[str] = Counter()
+        municipality_counts: Counter[str] = Counter()
+        entity_counts: Counter[str] = Counter()
+        event_type_counts: Counter[str] = Counter()
+        geo_confidences: List[float] = []
+        languages = {s.language for s in stories if s.language}
+        sources = {s.source_id for s in stories if s.source_id}
+        now = datetime.now(timezone.utc)
+
+        for story in stories:
+            features = story.features
+            if not features:
+                continue
+            district_counts.update(features.districts)
+            province_counts.update(features.provinces)
+            municipality_counts.update(features.municipalities)
+            entity_counts.update(features.named_people)
+            entity_counts.update(features.named_orgs)
+            entity_counts.update(features.named_parties)
+            entity_counts.update(features.named_infrastructure)
+            entity_counts.update(features.key_terms[:5])
+            if features.event_type:
+                event_type_counts[features.event_type] += 1
+            geo_confidences.append(features.geo_confidence)
+
+        primary_district = district_counts.most_common(1)[0][0] if district_counts else None
+        primary_province = province_counts.most_common(1)[0][0] if province_counts else None
+        primary_municipality = municipality_counts.most_common(1)[0][0] if municipality_counts else None
+        event_type = event_type_counts.most_common(1)[0][0] if event_type_counts else None
+        main_entities = [entity for entity, _ in entity_counts.most_common(8)] or None
+
+        story_count = max(len(stories), 1)
+        source_count = max(len(sources), 1)
+        times = [s.published_at for s in stories if s.published_at]
+        recent_cutoff = now - timedelta(hours=6)
+        recent_updates = sum(1 for ts in times if ts and ts >= recent_cutoff)
+        avg_geo_confidence = sum(geo_confidences) / len(geo_confidences) if geo_confidences else 0.0
+        heat_score = min(100.0, (recent_updates * 12.0) + (source_count * 6.0))
+        spread_score = min(100.0, (source_count * 18.0) + (10.0 if len(languages) > 1 else 0.0))
+        novelty_score = max(0.0, min(100.0, 70.0 - ((story_count - 1) * 3.5) + (20.0 if recent_updates <= 2 else 0.0)))
+        event_confidence = min(100.0, (avg_geo_confidence * 35.0) + (source_count * 12.0) + (min(story_count, 5) * 7.0))
+        severity = self._get_highest_severity([s.severity for s in stories if s.severity]) if any(s.severity for s in stories) else "low"
+        severity_bonus = {"critical": 25.0, "high": 18.0, "medium": 10.0, "low": 4.0}.get(severity, 4.0)
+        intelligence_score = min(100.0, (event_confidence * 0.45) + (heat_score * 0.30) + (spread_score * 0.15) + severity_bonus)
+        actionability = "archive"
+        if severity in {"critical", "high"} or heat_score >= 65.0:
+            actionability = "immediate"
+        elif event_confidence >= 45.0 or spread_score >= 35.0:
+            actionability = "monitor"
+
+        return {
+            "event_type": event_type,
+            "primary_province": primary_province,
+            "primary_district": primary_district,
+            "primary_municipality": primary_municipality,
+            "geo_confidence": round(avg_geo_confidence, 4),
+            "main_entities": main_entities,
+            "novelty_score": round(novelty_score, 2),
+            "heat_score": round(heat_score, 2),
+            "spread_score": round(spread_score, 2),
+            "event_confidence": round(event_confidence, 2),
+            "actionability": actionability,
+            "intelligence_score": round(intelligence_score, 2),
+        }
+
+    async def _compute_social_post_count(self, story_ids: List[UUID]) -> int:
+        if not story_ids:
+            return 0
+        result = await self.db.execute(
+            select(func.count(Tweet.id)).where(Tweet.story_id.in_(story_ids))
+        )
+        return int(result.scalar() or 0)
+
+    def _compute_official_confirmation_count(self, stories: List[ClusterCandidate]) -> int:
+        official_terms = ("gov", "government", "official", "ministry", "department", "commission", "authority", "police", "army", "parliament", "corporation")
+        official_orgs = {"nepal_police", "cib", "nepal_army", "eci", "noc", "parliament"}
+        confirmations = 0
+        for story in stories:
+            source_id = (story.source_id or "").lower()
+            features = story.features
+            if any(term in source_id for term in official_terms):
+                confirmations += 1
+                continue
+            if features and set(features.named_orgs or []).intersection(official_orgs):
+                confirmations += 1
+        return confirmations
+
+    async def _build_cluster_payload(self, stories: List[ClusterCandidate]) -> dict:
+        if not stories:
+            raise ValueError("Cannot build cluster payload with no stories")
+
+        sorted_stories = sorted(
+            stories,
+            key=lambda s: s.published_at or datetime.min.replace(tzinfo=timezone.utc),
+            reverse=True,
+        )
+        headline = sorted_stories[0].title
+        summaries = [s.summary for s in stories if s.summary]
+        summary = summaries[0] if summaries else None
+        categories = [s.category for s in stories if s.category]
+        category = max(set(categories), key=categories.count) if categories else None
+        severities = [s.severity for s in stories if s.severity]
+        severity = self._get_highest_severity(severities) if severities else None
+        event_meta = self._aggregate_event_metadata(stories)
+
+        times = [s.published_at for s in stories if s.published_at]
+        first_published = min(times) if times else None
+        last_updated = max(times) if times else None
+        corroboration = self.corroboration_service.compute_corroboration(stories)
+        social_post_count = await self._compute_social_post_count([s.id for s in stories])
+        official_confirmation_count = self._compute_official_confirmation_count(stories)
+        social_signal = min(100.0, social_post_count * 8.0)
+        official_signal = min(100.0, official_confirmation_count * 20.0)
+
+        base_intelligence = self.intelligence_scorer.score(
+            {
+                "severity": severity,
+                "first_published": first_published,
+                "source_count": corroboration.source_count,
+                "diversity_score": corroboration.diversity_score,
+                "nepal_relevance": "NEPAL_DOMESTIC",
+            },
+            corroboration,
+        )
+        intelligence_score = min(
+            100.0,
+            (base_intelligence.overall_score * 0.45)
+            + (event_meta["event_confidence"] * 0.20)
+            + (event_meta["heat_score"] * 0.15)
+            + (event_meta["spread_score"] * 0.10)
+            + (social_signal * 0.05)
+            + (official_signal * 0.05),
+        )
+        actionability = base_intelligence.actionability
+        if severity in {"critical", "high"} and (event_meta["heat_score"] >= 40.0 or official_confirmation_count > 0):
+            actionability = "immediate"
+        elif intelligence_score >= 50.0 and actionability == "archive":
+            actionability = "monitor"
+
+        return {
+            "headline": headline,
+            "summary": summary,
+            "category": category,
+            "severity": severity,
+            "first_published": first_published,
+            "last_updated": last_updated,
+            "story_count": len(stories),
+            "source_count": corroboration.source_count,
+            "unique_sources": corroboration.unique_sources,
+            "diversity_score": corroboration.diversity_score,
+            "confirmation_chain": corroboration.to_dict()["confirmation_chain"],
+            "confidence_level": corroboration.confidence_level,
+            "languages": corroboration.languages,
+            "cross_lingual_match": corroboration.cross_lingual,
+            "social_post_count": social_post_count,
+            "official_confirmation_count": official_confirmation_count,
+            "actionability": actionability,
+            "intelligence_score": round(intelligence_score, 2),
+            **event_meta,
+        }
+
+    async def _create_or_update_cluster(
+        self,
+        stories: List[ClusterCandidate],
+    ) -> Tuple[bool, Optional[StoryCluster]]:
+        """Create or update a cluster from stories.
+
+        If stories are already assigned to an existing cluster, update it.
+        Otherwise create a new cluster.
+
+        Returns:
+            Tuple of (is_new, cluster) where is_new is True if created, False if updated
+        """
+        if not stories:
+            return False, None
+
+        # Check if any stories are already in a cluster
+        story_ids = [s.id for s in stories]
+        existing_cluster_id = await self._find_existing_cluster_id(story_ids)
+
+        payload = await self._build_cluster_payload(stories)
+
+        if existing_cluster_id:
+            await self._upsert_cluster_row(existing_cluster_id, payload, is_new=False)
+            return False, SimpleNamespace(id=existing_cluster_id)
+
+        cluster_id = uuid4()
+        await self._upsert_cluster_row(cluster_id, payload, is_new=True)
+        return True, SimpleNamespace(id=cluster_id)
+
+    async def _assign_stories_to_cluster(
+        self,
+        story_ids: List[UUID],
+        cluster_id: UUID,
+    ) -> None:
+        """Update stories with cluster assignment."""
+        for story_id in story_ids:
+            result = await self.db.execute(
+                select(Story).where(Story.id == story_id)
+            )
+            story = result.scalar_one_or_none()
+            if story:
+                story.cluster_id = cluster_id
+
+    def _get_highest_severity(self, severities: List[str]) -> str:
+        """Get highest severity from list."""
+        priority = {"critical": 4, "high": 3, "medium": 2, "low": 1}
+        if not severities:
+            return "low"
+        return max(severities, key=lambda s: priority.get(s, 0))
+
+    async def get_clustered_stories(
+        self,
+        hours: int = 72,
+        category: Optional[str] = None,
+        severity: Optional[str] = None,
+    ) -> List[StoryCluster]:
+        """
+        Get clusters with their stories.
+
+        Args:
+            hours: Time window in hours
+            category: Filter by category
+            severity: Filter by severity
+
+        Returns:
+            List of StoryCluster objects with stories loaded
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        query = (
+            select(StoryCluster)
+            .where(StoryCluster.first_published >= cutoff)
+            .order_by(StoryCluster.first_published.desc().nullslast())
+        )
+
+        if category:
+            query = query.where(StoryCluster.category == category)
+        if severity:
+            query = query.where(StoryCluster.severity == severity)
+
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
+    async def get_unanalyzed_clusters(
+        self,
+        hours: int = 72,
+        limit: int = 50,
+    ) -> List[StoryCluster]:
+        """
+        Get clusters that haven't been analyzed yet.
+
+        Args:
+            hours: Time window in hours
+            limit: Maximum clusters to return
+
+        Returns:
+            List of StoryCluster objects without analysis
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        result = await self.db.execute(
+            select(StoryCluster)
+            .where(
+                and_(
+                    StoryCluster.first_published >= cutoff,
+                    StoryCluster.analyzed_at.is_(None),
+                )
+            )
+            .order_by(StoryCluster.first_published.desc().nullslast())
+            .limit(limit)
+        )
+
+        return list(result.scalars().all())
+
+    # ============================================================
+    # Haiku-Based Cross-Language Story Merge
+    # ============================================================
+
+    async def run_haiku_merge(self, hours: int = 48) -> dict:
+        """
+        Haiku-based story merge pass for cross-language clustering.
+
+        Groups stories by district (from StoryFeature table),
+        then sends each district batch to Haiku for semantic grouping.
+        This catches cross-language (EN↔NE) and cross-category pairs
+        that the embedding-based system misses.
+
+        Returns stats dict.
+        """
+        from collections import defaultdict
+        from sqlalchemy.orm import selectinload
+
+        stats = {
+            "stories_scanned": 0,
+            "districts_processed": 0,
+            "haiku_calls": 0,
+            "merges": 0,
+            "errors": [],
+        }
+
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+
+        # Districts live in StoryFeature, not Story. Join to get them.
+        # Use coalesce(published_at, created_at) since published_at is often NULL.
+        result = await self.db.execute(
+            select(Story, StoryFeature.districts)
+            .join(StoryFeature, Story.id == StoryFeature.story_id)
+            .where(
+                and_(
+                    func.coalesce(Story.published_at, Story.created_at) >= cutoff,
+                    Story.nepal_relevance.in_(["NEPAL_DOMESTIC", "NEPAL_NEIGHBOR"]),
+                    StoryFeature.districts.isnot(None),
+                )
+            )
+            .order_by(func.coalesce(Story.published_at, Story.created_at).desc())
+        )
+        rows = result.all()
+
+        # Build story list with their districts
+        story_map: dict[UUID, Story] = {}
+        story_districts: dict[UUID, list[str]] = {}
+        for story, districts in rows:
+            if not districts:
+                continue
+            story_map[story.id] = story
+            story_districts[story.id] = districts
+
+        stats["stories_scanned"] = len(story_map)
+
+        if len(story_map) < 2:
+            return stats
+
+        # Group stories by district — a story can appear in multiple district buckets
+        by_district: dict[str, list[Story]] = defaultdict(list)
+        for story_id, districts in story_districts.items():
+            for district in districts:
+                by_district[district.lower()].append(story_map[story_id])
+
+        # Process each district batch
+        stats["districts_skipped"] = 0
+        for district, district_stories in by_district.items():
+            if len(district_stories) < 2:
+                continue
+
+            # Deduplicate by story id (same story may be added via multiple districts)
+            seen_ids = set()
+            unique_stories = []
+            for s in district_stories:
+                if s.id not in seen_ids:
+                    seen_ids.add(s.id)
+                    unique_stories.append(s)
+
+            if len(unique_stories) < 2:
+                continue
+
+            # OPTIMIZATION: Skip districts where ALL stories are already clustered
+            # Only call Haiku when there are unclustered stories that need merging
+            unclustered = [s for s in unique_stories if s.cluster_id is None]
+            if not unclustered:
+                stats["districts_skipped"] += 1
+                continue
+
+            stats["districts_processed"] += 1
+
+            try:
+                merges = await self._haiku_merge_batch(unique_stories, district)
+                stats["haiku_calls"] += 1
+                stats["merges"] += merges
+                if merges > 0:
+                    await self.db.flush()
+                    logger.info(f"Haiku merge {district}: {merges} groups from {len(unique_stories)} stories")
+            except Exception as e:
+                logger.error(f"Haiku merge failed for district {district}: {e}")
+                stats["errors"].append(f"{district}: {e}")
+
+        try:
+            await self.db.commit()
+            logger.info("Haiku merge DB commit OK")
+        except Exception as e:
+            logger.error(f"Haiku merge commit FAILED: {e}")
+            await self.db.rollback()
+
+        logger.info(
+            f"Haiku merge: scanned {stats['stories_scanned']} stories, "
+            f"processed {stats['districts_processed']} districts "
+            f"(skipped {stats.get('districts_skipped', 0)} fully-clustered), "
+            f"merged {stats['merges']} story groups"
+        )
+        return stats
+
+    async def _haiku_merge_batch(self, stories: list, district: str) -> int:
+        """
+        Send a batch of stories from the same district to the shared LLM runner.
+        Claude remains primary; local fallback can be used when enabled.
+
+        Returns number of merge operations performed.
+        """
+        from app.services.analyst_agent.claude_runner import call_claude_json, has_available_llm
+
+        if not has_available_llm():
+            logger.debug("No LLM provider available — skipping merge batch")
+            return 0
+
+        # Build numbered story list — include all stories (clustered + unclustered)
+        # Mark clustered ones so Haiku can merge across clusters
+        story_lines = []
+        id_map: dict[int, "Story"] = {}
+        for story in stories:
+            if len(id_map) >= 25:
+                break
+            idx = len(id_map) + 1
+            id_map[idx] = story
+            title = story.title[:120].replace('\n', ' ')
+            source = story.source_id or "?"
+            cluster_tag = f" [C{str(story.cluster_id)[:4]}]" if story.cluster_id else ""
+            story_lines.append(f"[{idx}] ({source}) {title}{cluster_tag}")
+
+        if len(id_map) < 2:
+            return 0
+
+        story_block = "\n".join(story_lines)
+
+        user_msg = (
+            f"District: {district}\n\n"
+            f"{story_block}\n\n"
+            "Return raw JSON only in this exact shape:\n"
+            "{\"groups\": [[1,3,5],[4,7]]}\n"
+            "If there are no valid merges, return {\"groups\":[]}."
+        )
+        system_prompt = (
+            "You identify news stories covering the SAME real-world event or incident. "
+            "Group stories that cover the same event, including updates and follow-on reports. "
+            "Do not group stories that only share a broad topic. "
+            "Stories already tagged [Cxxxx] may be merged across clusters if they are the same event. "
+            "Maximum 10 stories per group. Omit singletons."
+        )
+
+        try:
+            result = await call_claude_json(
+                user_msg,
+                timeout=30,
+                model="haiku",
+                system_prompt=system_prompt,
+            )
+        except Exception as e:
+            logger.warning("Haiku merge failed for %s: %s", district, e)
+            return 0
+
+        # Parse groups — cap at 10 per group
+        raw_groups = result.get("groups", [])
+        merges = 0
+
+        for group_indices in raw_groups:
+            if not isinstance(group_indices, list) or len(group_indices) < 2:
+                continue
+
+            group_indices = group_indices[:10]
+
+            # Resolve to Story objects
+            group_stories = []
+            for idx in group_indices:
+                if isinstance(idx, int) and idx in id_map:
+                    group_stories.append(id_map[idx])
+
+            if len(group_stories) < 2:
+                continue
+
+            # Collect all existing cluster IDs in this group
+            existing_cluster_ids = set()
+            for s in group_stories:
+                if s.cluster_id:
+                    existing_cluster_ids.add(s.cluster_id)
+
+            if existing_cluster_ids:
+                # Pick the largest existing cluster as the target
+                target_cluster_id = None
+                best_count = -1
+                for cid in existing_cluster_ids:
+                    res = await self.db.execute(
+                        select(StoryCluster.story_count).where(StoryCluster.id == cid)
+                    )
+                    cnt = res.scalar() or 0
+                    if cnt > best_count:
+                        best_count = cnt
+                        target_cluster_id = cid
+
+                if not target_cluster_id:
+                    continue
+
+                # Move all stories in this group to the target cluster (SQL UPDATE)
+                story_ids = [s.id for s in group_stories if s.cluster_id != target_cluster_id]
+                if story_ids:
+                    await self.db.execute(
+                        text("UPDATE stories SET cluster_id = :cid WHERE id = ANY(:ids)"),
+                        {"cid": target_cluster_id, "ids": story_ids},
+                    )
+
+                # Absorb orphan clusters
+                orphan_cluster_ids = existing_cluster_ids - {target_cluster_id}
+                for orphan_id in orphan_cluster_ids:
+                    await self.db.execute(
+                        text("UPDATE stories SET cluster_id = :target WHERE cluster_id = :orphan"),
+                        {"target": target_cluster_id, "orphan": orphan_id},
+                    )
+                    await self.db.execute(
+                        text("DELETE FROM story_clusters WHERE id = :oid"),
+                        {"oid": orphan_id},
+                    )
+
+                # Recount and update target cluster
+                count_result = await self.db.execute(
+                    text("""
+                        UPDATE story_clusters SET
+                            story_count = sub.cnt,
+                            source_count = sub.src,
+                            headline = :headline,
+                            last_updated = :updated
+                        FROM (
+                            SELECT count(*) as cnt, count(DISTINCT source_id) as src
+                            FROM stories WHERE cluster_id = :cid
+                        ) sub
+                        WHERE story_clusters.id = :cid
+                    """),
+                    {
+                        "cid": target_cluster_id,
+                        "headline": max(
+                            group_stories,
+                            key=lambda s: s.published_at or s.created_at or datetime.min.replace(tzinfo=timezone.utc),
+                        ).title,
+                        "updated": max(
+                            group_stories,
+                            key=lambda s: s.published_at or s.created_at or datetime.min.replace(tzinfo=timezone.utc),
+                        ).published_at or datetime.now(timezone.utc),
+                    },
+                )
+                merges += 1
+            else:
+                # Create new cluster — all stories are unclustered
+                sorted_stories = sorted(
+                    group_stories,
+                    key=lambda s: s.published_at or s.created_at or datetime.min.replace(tzinfo=timezone.utc),
+                    reverse=True,
+                )
+
+                unique_sources = list(set(s.source_id for s in group_stories if s.source_id))
+                categories = [s.category for s in group_stories if s.category]
+                severities = [s.severity for s in group_stories if s.severity]
+                times = [s.published_at or s.created_at for s in group_stories if s.published_at or s.created_at]
+
+                new_cluster_id = uuid4()
+                await self.db.execute(
+                    text("""
+                        INSERT INTO story_clusters (id, headline, summary, category, severity,
+                            story_count, source_count, first_published, last_updated)
+                        VALUES (:id, :headline, :summary, :category, :severity,
+                            :story_count, :source_count, :first_published, :last_updated)
+                    """),
+                    {
+                        "id": new_cluster_id,
+                        "headline": sorted_stories[0].title,
+                        "summary": sorted_stories[0].summary,
+                        "category": max(set(categories), key=categories.count) if categories else None,
+                        "severity": self._get_highest_severity(severities) if severities else None,
+                        "story_count": len(group_stories),
+                        "source_count": len(unique_sources),
+                        "first_published": min(times) if times else None,
+                        "last_updated": max(times) if times else None,
+                    },
+                )
+
+                story_ids = [s.id for s in group_stories]
+                await self.db.execute(
+                    text("UPDATE stories SET cluster_id = :cid WHERE id = ANY(:ids)"),
+                    {"cid": new_cluster_id, "ids": story_ids},
+                )
+
+                merges += 1
+
+        return merges
+
+    async def apply_external_merge(self, district: str, groups: list[list[str]], metadata: list[dict] | None = None) -> int:
+        """
+        Apply merge groups from an external source (e.g., local Claude CLI).
+        Each group is a list of story UUIDs that should be merged.
+        Optional metadata per group: {headline, bluf, event_type, severity, ...}
+        """
+        from uuid import UUID as _UUID
+
+        merges = 0
+        for gi, group_ids in enumerate(groups):
+            meta = (metadata[gi] if metadata and gi < len(metadata) else {}) or {}
+            if len(group_ids) < 2:
+                continue
+
+            # Resolve story UUIDs
+            story_uuids = []
+            for sid in group_ids[:10]:
+                try:
+                    story_uuids.append(_UUID(sid))
+                except ValueError:
+                    continue
+
+            if len(story_uuids) < 2:
+                continue
+
+            # Fetch stories
+            result = await self.db.execute(
+                select(Story).where(Story.id.in_(story_uuids))
+            )
+            group_stories = result.scalars().all()
+            if len(group_stories) < 2:
+                continue
+
+            # Collect existing cluster IDs
+            existing_cluster_ids = set()
+            for s in group_stories:
+                if s.cluster_id:
+                    existing_cluster_ids.add(s.cluster_id)
+
+            if existing_cluster_ids:
+                # Pick largest existing cluster
+                target_cluster_id = None
+                best_count = -1
+                for cid in existing_cluster_ids:
+                    res = await self.db.execute(
+                        select(StoryCluster.story_count).where(StoryCluster.id == cid)
+                    )
+                    cnt = res.scalar() or 0
+                    if cnt > best_count:
+                        best_count = cnt
+                        target_cluster_id = cid
+
+                if not target_cluster_id:
+                    continue
+
+                story_ids = [s.id for s in group_stories if s.cluster_id != target_cluster_id]
+                if story_ids:
+                    await self.db.execute(
+                        text("UPDATE stories SET cluster_id = :cid WHERE id = ANY(:ids)"),
+                        {"cid": target_cluster_id, "ids": story_ids},
+                    )
+
+                # Absorb orphan clusters
+                orphan_cluster_ids = existing_cluster_ids - {target_cluster_id}
+                for orphan_id in orphan_cluster_ids:
+                    await self.db.execute(
+                        text("UPDATE stories SET cluster_id = :target WHERE cluster_id = :orphan"),
+                        {"target": target_cluster_id, "orphan": orphan_id},
+                    )
+                    await self.db.execute(
+                        text("DELETE FROM story_clusters WHERE id = :oid"),
+                        {"oid": orphan_id},
+                    )
+
+                # Recount + store analysis metadata if available
+                latest_story = max(
+                    group_stories,
+                    key=lambda s: s.published_at or s.created_at or datetime.min.replace(tzinfo=timezone.utc),
+                )
+                update_headline = meta.get("headline") or latest_story.title
+                update_bluf = meta.get("bluf")
+                update_params = {
+                    "cid": target_cluster_id,
+                    "headline": update_headline,
+                    "updated": latest_story.published_at or datetime.now(timezone.utc),
+                }
+                analysis_json = {k: v for k, v in meta.items() if k not in ("headline", "indices")} if meta else None
+                if analysis_json:
+                    await self.db.execute(
+                        text("""
+                            UPDATE story_clusters SET
+                                story_count = sub.cnt,
+                                source_count = sub.src,
+                                headline = :headline,
+                                last_updated = :updated,
+                                bluf = :bluf,
+                                analysis = :analysis,
+                                analyzed_at = now()
+                            FROM (
+                                SELECT count(*) as cnt, count(DISTINCT source_id) as src
+                                FROM stories WHERE cluster_id = :cid
+                            ) sub
+                            WHERE story_clusters.id = :cid
+                        """),
+                        {**update_params, "bluf": update_bluf, "analysis": json.dumps(analysis_json)},
+                    )
+                else:
+                    await self.db.execute(
+                        text("""
+                            UPDATE story_clusters SET
+                                story_count = sub.cnt,
+                                source_count = sub.src,
+                                headline = :headline,
+                                last_updated = :updated
+                            FROM (
+                                SELECT count(*) as cnt, count(DISTINCT source_id) as src
+                                FROM stories WHERE cluster_id = :cid
+                            ) sub
+                            WHERE story_clusters.id = :cid
+                        """),
+                        update_params,
+                    )
+                merges += 1
+            else:
+                # All unclustered — create new cluster
+                sorted_stories = sorted(
+                    group_stories,
+                    key=lambda s: s.published_at or s.created_at or datetime.min.replace(tzinfo=timezone.utc),
+                    reverse=True,
+                )
+                unique_sources = list(set(s.source_id for s in group_stories if s.source_id))
+                categories = [s.category for s in group_stories if s.category]
+                severities = [s.severity for s in group_stories if s.severity]
+                times = [s.published_at or s.created_at for s in group_stories if s.published_at or s.created_at]
+
+                # Use metadata from enhanced clustering if available
+                cluster_headline = meta.get("headline") or sorted_stories[0].title
+                cluster_bluf = meta.get("bluf")
+                cluster_severity = meta.get("severity") or (self._get_highest_severity(severities) if severities else None)
+                cluster_category = meta.get("event_type") or (max(set(categories), key=categories.count) if categories else None)
+                analysis_json = {k: v for k, v in meta.items() if k not in ("headline", "indices")} if meta else None
+
+                new_cluster_id = uuid4()
+                await self.db.execute(
+                    text("""
+                        INSERT INTO story_clusters (id, headline, summary, category, severity,
+                            story_count, source_count, first_published, last_updated,
+                            bluf, analysis, analyzed_at)
+                        VALUES (:id, :headline, :summary, :category, :severity,
+                            :story_count, :source_count, :first_published, :last_updated,
+                            :bluf, :analysis, now())
+                    """),
+                    {
+                        "id": new_cluster_id,
+                        "headline": cluster_headline,
+                        "summary": sorted_stories[0].summary,
+                        "category": cluster_category,
+                        "severity": cluster_severity,
+                        "story_count": len(group_stories),
+                        "source_count": len(unique_sources),
+                        "first_published": min(times) if times else None,
+                        "last_updated": max(times) if times else None,
+                        "bluf": cluster_bluf,
+                        "analysis": json.dumps(analysis_json) if analysis_json else None,
+                    },
+                )
+                await self.db.execute(
+                    text("UPDATE stories SET cluster_id = :cid WHERE id = ANY(:ids)"),
+                    {"cid": new_cluster_id, "ids": [s.id for s in group_stories]},
+                )
+                merges += 1
+
+        await self.db.flush()
+        logger.info(f"External merge {district}: {merges} groups applied")
+        return merges

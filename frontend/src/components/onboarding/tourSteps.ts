@@ -9,7 +9,7 @@ export interface DashboardTourStep {
   mobileEnabled: boolean
   guestCta?: 'create-account'
   requiresScroll?: boolean
-  presetId?: 'news' | 'parliament' | 'elections'
+  presetId?: 'news' | 'economy' | 'parliament' | 'elections'
 }
 
 const DESKTOP_STEPS: DashboardTourStep[] = [
@@ -35,16 +35,6 @@ const DESKTOP_STEPS: DashboardTourStep[] = [
     title: 'Use the map for fast geographic context',
     description: 'The News map shows where activity, incidents, and pressure are concentrating. Use it first when you want to understand location, spread, and intensity before opening individual stories.',
     targetId: 'news-map',
-    placement: 'bottom',
-    mobileEnabled: true,
-    requiresScroll: true,
-    presetId: 'news',
-  },
-  {
-    id: 'national-assessment',
-    title: 'Start with National Assessment',
-    description: 'This is the fastest read on the national picture. Use it first when you want the top synthesis before opening raw feeds.',
-    targetId: 'national-assessment',
     placement: 'bottom',
     mobileEnabled: true,
     requiresScroll: true,
@@ -78,6 +68,15 @@ const DESKTOP_STEPS: DashboardTourStep[] = [
     mobileEnabled: false,
     requiresScroll: true,
     presetId: 'news',
+  },
+  {
+    id: 'economy-tab',
+    title: 'Use Economy for the financial picture',
+    description: 'Open Economy when you want the business and macro side of the country. This workspace brings together economic news, markets, NRB indicators, trade and customs, debt, contracts, and other financial signals in one place.',
+    targetId: 'economy-tab',
+    placement: 'bottom',
+    mobileEnabled: false,
+    presetId: 'economy',
   },
   {
     id: 'accountability-tab',
@@ -150,16 +149,6 @@ const MOBILE_STEPS: DashboardTourStep[] = [
     presetId: 'news',
   },
   {
-    id: 'national-assessment',
-    title: 'This is your live dashboard',
-    description: 'National Assessment is the fastest way to understand the current picture before drilling into live feeds or province detail.',
-    targetId: 'national-assessment',
-    placement: 'bottom',
-    mobileEnabled: true,
-    requiresScroll: true,
-    presetId: 'news',
-  },
-  {
     id: 'fact-check',
     title: 'Use live feed and fact check together',
     description: 'Watch new reporting in the live feed, then cross-check reviewed claims here when you need more confidence.',
@@ -167,6 +156,15 @@ const MOBILE_STEPS: DashboardTourStep[] = [
     placement: 'top',
     mobileEnabled: true,
     requiresScroll: true,
+  },
+  {
+    id: 'economy-tab',
+    title: 'Use Economy for markets and macro',
+    description: 'After the live news view, open Economy when you want NRB indicators, markets, trade, debt, and broader business signals in one workspace.',
+    targetId: 'economy-tab',
+    placement: 'bottom',
+    mobileEnabled: true,
+    presetId: 'economy',
   },
   {
     id: 'accountability-tab',

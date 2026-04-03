@@ -75,7 +75,6 @@ const WIDGET_LOADERS: Record<string, WidgetLoader> = {
   rivers: () => import('./widgets/RiverMonitoringWidget').then((m) => ({ default: m.RiverMonitoringWidget })),
   'bill-tracker': () => import('./widgets/BillTrackerWidget').then((m) => ({ default: m.BillTrackerWidget })),
   'parliament-activity': () => import('./widgets/ParliamentaryActivityWidget').then((m) => ({ default: m.ParliamentaryActivityWidget })),
-  'situation-brief': () => import('./widgets/SituationBriefWidget').then((m) => ({ default: m.SituationBriefWidget })),
   'cases-active': () => import('./widgets').then((m) => ({ default: m.ActiveCasesWidget })),
   'collab-feed': () => import('./widgets').then((m) => ({ default: m.CollaborationFeedWidget })),
   'verification-queue': () => import('./widgets').then((m) => ({ default: m.VerificationQueueWidget })),
@@ -97,16 +96,16 @@ export const WIDGET_COMPONENTS: Record<string, LazyExoticComponent<ComponentType
 
 const BOOTSTRAP_PRESETS = new Set<DashboardBootstrapPreset>(['news', 'economy', 'parliament', 'intelligence']);
 const IMMEDIATE_WIDGETS_BY_PRESET: Record<string, string[]> = {
-  news: ['situation-brief', 'kpi', 'developing-stories', 'newsfeed'],
+  news: ['kpi', 'developing-stories', 'newsfeed', 'fact-check'],
   economy: ['economic-news', 'market', 'nrb-macro', 'fiscal-position'],
   parliament: ['parliament-session', 'govt-decisions', 'promise-tracker', 'bill-tracker'],
-  intelligence: ['situation-brief', 'kpi', 'developing-stories', 'province-monitor'],
+  intelligence: ['kpi', 'developing-stories', 'fact-check', 'province-monitor'],
 };
 
 const MOBILE_WIDGETS_BY_PRESET: Record<string, string[]> = {
-  news: ['situation-brief', 'developing-stories', 'fact-check', 'newsfeed', 'province-monitor'],
-  analyst: ['election-map', 'situation-brief', 'newsfeed', 'election-status', 'fact-check'],
-  intelligence: ['map', 'situation-brief', 'developing-stories', 'fact-check', 'province-monitor'],
+  news: ['developing-stories', 'fact-check', 'newsfeed', 'market', 'province-monitor'],
+  analyst: ['election-map', 'newsfeed', 'election-status', 'fact-check'],
+  intelligence: ['map', 'developing-stories', 'fact-check', 'newsfeed', 'province-monitor'],
   elections: ['election-seats', 'election-status', 'election-pr', 'election-live'],
   economy: ['economic-news', 'market', 'trade-customs', 'fiscal-position', 'external-sector', 'monetary-conditions', 'prices-cost-pressure', 'govt-loan-tracker', 'govt-contracts', 'debt-tracker'],
   parliament: ['promise-tracker', 'bill-tracker', 'parliament-activity', 'govt-decisions', 'neta', 'parliament-session'],

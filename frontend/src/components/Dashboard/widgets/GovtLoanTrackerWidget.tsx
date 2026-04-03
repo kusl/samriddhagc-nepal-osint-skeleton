@@ -2,61 +2,15 @@ import { memo, useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Landmark, RefreshCw } from 'lucide-react';
 import { Widget } from '../Widget';
 import { useNepalDebtClock } from '../../../api/hooks';
+import { useSettingsStore } from '../../../store/slices/settingsSlice';
+import { buildNprDisplay, formatUsdCompact, formatUsdFull } from '../../../utils/currency';
 
 type CurrencyMode = 'npr' | 'usd';
 
-const NPR_PREFIX = 'Nrs';
+const NPR_LABEL = 'NRS';
 
 function formatInteger(value: number, locale: string = 'en-US'): string {
   return Math.round(value).toLocaleString(locale);
-}
-
-function formatCurrencyValue(value: number, currency: CurrencyMode): string {
-  if (currency === 'usd') {
-    return `$${formatInteger(value, 'en-US')}`;
-  }
-  return `${NPR_PREFIX} ${formatInteger(value, 'en-NP')}`;
-}
-
-function formatCurrencyNumberOnly(value: number, currency: CurrencyMode): string {
-  if (currency === 'usd') {
-    return formatInteger(value, 'en-US');
-  }
-  return formatInteger(value, 'en-NP');
-}
-
-function formatCompactCurrencyValue(value: number, currency: CurrencyMode): string {
-  const absValue = Math.abs(value);
-  if (absValue < 1_000_000) {
-    if (currency === 'usd') {
-      return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
-    }
-    return `${NPR_PREFIX} ${value.toLocaleString('en-NP', { maximumFractionDigits: 0 })}`;
-  }
-
-  const suffixes = [
-    { threshold: 1_000_000_000_000, suffix: 'T' },
-    { threshold: 1_000_000_000, suffix: 'B' },
-    { threshold: 1_000_000, suffix: 'M' },
-  ];
-
-  for (const { threshold, suffix } of suffixes) {
-    if (absValue >= threshold) {
-      const compact = (value / threshold).toLocaleString('en-US', {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 2,
-      });
-      if (currency === 'usd') {
-        return `$${compact}${suffix}`;
-      }
-      return `${NPR_PREFIX} ${compact}${suffix}`;
-    }
-  }
-
-  if (currency === 'usd') {
-    return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
-  }
-  return `${NPR_PREFIX} ${value.toLocaleString('en-NP', { maximumFractionDigits: 0 })}`;
 }
 
 function formatPercent(value: number | null | undefined): string {
@@ -135,12 +89,14 @@ function StatCard({
   meta,
   accent,
   featured = false,
+  valueTitle,
 }: {
   label: string;
   value: string;
   meta: string;
   accent?: string;
   featured?: boolean;
+  valueTitle?: string;
 }) {
   const valueLength = value.length;
   const valueFontSize = featured
@@ -169,6 +125,7 @@ function StatCard({
         {label}
       </div>
       <div
+        title={valueTitle}
         style={{
           fontFamily: 'var(--font-mono)',
           fontSize: valueFontSize,
@@ -203,6 +160,7 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
   const [currency, setCurrency] = useState<CurrencyMode>('npr');
   const [now, setNow] = useState<number>(() => Date.now());
   const { data, isLoading, isError, refetch, isFetching } = useNepalDebtClock();
+  const { nprNumberingSystem, showUsdEquivalents } = useSettingsStore();
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -228,10 +186,64 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
     return baseDebt + elapsedSeconds * flowPerSecond;
   }, [currency, data, now]);
 
+  const currentDebtDisplay = useMemo(() => {
+    if (!data) {
+      return { text: '0', title: '0', usdText: null };
+    }
+
+    if (currency === 'usd') {
+      const full = formatUsdFull(currentDebt);
+      return { text: full, title: full, usdText: null };
+    }
+
+    return buildNprDisplay(currentDebt, {
+      system: nprNumberingSystem,
+      usdPerNpr: data.fx_usd_per_lcy,
+      showUsdEquivalent: showUsdEquivalents,
+      compact: false,
+    });
+  }, [currency, currentDebt, data, nprNumberingSystem, showUsdEquivalents]);
+
   const macroCards = useMemo(() => {
     if (!data) {
       return [];
     }
+
+    const getDisplay = (value: number): { text: string; title: string } => {
+      if (currency === 'usd') {
+        return {
+          text: formatUsdCompact(value),
+          title: formatUsdFull(value),
+        };
+      }
+
+      const nprDisplay = buildNprDisplay(value, {
+        system: nprNumberingSystem,
+        usdPerNpr: data.fx_usd_per_lcy,
+        showUsdEquivalent: showUsdEquivalents,
+        compact: true,
+      });
+
+      return {
+        text: nprDisplay.text,
+        title: nprDisplay.title,
+      };
+    };
+
+    const externalDebtValue = currency === 'usd'
+      ? (data.external_debt_npr || 0) * data.fx_usd_per_lcy
+      : (data.external_debt_npr || 0);
+    const domesticDebtValue = currency === 'usd'
+      ? (data.domestic_debt_npr || 0) * data.fx_usd_per_lcy
+      : (data.domestic_debt_npr || 0);
+    const perCitizenValue = currency === 'usd' ? data.debt_per_citizen_usd : data.debt_per_citizen_npr;
+    const flowPerSecondValue = currency === 'usd' ? data.flow_per_second_usd : data.flow_per_second_npr;
+    const gdpNominalValue = currency === 'usd' ? data.gdp_nominal_usd : data.gdp_nominal_npr;
+    const externalDebtDisplay = getDisplay(externalDebtValue);
+    const domesticDebtDisplay = getDisplay(domesticDebtValue);
+    const perCitizenDisplay = getDisplay(perCitizenValue);
+    const flowPerSecondDisplay = getDisplay(flowPerSecondValue);
+    const gdpNominalDisplay = getDisplay(gdpNominalValue);
 
     return [
       {
@@ -243,51 +255,37 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
       },
       {
         label: 'External Debt',
-        value: formatCompactCurrencyValue(
-          currency === 'usd'
-            ? (data.external_debt_npr || 0) * data.fx_usd_per_lcy
-            : (data.external_debt_npr || 0),
-          currency,
-        ),
+        value: externalDebtDisplay.text,
+        valueTitle: externalDebtDisplay.title,
         meta: data.debt_as_of_label || 'Latest debt report',
         accent: '#60a5fa',
         featured: true,
       },
       {
         label: 'Domestic Debt',
-        value: formatCompactCurrencyValue(
-          currency === 'usd'
-            ? (data.domestic_debt_npr || 0) * data.fx_usd_per_lcy
-            : (data.domestic_debt_npr || 0),
-          currency,
-        ),
+        value: domesticDebtDisplay.text,
+        valueTitle: domesticDebtDisplay.title,
         meta: data.debt_as_of_label || 'Latest debt report',
         accent: '#34d399',
         featured: true,
       },
       {
         label: 'Debt Per Citizen',
-        value: formatCompactCurrencyValue(
-          currency === 'usd' ? data.debt_per_citizen_usd : data.debt_per_citizen_npr,
-          currency,
-        ),
+        value: perCitizenDisplay.text,
+        valueTitle: perCitizenDisplay.title,
         meta: data.population_label || 'Based on latest population',
       },
       {
         label: 'Per Second',
-        value: formatCompactCurrencyValue(
-          currency === 'usd' ? data.flow_per_second_usd : data.flow_per_second_npr,
-          currency,
-        ),
+        value: flowPerSecondDisplay.text,
+        valueTitle: flowPerSecondDisplay.title,
         meta: data.interest_label || formatYearMeta('Snapshot year', data.snapshot_year),
         accent: '#fb923c',
       },
       {
         label: 'GDP (Nominal)',
-        value: formatCompactCurrencyValue(
-          currency === 'usd' ? data.gdp_nominal_usd : data.gdp_nominal_npr,
-          currency,
-        ),
+        value: gdpNominalDisplay.text,
+        valueTitle: gdpNominalDisplay.title,
         meta: data.gdp_nominal_label || formatYearMeta('Latest year', data.snapshot_year),
         accent: '#93c5fd',
       },
@@ -307,7 +305,7 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
         meta: `${data.budget_balance_label || formatYearMeta('Budget', data.budget_balance_year)} · ${data.unemployment_label || formatYearMeta('Unemployment', data.unemployment_year)}`,
       },
     ];
-  }, [currency, data]);
+  }, [currency, data, nprNumberingSystem, showUsdEquivalents]);
 
   if (isLoading && !data) {
     return (
@@ -471,9 +469,10 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
                   background: 'rgba(255,255,255,0.03)',
                 }}
               >
-                {currency === 'usd' ? 'USD' : NPR_PREFIX}
+                {currency === 'usd' ? 'USD' : NPR_LABEL}
               </span>
               <div
+                title={currentDebtDisplay.title}
                 style={{
                   fontFamily: 'var(--font-mono)',
                   fontSize: 42,
@@ -486,9 +485,14 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
                   flex: 1,
                 }}
               >
-                {formatCurrencyNumberOnly(currentDebt, currency)}
+                {currentDebtDisplay.text}
               </div>
             </div>
+            {currentDebtDisplay.usdText ? (
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                {currentDebtDisplay.usdText}
+              </div>
+            ) : null}
           </div>
 
           <div
@@ -506,6 +510,7 @@ export const GovtLoanTrackerWidget = memo(function GovtLoanTrackerWidget() {
                 meta={card.meta}
                 accent={card.accent}
                 featured={card.featured}
+                valueTitle={card.valueTitle}
               />
             ))}
           </div>

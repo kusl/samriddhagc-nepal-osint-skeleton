@@ -158,6 +158,83 @@ class CabinetActionService:
         return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
     @classmethod
+    def _normalize_source_url(cls, value: Optional[str]) -> str:
+        return cls._clean_text((value or "").strip().rstrip("/")).lower()
+
+    @classmethod
+    def _evidence_identity_key(
+        cls,
+        *,
+        source_kind: Optional[str],
+        source_title: Optional[str],
+        source_name: Optional[str],
+        source_url: Optional[str],
+        source_story_id: Optional[str],
+        source_announcement_id: Optional[str],
+        milestone_id: Optional[UUID] = None,
+    ) -> tuple[str, ...]:
+        milestone_key = str(milestone_id) if milestone_id else "item"
+        if source_announcement_id:
+            return ("announcement", source_announcement_id, milestone_key)
+        if source_story_id:
+            return ("story", source_story_id, milestone_key)
+        normalized_url = cls._normalize_source_url(source_url)
+        if normalized_url:
+            return ("url", normalized_url, milestone_key)
+        return (
+            "text",
+            cls._normalize_for_match(source_kind or ""),
+            cls._normalize_for_match(source_name or ""),
+            cls._normalize_for_match(source_title or ""),
+            milestone_key,
+        )
+
+    @classmethod
+    def _evidence_identity_for_entry(cls, entry: CabinetActionEvidence) -> tuple[str, ...]:
+        return cls._evidence_identity_key(
+            source_kind=entry.source_kind,
+            source_title=entry.source_title,
+            source_name=entry.source_name,
+            source_url=entry.source_url,
+            source_story_id=entry.source_story_id,
+            source_announcement_id=entry.source_announcement_id,
+            milestone_id=entry.milestone_id,
+        )
+
+    @classmethod
+    def _evidence_sort_score(cls, entry: CabinetActionEvidence) -> tuple[Any, ...]:
+        note = cls._clean_text(entry.evidence_note_en or "")
+        published_ts = entry.published_at.timestamp() if entry.published_at else 0.0
+        created_ts = entry.created_at.timestamp() if entry.created_at else 0.0
+        return (
+            1 if entry.is_official else 0,
+            1 if entry.is_applied else 0,
+            1 if entry.is_public else 0,
+            1 if note else 0,
+            len(note),
+            float(entry.confidence or 0.0),
+            published_ts,
+            created_ts,
+        )
+
+    @classmethod
+    def _dedupe_evidence_entries(cls, entries: list[CabinetActionEvidence]) -> list[CabinetActionEvidence]:
+        best_by_key: dict[tuple[str, ...], CabinetActionEvidence] = {}
+        for entry in sorted(entries, key=cls._evidence_sort_score, reverse=True):
+            key = cls._evidence_identity_for_entry(entry)
+            if key not in best_by_key:
+                best_by_key[key] = entry
+        return sorted(
+            best_by_key.values(),
+            key=lambda entry: (
+                1 if entry.is_official else 0,
+                entry.published_at or datetime.min.replace(tzinfo=timezone.utc),
+                entry.created_at or datetime.min.replace(tzinfo=timezone.utc),
+            ),
+            reverse=True,
+        )
+
+    @classmethod
     def _section_for_item(cls, item_number: int) -> tuple[str, str, str]:
         for start, end, key, title_ne, title_en in SECTION_RANGES:
             if start <= item_number <= end:
@@ -424,9 +501,30 @@ class CabinetActionService:
 
     @staticmethod
     def _status_for_seed(trackability_class: str) -> str:
-        if trackability_class == "declaratory_contextual":
-            return "declaratory_non_scored"
         return "announced"
+
+    @staticmethod
+    def _resolve_public_trackability(trackability_class: Optional[str]) -> str:
+        return trackability_class or "directly_trackable"
+
+    @classmethod
+    def _resolve_public_status(
+        cls,
+        *,
+        trackability_class: Optional[str],
+        status: Optional[str],
+        due_date_ad: Optional[date],
+    ) -> str:
+        return status or "announced"
+
+    @staticmethod
+    def _effective_audit_fields(item: CabinetActionItem) -> dict[str, Any]:
+        review = item.review
+        use_review = bool(review and review.workflow_status not in {"rejected", "superseded"})
+        return {
+            "trackability_class": review.final_trackability_class if use_review and review.final_trackability_class else item.trackability_class,
+            "status": review.final_status if use_review and review.final_status else item.status,
+        }
 
     async def seed_from_pdf(
         self,
@@ -821,26 +919,67 @@ class CabinetActionService:
             if isinstance(entry, dict)
         }
         applied_status = self._map_signal_to_status(mapping["status_signal"], due_date=item.due_date_ad, event_date=source.published_at)
-        evidence = CabinetActionEvidence(
-            item_id=item.id,
+        incoming_key = self._evidence_identity_key(
             source_kind=source.kind,
             source_title=source.title,
             source_name=source.source_name,
             source_url=source.source_url,
-            published_at=source.published_at,
             source_story_id=source.source_story_id,
             source_announcement_id=source.source_announcement_id,
-            is_official=source.is_official,
-            extracted_status=applied_status,
-            evidence_note_en=mapping.get("evidence_note_en"),
-            confidence=float(mapping.get("confidence") or 0.0),
-            is_public=bool(source.is_official and (mapping.get("should_apply") or False)),
-            is_applied=bool(source.is_official and (mapping.get("should_apply") or False)),
-            raw_model_payload=mapping,
         )
-        self.db.add(evidence)
+        should_apply = bool(source.is_official and (mapping.get("should_apply") or False))
+        incoming_confidence = float(mapping.get("confidence") or 0.0)
+        incoming_note = self._clean_text(str(mapping.get("evidence_note_en") or ""))
+        existing_evidence = next(
+            (
+                entry
+                for entry in item.evidence_entries
+                if self._evidence_identity_for_entry(entry) == incoming_key
+            ),
+            None,
+        )
 
-        if source.is_official and mapping.get("should_apply") and float(mapping.get("confidence") or 0.0) >= 0.9:
+        if existing_evidence is None:
+            evidence = CabinetActionEvidence(
+                item_id=item.id,
+                source_kind=source.kind,
+                source_title=source.title,
+                source_name=source.source_name,
+                source_url=source.source_url,
+                published_at=source.published_at,
+                source_story_id=source.source_story_id,
+                source_announcement_id=source.source_announcement_id,
+                is_official=source.is_official,
+                extracted_status=applied_status,
+                evidence_note_en=incoming_note or None,
+                confidence=incoming_confidence,
+                is_public=should_apply,
+                is_applied=should_apply,
+                raw_model_payload=mapping,
+            )
+            self.db.add(evidence)
+            item.evidence_entries.append(evidence)
+        else:
+            evidence = existing_evidence
+            evidence.source_kind = evidence.source_kind or source.kind
+            evidence.source_title = evidence.source_title or source.title
+            evidence.source_name = evidence.source_name or source.source_name
+            evidence.source_url = evidence.source_url or source.source_url
+            evidence.source_story_id = evidence.source_story_id or source.source_story_id
+            evidence.source_announcement_id = evidence.source_announcement_id or source.source_announcement_id
+            evidence.is_official = bool(evidence.is_official or source.is_official)
+            evidence.extracted_status = evidence.extracted_status or applied_status
+            if source.published_at and (evidence.published_at is None or source.published_at > evidence.published_at):
+                evidence.published_at = source.published_at
+            existing_note = self._clean_text(evidence.evidence_note_en or "")
+            if incoming_note and len(incoming_note) >= len(existing_note):
+                evidence.evidence_note_en = incoming_note
+            evidence.confidence = max(float(evidence.confidence or 0.0), incoming_confidence)
+            evidence.is_public = bool(evidence.is_public or should_apply)
+            evidence.is_applied = bool(evidence.is_applied or should_apply)
+            evidence.raw_model_payload = mapping
+
+        if source.is_official and mapping.get("should_apply") and incoming_confidence >= 0.9:
             item.status = applied_status
             item.evidence_strength = "official"
             item.last_checked_at = datetime.now(timezone.utc)
@@ -872,9 +1011,11 @@ class CabinetActionService:
             )
         ).scalars().all()
         for item in rows:
-            if item.trackability_class == "declaratory_contextual":
-                item.status = "declaratory_non_scored"
+            if item.status == "declaratory_non_scored":
+                item.status = "announced"
             for milestone in item.milestones:
+                if milestone.status == "declaratory_non_scored":
+                    milestone.status = "announced"
                 if milestone.due_date_ad and milestone.status not in COMPLETED_STATUSES and milestone.due_date_ad < today:
                     milestone.status = "overdue"
             if item.milestones:
@@ -905,7 +1046,11 @@ class CabinetActionService:
         items = (
             await self.db.execute(
                 select(CabinetActionItem)
-                .options(selectinload(CabinetActionItem.milestones), selectinload(CabinetActionItem.review))
+                .options(
+                    selectinload(CabinetActionItem.milestones),
+                    selectinload(CabinetActionItem.review),
+                    selectinload(CabinetActionItem.evidence_entries),
+                )
                 .where(CabinetActionItem.program_id == program.id)
             )
         ).scalars().all()
@@ -983,6 +1128,13 @@ class CabinetActionService:
 
     def serialize_public_item(self, item: CabinetActionItem, *, include_source: bool = False) -> dict[str, Any]:
         effective = self._effective_fields(item)
+        audit = self._effective_audit_fields(item)
+        public_trackability = self._resolve_public_trackability(audit["trackability_class"])
+        public_status = self._resolve_public_status(
+            trackability_class=audit["trackability_class"],
+            status=audit["status"],
+            due_date_ad=item.due_date_ad,
+        )
         promises = [link.manifesto_promise.promise_id for link in item.promise_links if link.manifesto_promise]
         payload = {
             "id": str(item.id),
@@ -994,17 +1146,18 @@ class CabinetActionService:
             "leadInstitution": effective["lead_institution"],
             "supportingInstitutions": effective["supporting_institutions"] or [],
             "actionType": effective["action_type"],
-            "trackabilityClass": effective["trackability_class"],
+            "trackabilityClass": public_trackability,
             "deadlineTextNe": item.deadline_text_ne,
             "dueDateBs": item.due_date_bs,
             "dueDateAd": item.due_date_ad,
-            "status": effective["status"],
+            "status": public_status,
             "evidenceNote": effective["evidence_note"],
             "sourcePdfPage": item.source_pdf_page,
             "relatedManifestoPromises": promises,
             "milestoneCount": len(item.milestones),
         }
         if include_source:
+            evidence_entries = self._dedupe_evidence_entries(list(item.evidence_entries))
             payload["sourceTextNe"] = item.source_text_ne
             payload["milestones"] = [
                 {
@@ -1035,7 +1188,7 @@ class CabinetActionService:
                     "note": entry.evidence_note_en,
                     "confidence": entry.confidence,
                 }
-                for entry in item.evidence_entries
+                for entry in evidence_entries
                 if entry.is_public or include_source
             ]
         return payload
@@ -1206,20 +1359,34 @@ class CabinetActionService:
 
     async def list_public_summary(self) -> dict[str, Any]:
         items = await self.list_public(limit=500)
-        scored = [item for item in items if item["trackabilityClass"] != "declaratory_contextual" and item["status"] != "declaratory_non_scored"]
+        scored = list(items)
         total_actions = len(items)
         total_scored = len(scored)
+        not_started = sum(1 for item in scored if item["status"] == "not_started")
+        announced = sum(1 for item in scored if item["status"] == "announced")
+        implementation_started = sum(1 for item in scored if item["status"] == "implementation_started")
+        partially_completed = sum(1 for item in scored if item["status"] == "partially_completed")
         completed_on_time = sum(1 for item in scored if item["status"] == "completed_on_time")
         completed_late = sum(1 for item in scored if item["status"] == "completed_late")
         overdue = sum(1 for item in scored if item["status"] == "overdue")
-        underway = sum(1 for item in scored if item["status"] in {"announced", "implementation_started", "partially_completed", "not_started"})
-        non_scored = sum(1 for item in items if item["status"] == "declaratory_non_scored")
+        cannot_verify = sum(1 for item in scored if item["status"] == "cannot_verify")
+        declaratory_non_scored = sum(1 for item in scored if item["status"] == "declaratory_non_scored")
+        started = implementation_started + partially_completed
+        underway = not_started + announced + started
+        non_scored = declaratory_non_scored
         return {
             "total_actions": total_actions,
             "total_scored_actions": total_scored,
+            "not_started": not_started,
+            "announced": announced,
+            "implementation_started": implementation_started,
+            "partially_completed": partially_completed,
             "completed_on_time": completed_on_time,
             "completed_late": completed_late,
             "overdue": overdue,
+            "started": started,
+            "cannot_verify": cannot_verify,
+            "declaratory_non_scored": declaratory_non_scored,
             "underway": underway,
             "non_scored": non_scored,
             "completion_rate": round(((completed_on_time + completed_late) / total_scored) * 100, 1) if total_scored else 0.0,
