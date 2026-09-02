@@ -90,6 +90,11 @@ const THEME_FILTERS = [
 
 type ThemeFilter = (typeof THEME_FILTERS)[number]['key'];
 
+/** Row label per theme: the same short forms as the filter chips. */
+const THEME_SHORT: Record<string, string> = Object.fromEntries(
+  THEME_FILTERS.filter((f) => f.key !== 'all').map((f) => [f.key, f.label]),
+);
+
 /** Column geometry, shared by the head and every row. */
 const COLS = {
   dtg: '9%',
@@ -165,8 +170,10 @@ function CitationRow({ item }: { item: Citation }) {
       <span style={{ ...fixedCell(COLS.grade), overflow: 'visible' }}>
         <Grade code={grade.code} title={gradeTitle(grade.code)} />
       </span>
-      <span style={{ ...fixedCell(COLS.theme), overflow: 'visible' }}>
-        <Tag tone={THEME_TONE[item.theme]}>{item.theme}</Tag>
+      {/* The short label the filter chips already use — "INFRASTRUCTURE" does not
+          fit a 9% column at half width and was running into the finding. */}
+      <span style={{ ...fixedCell(COLS.theme), overflow: 'visible' }} title={item.theme}>
+        <Tag tone={THEME_TONE[item.theme]}>{THEME_SHORT[item.theme] ?? item.theme.slice(0, 7)}</Tag>
       </span>
 
       {/* The claim carries the weight; the headline sits under it in citation
