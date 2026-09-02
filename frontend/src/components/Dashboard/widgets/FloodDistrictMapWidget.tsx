@@ -97,7 +97,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Camera, Layers, Locate, Map as MapIcon, Satellite } from 'lucide-react';
+import { Camera, Crosshair, Layers, Locate, Map as MapIcon, Satellite } from 'lucide-react';
 import type { FeatureCollection, Geometry } from 'geojson';
 
 import { useOfficialSituation } from '../../../api/hooks/useFlood';
@@ -125,6 +125,7 @@ import {
 } from '../../flood/districtGeo';
 import { isViewable, useFloodMedia, type FloodMediaItem } from '../../flood/floodMedia';
 import { useStationPhotos, type StationPhoto } from '../../flood/stationPhotos';
+import { siteChip, useFloodSites, type ResponseSite } from '../../flood/floodSites';
 import {
   dayCloseMs,
   useFloodChronology,
@@ -238,7 +239,11 @@ const CLUSTER_W = 84;
  *  away the reader's context to gain nothing. */
 const MAX_EXPANSION_ZOOM = 12;
 
-const SWEEP_LABEL = 'SCHEMATIC SWEEP · KM REAL · ARRIVAL TIMES NOT PUBLISHED';
+const SWEEP_LABEL = 'FRONT ON THE OSM CHANNEL · TIMES INTERPOLATED BETWEEN PUBLISHED FIXES';
+/** Chevrons along a dense channel: one every this many km, pointing downstream. */
+const CHEVRON_EVERY_KM = 25;
+const LOW = '#22c55e'; // --status-low
+const PLACE_CLUSTER_PX = 40;
 
 /** Its own pane so the imagery sits above the basemap and below every vector. */
 const DRP_PANE = 'drpImagery';
@@ -409,6 +414,7 @@ type Readout =
   | { kind: 'waypoint'; wp: CorridorWaypoint }
   | { kind: 'origin' }
   | { kind: 'site'; key: string }
+  | { kind: 'place'; key: string }
   | { kind: 'media'; anchor: string }
   | { kind: 'cluster'; members: MarkMember[] }
   | { kind: 'gauge'; id: number }
@@ -422,6 +428,7 @@ const readoutKey = (r: Readout): string => {
     case 'waypoint': return `waypoint:${r.wp.name}:${r.wp.km ?? ''}`;
     case 'origin': return 'origin';
     case 'site': return `site:${r.key}`;
+    case 'place': return `place:${r.key}`;
     case 'media': return `media:${r.anchor}`;
     case 'cluster': return `cluster:${r.members.map((m) => `${m.kind}/${m.key}`).join(',')}`;
     case 'gauge': return `gauge:${r.id}`;
@@ -546,6 +553,8 @@ interface ReadoutPanelProps {
   readout: Readout | null;
   view: Map<string, DistrictView>;
   sites: DamageSite[];
+  places: ResponseSite[];
+  kindText: Record<string, string>;
   anchors: MediaAnchor[];
   stations: StationPhoto[];
   eventName: string | null;
@@ -652,6 +661,62 @@ const ReadoutBody = (props: ReadoutPanelProps) => {
           {/* A tooltip beside the cursor never had to say this. A panel in a
               fixed corner does: nothing else connects it to the mark. */}
           <div style={{ ...RO_MONO, marginTop: 4 }}>CLICK TO COMPARE</div>
+        </>
+      );
+    }
+  }
+
+  if (readout?.kind === 'place') {
+    const site = props.places.find((s) => s.key === readout.key);
+    if (site) {
+      const chip = siteChip(site);
+      const tone = chip.tone === 'critical' ? 'var(--status-critical)' : chip.tone === 'high' ? 'var(--status-high)'
+        : chip.tone === 'low' ? 'var(--status-low)' : chip.tone === 'info' ? 'var(--status-info)' : 'var(--text-muted)';
+      const latest = site.notes[0] ?? null;
+      const figures = site.figures.slice(0, 4);
+      const stills = site.photos.filter((p) => p.licence_tier === 'display').slice(0, 3);
+      const leads = site.photos.filter((p) => p.licence_tier !== 'display').slice(0, 2);
+      const sources = Array.from(new Set([...site.figures, ...site.notes].map((x) => x.source.split(',')[0]))).slice(0, 2);
+      const conf = site.coord_confidence === 'published' ? 'FACILITY LOCATED'
+        : site.coord_confidence === 'place' ? 'LOCALITY LOCATED · PLOT NOT PUBLISHED'
+          : site.coord_confidence === 'municipality' ? 'MUNICIPALITY CENTRE · WARD ONLY PUBLISHED' : 'APPROXIMATE PLACEMENT';
+      return (
+        <>
+          <div style={RO_TITLE}>{site.name}</div>
+          <div style={{ ...RO_MONO, color: tone, marginTop: 2 }}>
+            {chip.label}{site.district ? ` · ${site.district.toUpperCase()}` : ''}{site.teams && site.teams.length ? ` · ${site.teams.join(' + ')}` : ''}
+          </div>
+          <div style={{ ...RO_MONO, fontSize: 8, marginTop: 1 }}>{conf}</div>
+          {figures.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 5 }}>
+              {figures.map((f) => (
+                <ReadoutRow key={f.kind} label={f.kind.replace(/_/g, ' ')} value={fmt(f.value)} tone={f.kind === 'identified' || f.kind === 'rescued' ? 'var(--status-low)' : undefined} />
+              ))}
+            </div>
+          )}
+          {(latest || site.status_line) && (
+            <div style={{ fontSize: 10, lineHeight: 1.45, color: 'var(--text-secondary)', marginTop: 5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {latest?.text ?? site.status_line}
+            </div>
+          )}
+          {(stills.length > 0 || leads.length > 0) && (
+            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+              {stills.map((ph) => (
+                <a key={ph.id} href={ph.page_url ?? ph.image_url} target="_blank" rel="noreferrer noopener" title={`${ph.title} · ${ph.credit ?? ''}`} style={{ display: 'block', width: 64, height: 44, overflow: 'hidden', border: HAIRLINE, background: 'var(--bg-elevated)' }}>
+                  <img src={ph.image_url} alt={ph.title} loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                </a>
+              ))}
+              {leads.map((ph) => (
+                <a key={ph.id} href={ph.page_url ?? '#'} target="_blank" rel="noreferrer noopener" title={`${ph.outlet ?? 'press'} · ${ph.title}`} style={{ display: 'block', width: 44, height: 44, overflow: 'hidden', border: `1px solid var(--status-info)`, background: 'var(--bg-elevated)', position: 'relative' }}>
+                  <img src={ph.image_url} alt={ph.title} loading="lazy" onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0.85 }} />
+                  <span style={{ position: 'absolute', left: 0, right: 0, bottom: 0, fontFamily: 'var(--font-mono)', fontSize: 7, letterSpacing: '.04em', background: 'rgba(0,0,0,.75)', color: 'var(--status-info)', padding: '1px 2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(ph.outlet ?? 'PRESS').toUpperCase()}</span>
+                </a>
+              ))}
+            </div>
+          )}
+          <div style={{ ...RO_MONO, ...RO_RULE }}>
+            {sources.join(' · ')}{site.photos.length ? ` · ${site.photos.length} PHOTO${site.photos.length === 1 ? '' : 'S'} BY CAPTION MATCH` : ''}
+          </div>
         </>
       );
     }
@@ -800,7 +865,7 @@ const ReadoutBody = (props: ReadoutPanelProps) => {
         </>
       )}
       <div style={{ ...LABEL_XS, marginTop: 5 }}>
-        AMBER = MISSING WHERE PUBLISHED · DASHED = SCHEMATIC SURGE PATH
+        AMBER = MISSING WHERE PUBLISHED · BLUE LINE = RIVER CHANNEL (OSM)
       </div>
       {props.footprintsOn && (
         <div style={{ ...LABEL_XS, marginTop: 3 }}>
@@ -809,6 +874,11 @@ const ReadoutBody = (props: ReadoutPanelProps) => {
       )}
       {props.dhmCount > 0 && (
         <div style={{ ...LABEL_XS, marginTop: 3 }}>{props.dhmCount} DHM GAUGE PHOTOS · UNDATED</div>
+      )}
+      {props.places.length > 0 && (
+        <div style={{ ...LABEL_XS, marginTop: 3 }}>
+          <span style={{ color: 'var(--status-critical)' }}>■ BURIAL</span> · <span style={{ color: 'var(--status-high)' }}>■ DNA / MORTUARY / ROAD CUT</span> · <span style={{ color: 'var(--status-info)' }}>■ LIFT / RECOVERY / AIRHEAD</span> · <span style={{ color: 'var(--status-low)' }}>■ TUNNEL DIGGING</span>
+        </div>
       )}
     </>
   );
@@ -844,6 +914,9 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
   const catalog = useDrpCatalog();
   const photos = useStationPhotos();
   const damage = useDamageSites();
+  const sitesQ = useFloodSites();
+  const places = useMemo<ResponseSite[]>(() => sitesQ.data?.sites ?? [], [sitesQ.data]);
+  const kindText = useMemo<Record<string, string>>(() => sitesQ.data?.kinds ?? {}, [sitesQ.data]);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -860,6 +933,7 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
   const drpRef = useRef<L.LayerGroup | null>(null);
   const drpImageRef = useRef<L.ImageOverlay | null>(null);
   const dhmRef = useRef<L.LayerGroup | null>(null);
+  const placesRef = useRef<L.LayerGroup | null>(null);
   const homeBoundsRef = useRef<L.LatLngBounds | null>(null);
   const placeLabelsRef = useRef<(() => void) | null>(null);
   const placeMarksRef = useRef<(() => void) | null>(null);
@@ -901,6 +975,8 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
   const [frame, setFrame] = useState<{ zoom: number; box: LatLngBox; w: number; h: number } | null>(null);
 
   const [showDhm, setShowDhm] = useState(false);
+  /** Response sites (burials, DNA hubs, transfer points, tunnels). On by default: they are the point of an impact map. */
+  const [showSites, setShowSites] = useState(true);
   const [photo, setPhoto] = useState<StationPhoto | null>(null);
 
   const features = useMemo<DistrictFeature[]>(
@@ -1172,6 +1248,7 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
     vantorRef.current = L.layerGroup();
     drpRef.current = L.layerGroup();
     dhmRef.current = L.layerGroup();
+    placesRef.current = L.layerGroup().addTo(map);
 
     // The widget is resizable and starts inside a grid cell that has no height
     // on the first paint, so a fit computed then would be wrong.
@@ -1386,12 +1463,20 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
 
     const run = corridor.filter((w) => w.kind !== 'origin');
     const path: L.LatLngExpression[] = run.map((w) => [w.lat, w.lng]);
+    // A dense channel (one vertex per 100 m from OSM) is drawn solid; the
+    // schematic chord list keeps its dashes so nobody mistakes it for a river.
+    const dense = run.some((w) => w.kind === 'channel');
 
     if (path.length > 1) {
-      L.polyline(path, { color: INFO, weight: 2, opacity: 0.65, dashArray: '6 6' }).addTo(group);
+      if (dense) {
+        L.polyline(path, { color: INFO, weight: 5, opacity: 0.18 }).addTo(group);
+        L.polyline(path, { color: INFO, weight: 1.8, opacity: 0.9 }).addTo(group);
+      } else {
+        L.polyline(path, { color: INFO, weight: 2, opacity: 0.65, dashArray: '6 6' }).addTo(group);
+      }
     }
 
-    run.forEach((w) => {
+    run.filter((w) => !dense || w.name).forEach((w) => {
       const dot = L.circleMarker([w.lat, w.lng], {
         radius: 3,
         color: INFO,
@@ -1404,10 +1489,20 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
       dot.on('mouseout', () => clearReadout(mine));
     });
 
-    CHEVRON_SEGMENTS.forEach((i) => {
-      const a = run[i];
-      const b = run[i + 1];
-      if (!a || !b) return;
+    // On the dense channel the chevrons sit every CHEVRON_EVERY_KM, oriented by
+    // the vertices either side; on the schematic list they sit on fixed segments.
+    const chevronPairs: [CorridorWaypoint, CorridorWaypoint][] = [];
+    if (dense) {
+      const kmRun = run.filter((w) => w.km != null);
+      const maxKm = kmRun.length ? (kmRun[kmRun.length - 1].km ?? 0) : 0;
+      for (let km = CHEVRON_EVERY_KM / 2; km < maxKm; km += CHEVRON_EVERY_KM) {
+        const i = kmRun.findIndex((w) => (w.km ?? 0) >= km);
+        if (i > 0 && kmRun[i + 1]) chevronPairs.push([kmRun[i - 1], kmRun[i + 1]]);
+      }
+    } else {
+      CHEVRON_SEGMENTS.forEach((i) => { if (run[i] && run[i + 1]) chevronPairs.push([run[i], run[i + 1]]); });
+    }
+    chevronPairs.forEach(([a, b]) => {
       // Planar bearing with a cos(lat) correction. This only orients a
       // schematic chevron, so a great-circle bearing would be false precision.
       const dx = (b.lng - a.lng) * Math.cos((((a.lat + b.lat) / 2) * Math.PI) / 180);
@@ -1713,6 +1808,73 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
     // because either query can resolve before the map exists.
     return () => { map.off('zoomend', placeMarks); };
   }, [anchorSignature, siteSignature, ready, showReadout, clearReadout]);
+
+  // THE RESPONSE SITES. Burial grounds, DNA hubs, mortuaries, transfer points,
+  // recovery reaches, the highway cut, the airhead and the flooded tunnels —
+  // each a dot at its published position and a chip with its figure. Sites
+  // that fall within PLACE_CLUSTER_PX of each other at the current zoom
+  // (four sit inside Kathmandu) collapse to one chip that zooms to them.
+  useEffect(() => {
+    const map = mapRef.current;
+    const group = placesRef.current;
+    if (!map || !group) return;
+    const placePlaces = () => {
+      group.clearLayers();
+      if (!showSites || places.length === 0) return;
+      const pts = places.map((s) => ({ s, p: map.latLngToLayerPoint([s.lat, s.lng]) }));
+      const clusters: { members: typeof pts; cx: number; cy: number }[] = [];
+      pts.forEach((pt) => {
+        const g = clusters.find((c) => Math.hypot(c.cx - pt.p.x, c.cy - pt.p.y) < PLACE_CLUSTER_PX);
+        if (g) g.members.push(pt);
+        else clusters.push({ members: [pt], cx: pt.p.x, cy: pt.p.y });
+      });
+      const toneColor = (t: ReturnType<typeof siteChip>['tone']) =>
+        t === 'critical' ? CRITICAL : t === 'high' ? HIGH : t === 'low' ? LOW : t === 'info' ? INFO : BORDER_DEFAULT;
+      clusters.forEach((c) => {
+        if (c.members.length === 1) {
+          const site = c.members[0].s;
+          const chip = siteChip(site);
+          const color = toneColor(chip.tone);
+          const dot = L.circleMarker([site.lat, site.lng], {
+            radius: site.coord_confidence === 'published' ? 3.5 : 3,
+            color, weight: 1.2, fillColor: color,
+            fillOpacity: site.coord_confidence === 'published' || site.coord_confidence === 'place' ? 0.95 : 0.35,
+          }).addTo(group);
+          const label = `${chip.label}${site.photos.length ? ` · IMG ${site.photos.length}` : ''}`;
+          const w = Math.max(CHIP_W, label.length * 5.6 + 10);
+          const marker = L.marker([site.lat, site.lng], {
+            icon: L.divIcon({ className: '', html: chipHtml(label, color), iconSize: [w, CHIP_H], iconAnchor: [-6, -5] }),
+            keyboard: false,
+            title: site.name,
+          }).addTo(group);
+          const mine: Readout = { kind: 'place', key: site.key };
+          [dot, marker].forEach((m) => {
+            m.on('mouseover', () => showReadout(mine));
+            m.on('mouseout', () => clearReadout(mine));
+            m.on('click', () => { showReadout(mine); map.setView([site.lat, site.lng], Math.max(map.getZoom(), 11)); });
+          });
+        } else {
+          const lat = c.members.reduce((a, m) => a + m.s.lat, 0) / c.members.length;
+          const lng = c.members.reduce((a, m) => a + m.s.lng, 0) / c.members.length;
+          const worst = c.members.some((m) => m.s.kind === 'burial') ? CRITICAL
+            : c.members.some((m) => ['forensic', 'mortuary', 'road_cut', 'tunnel_suspended'].includes(m.s.kind)) ? HIGH : INFO;
+          const label = `${c.members.length} RESP SITES`;
+          const cw = label.length * 5.6 + 10;
+          const marker = L.marker([lat, lng], {
+            icon: L.divIcon({ className: '', html: chipHtml(label, worst), iconSize: [cw, CHIP_H], iconAnchor: [cw + 6, -5] }),
+            keyboard: false,
+            title: c.members.map((m) => m.s.name).join(' · '),
+          }).addTo(group);
+          marker.on('click', () => {
+            map.fitBounds(L.latLngBounds(c.members.map((m) => [m.s.lat, m.s.lng] as L.LatLngTuple)), { padding: [40, 40], maxZoom: 13 });
+          });
+        }
+      });
+    };
+    placePlaces();
+    map.on('zoomend', placePlaces);
+    return () => { map.off('zoomend', placePlaces); };
+  }, [places, showSites, ready, showReadout, clearReadout]);
 
   // The Vantor footprints. Outlines and nothing else: this layer answers "which
   // ground did the 30–50 cm strips actually cover", which is the only claim a
@@ -2104,6 +2266,10 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
     sites.length > 0
       ? `${sites.length} damage sites · click a blue chip for the same-frame pre/post pair`
       : null,
+    places.length > 0
+      ? `${places.length} response sites · ${sitesQ.data?.counts.burial ?? 0} burial grounds · ${sitesQ.data?.counts.photos ?? 0} photographs by caption match`
+      : null,
+    corridor.some((w) => w.kind === 'channel') ? 'river: openstreetmap channel, odbl' : null,
     'boundaries: survey department reference',
   ]
     .filter(Boolean)
@@ -2148,6 +2314,19 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
               style={imagery ? { color: 'var(--status-info)' } : undefined}
             >
               <Layers size={11} />
+            </button>
+          )}
+          {places.length > 0 && (
+            <button
+              type="button"
+              className="widget-action"
+              onClick={() => setShowSites((on) => !on)}
+              title={`${showSites ? 'Hide' : 'Show'} response sites (${places.length}: burials, DNA hubs, transfer points, tunnels)`}
+              aria-label="Toggle response sites"
+              aria-pressed={showSites}
+              style={showSites ? { color: 'var(--status-info)' } : undefined}
+            >
+              <Crosshair size={11} />
             </button>
           )}
           {verifiedStations.length > 0 && (
@@ -2233,6 +2412,8 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
             readout={readout}
             view={view}
             sites={sites}
+            places={places}
+            kindText={kindText}
             anchors={anchors}
             stations={verifiedStations}
             eventName={event?.name ?? null}

@@ -1,0 +1,204 @@
+{
+  "event_key": "trishuli-2026-08",
+  "title": "Response sites of the Bhote Koshi / Trishuli flood — hand-verified ledger",
+  "verified_on": "2026-09-02",
+  "note": "Every site names the document it was read from. Coordinates: 'published' = the named facility located on OpenStreetMap; 'place' = the named locality located on OpenStreetMap, the exact plot not published; 'municipality' = the municipality centre, because the report names only the municipality and ward; 'approximate' = desk placement from the description. Figures are the reporting outlet's, dated.",
+  "kinds": {
+    "burial": "Temporary burial of unidentified remains after DNA sampling, per the 2083 directive",
+    "forensic": "DNA profiling and identification",
+    "mortuary": "Hospital mortuary holding remains for identification",
+    "transfer": "Where remains are lifted or received",
+    "recovery": "Where remains are being recovered from the river",
+    "collection": "District collection point for recovered remains",
+    "road_cut": "Highway cut that governs access",
+    "airhead": "Where foreign teams and materiel arrive"
+  },
+  "sites": [
+    {
+      "key": "gokarneshwor_burial",
+      "kind": "burial",
+      "name": "Gokarneshwor-7, Dakshindhoka · Nepal Trust land",
+      "district": "Kathmandu",
+      "lat": 27.7263, "lng": 85.3759, "coord_confidence": "municipality",
+      "figures": [
+        { "kind": "buried", "value": 85, "as_of": "2026-09-02", "source": "Himal Press, 'भोटेकोशी बाढी : आफन्त नभेटिएका ८५ शवलाई गोकर्णेश्वरस्थित नेपाल ट्रस्टको जग्गामा गाडियो', 2 Sep 2026", "url": "https://himalpress.com/2026/09/bhotekoshi-flood-85-bodies-of-unidentified-relatives-buried-on-nepal-trust-land-in-gokarneshwor/" },
+        { "kind": "received_at_tuth", "value": 114, "as_of": "2026-09-02", "source": "Gorkhapatra, 'काठमाडौँमा पचासी शव व्यवस्थापन', 2 Sep 2026", "url": "https://gorkhapatraonline.com/news/220885", "note": "brought to TU Teaching Hospital from Rasuwa, Nuwakot and Dhading; 9 identified and returned to families" }
+      ],
+      "notes": [
+        { "t_npt": "2026-09-02T12:00:00+05:45", "text": "District Police Office Kathmandu: managed under ICRC protocol; DNA samples secured for every body; CDO Ishwor Raj Paudel oversaw the two-day operation (Monday–Tuesday).", "source": "Himal Press / Gorkhapatra, 2 Sep 2026", "url": "https://himalpress.com/2026/09/bhotekoshi-flood-85-bodies-of-unidentified-relatives-buried-on-nepal-trust-land-in-gokarneshwor/" }
+      ],
+      "photo_terms": ["गोकर्णेश्वर", "gokarneshwor", "gokarneshwar", "पचासी शव", "८५ शव"],
+      "aliases": ["गोकर्णेश्वर", "gokarneshwor", "gokarneshwar"]
+    },
+    {
+      "key": "bardaghat_chisapani_burial",
+      "kind": "burial",
+      "name": "Chisapani Community Forest · Bardaghat",
+      "district": "Nawalparasi West",
+      "lat": 27.5571, "lng": 83.7792, "coord_confidence": "place",
+      "figures": [
+        { "kind": "buried", "value": 145, "as_of": "2026-09-02", "source": "Nagarik, 'नारायणीबाट निकालिएका १४५ शव बर्दघाट र सुनवलका जंगलमा व्यवस्थापन', 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/145-bodies-recovered-from-narayani-disposed-of-in-forests-of-bardaghat-and-sunwal-19-28.html", "note": "across Chisapani (Bardaghat) and Mulpani (Sunwal) community forests" },
+        { "kind": "recovered_narayani", "value": 195, "as_of": "2026-09-02", "source": "Nagarik, 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/145-bodies-recovered-from-narayani-disposed-of-in-forests-of-bardaghat-and-sunwal-19-28.html", "note": "recovered from the Narayani in Nawalparasi West, incl. 14 handed over by Indian police" },
+        { "kind": "awaiting_postmortem", "value": 50, "as_of": "2026-09-02", "source": "Nagarik, 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/145-bodies-recovered-from-narayani-disposed-of-in-forests-of-bardaghat-and-sunwal-19-28.html" },
+        { "kind": "identified", "value": 5, "as_of": "2026-09-02", "source": "Nagarik, 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/145-bodies-recovered-from-narayani-disposed-of-in-forests-of-bardaghat-and-sunwal-19-28.html" }
+      ],
+      "notes": [
+        { "t_npt": "2026-09-02T12:00:00+05:45", "text": "Nawalparasi Police: DNA sampled from all 145; identification tags placed inside and outside each body; wire fencing against wildlife. Burials began Sunday.", "source": "Nagarik, 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/145-bodies-recovered-from-narayani-disposed-of-in-forests-of-bardaghat-and-sunwal-19-28.html" }
+      ],
+      "photo_terms": ["बर्दघाट", "bardaghat", "सुनवल", "नारायणीबाट निकालिएका"],
+      "aliases": ["बर्दघाट", "bardaghat", "चिसापानी"]
+    },
+    {
+      "key": "sunwal_mulpani_burial",
+      "kind": "burial",
+      "name": "Mulpani Community Forest · Sunwal",
+      "district": "Nawalparasi West",
+      "lat": 27.6058, "lng": 83.6408, "coord_confidence": "municipality",
+      "figures": [
+        { "kind": "buried_shared", "value": 145, "as_of": "2026-09-02", "source": "Nagarik, 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/145-bodies-recovered-from-narayani-disposed-of-in-forests-of-bardaghat-and-sunwal-19-28.html", "note": "the 145 is the joint figure for Mulpani and Chisapani; no per-forest split published" }
+      ],
+      "notes": [],
+      "photo_terms": ["सुनवल", "sunwal", "मूलपानी"],
+      "aliases": ["सुनवल", "sunwal", "मूलपानी"]
+    },
+    {
+      "key": "pokhara_sisaughari",
+      "kind": "burial",
+      "name": "Sisaughari · Pokhara-16",
+      "district": "Kaski",
+      "lat": 28.2095, "lng": 83.9914, "coord_confidence": "municipality",
+      "figures": [
+        { "kind": "brought", "value": 102, "as_of": "2026-09-02", "source": "Khabarhub, 'भोटेकोशी बाढी : पोखरामा २१ शवको सनाखत', 2 Sep 2026", "url": "https://khabarhub.com/2026/02/1018897/" },
+        { "kind": "identified", "value": 21, "as_of": "2026-09-02", "source": "Khabarhub, 2 Sep 2026", "url": "https://khabarhub.com/2026/02/1018897/", "note": "handed to families Tuesday" },
+        { "kind": "managed_unidentified", "value": 76, "as_of": "2026-09-02", "source": "Khabarhub, 2 Sep 2026", "url": "https://khabarhub.com/2026/02/1018897/", "note": "'securely managed' at Sisaughari; 5 more at the Pokhara Academy of Health Sciences morgue" }
+      ],
+      "notes": [
+        { "t_npt": "2026-09-02T12:00:00+05:45", "text": "Assistant CDO: DNA taken from every body; remains released once a family match is confirmed.", "source": "Khabarhub, 2 Sep 2026", "url": "https://khabarhub.com/2026/02/1018897/" }
+      ],
+      "photo_terms": ["पोखरामा २१", "sisaughari", "सिसौघारी"],
+      "aliases": ["सिसौघारी", "sisaughari", "पोखरामा"]
+    },
+    {
+      "key": "tansen_gorkhekot",
+      "kind": "burial",
+      "name": "Gorkhekot Community Forest · Tansen-1",
+      "district": "Palpa",
+      "lat": 27.8760, "lng": 83.5611, "coord_confidence": "place",
+      "figures": [
+        { "kind": "buried", "value": 7, "as_of": "2026-09-02", "source": "Gorkhapatra, 'पाल्पामा सात बेवारिसे शव व्यवस्थापन', 2 Sep 2026", "url": "https://gorkhapatraonline.com/news/220910", "note": "three men, two women, a boy and a girl; held first at Palpa Hospital, Mission Hospital and Lumbini Medical College mortuaries" }
+      ],
+      "notes": [],
+      "photo_terms": ["पाल्पामा सात", "gorkhekot", "गोर्खेकोट"],
+      "aliases": ["गोर्खेकोट", "gorkhekot", "पाल्पामा"]
+    },
+    {
+      "key": "police_hospital_dna",
+      "kind": "forensic",
+      "name": "Nepal Police Hospital · Maharajgunj",
+      "district": "Kathmandu",
+      "lat": 27.7310, "lng": 85.3236, "coord_confidence": "published",
+      "figures": [],
+      "notes": [
+        { "t_npt": "2026-09-02T14:00:00+05:45", "text": "DNA profiling hub. Indian 19-member forensic team, Chinese 5-member team, Singapore DVI team (6 arrived, 13 more with DNA equipment) and a Korean forensic team work with Nepal Police. Families abroad may send DNA profiles to dnacodis@nepalpolice.gov.np.", "source": "MoFA Nepal, Fifth Press Briefing, 2 Sep 2026", "url": "https://nepal.gov.np/" },
+        { "t_npt": "2026-09-02T09:00:00+05:45", "text": "DNA profiling of relatives of the missing began at the Police Hospital.", "source": "Gorkhapatra, 'शव पहिचानका लागि डीएनए प्रोफाइलिङ सुरू', 2 Sep 2026", "url": "https://gorkhapatraonline.com/news/221022" }
+      ],
+      "photo_terms": ["police hospital", "प्रहरी अस्पताल", "डीएनए प्रोफाइलिङ", "dna profiling"],
+      "aliases": ["प्रहरी अस्पताल", "police hospital", "डीएनए"]
+    },
+    {
+      "key": "tuth_mortuary",
+      "kind": "mortuary",
+      "name": "TU Teaching Hospital · Maharajgunj",
+      "district": "Kathmandu",
+      "lat": 27.7361, "lng": 85.3302, "coord_confidence": "published",
+      "figures": [
+        { "kind": "received", "value": 114, "as_of": "2026-09-02", "source": "Gorkhapatra, 2 Sep 2026", "url": "https://gorkhapatraonline.com/news/220885", "note": "from Rasuwa, Nuwakot and Dhading" },
+        { "kind": "identified", "value": 9, "as_of": "2026-09-02", "source": "Gorkhapatra, 2 Sep 2026", "url": "https://gorkhapatraonline.com/news/220885", "note": "returned to families; the rest passed to the administration for burial at Gokarneshwor" }
+      ],
+      "notes": [],
+      "photo_terms": ["शिक्षण अस्पताल", "teaching hospital", "टिचिङ"],
+      "aliases": ["शिक्षण अस्पताल", "teaching hospital"]
+    },
+    {
+      "key": "betrawati_body_lift",
+      "kind": "transfer",
+      "name": "Betrawati · helicopter body lifts",
+      "district": "Nuwakot",
+      "lat": 27.9731, "lng": 85.1860, "coord_confidence": "published",
+      "figures": [],
+      "notes": [
+        { "t_npt": "2026-09-02T10:00:00+05:45", "text": "Remains recovered upstream are lifted out by helicopter from Betrawati.", "source": "Himal Press, 'बेत्रावतीमा हेलिकोप्टरमार्फत शव उठाइँदै', 2 Sep 2026", "url": "https://himalpress.com/2026/09/body-being-lifted-by-helicopter-in-betrawati/" }
+      ],
+      "photo_terms": ["बेत्रावती", "betrawati"],
+      "aliases": ["बेत्रावती", "betrawati"]
+    },
+    {
+      "key": "nuwakot_receiving",
+      "kind": "transfer",
+      "name": "Bidur, Nuwakot · receiving remains from Rasuwa",
+      "district": "Nuwakot",
+      "lat": 27.8953, "lng": 85.1465, "coord_confidence": "municipality",
+      "figures": [],
+      "notes": [
+        { "t_npt": "2026-09-02T10:00:00+05:45", "text": "Remains are being flown from Rasuwa to Nuwakot by helicopter.", "source": "Ratopati, 'रसुवाबाट हेलिकप्टरमा नुवाकोट पठाइँदैछ शव (तस्बिर)', 2 Sep 2026", "url": "https://www.ratopati.com/story/589318/the-body-is-being-sent-to-nuwakot-by-helicopter-from-rasuwa-photo" }
+      ],
+      "photo_terms": ["नुवाकोट पठाइँदैछ"],
+      "aliases": ["नुवाकोट पठाइँदै"]
+    },
+    {
+      "key": "rasuwa_collection",
+      "kind": "collection",
+      "name": "Rasuwa · district collection",
+      "district": "Rasuwa",
+      "lat": 28.1128, "lng": 85.2961, "coord_confidence": "municipality",
+      "figures": [
+        { "kind": "collected", "value": 133, "as_of": "2026-09-02", "source": "Gorkhapatra, 'भोटेकोशी बाढीः रसुवामा १३३ शव सङ्कलन', 2 Sep 2026", "url": "https://gorkhapatraonline.com/news/221023" }
+      ],
+      "notes": [],
+      "photo_terms": ["रसुवामा १३३"],
+      "aliases": ["रसुवामा १३३"]
+    },
+    {
+      "key": "narayani_gandak_recovery",
+      "kind": "recovery",
+      "name": "Narayani · Gandak barrage reach",
+      "district": "Nawalparasi West",
+      "lat": 27.4525, "lng": 83.9160, "coord_confidence": "approximate",
+      "figures": [
+        { "kind": "recovered", "value": 195, "as_of": "2026-09-02", "source": "Nagarik, 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/145-bodies-recovered-from-narayani-disposed-of-in-forests-of-bardaghat-and-sunwal-19-28.html", "note": "from the Narayani in Nawalparasi West's Gandak area" },
+        { "kind": "handed_over_by_india", "value": 14, "as_of": "2026-09-02", "source": "Nagarik, 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/145-bodies-recovered-from-narayani-disposed-of-in-forests-of-bardaghat-and-sunwal-19-28.html" },
+        { "kind": "repatriated_from_india", "value": 9, "as_of": "2026-09-02", "source": "Nagarik, 'भोटेकोशी बाढीले बगाएर भारत पुर्‍याएका ९ शव नेपाल ल्याइयो', 2 Sep 2026", "url": "https://nagariknews.nagariknetwork.com/social-affairs/nine-bodies-swept-away-by-bhotekoshi-flood-brought-back-to-nepal-from-india-45-89.html" },
+        { "kind": "nepali_remains_in_india", "value": 19, "as_of": "2026-09-02", "source": "Gorkhapatra, 'भारतमा १९ नेपालीको शव प्राप्त, चीनमा एक सय बेपत्ता', 2 Sep 2026", "url": "https://gorkhapatraonline.com/news/221008" }
+      ],
+      "notes": [],
+      "photo_terms": ["भारत पुर्‍याएका", "भारतमा १९"],
+      "aliases": ["गण्डक", "gandak", "नारायणी"]
+    },
+    {
+      "key": "krishnabhir_road_cut",
+      "kind": "road_cut",
+      "name": "Prithvi Highway · Krishnabhir cut",
+      "district": "Dhading",
+      "lat": 27.7835, "lng": 84.7951, "coord_confidence": "approximate",
+      "figures": [],
+      "notes": [
+        { "t_npt": "2026-09-02T09:00:00+05:45", "text": "Prithvi Highway remains cut at Krishnabhir; access is the binding constraint on the response. A new track above Krishnabhir is being opened; an alternative road opened at Parewabhir.", "source": "UN OCHA via NDRRMA operations panel; OnlineKhabar, 'New track to be opened above Krishnabhir to restore Prithvi Highway', 2 Sep 2026", "url": "https://english.onlinekhabar.com/new-track-krishnabhir.html" }
+      ],
+      "photo_terms": ["कृष्णभीर", "krishnabhir"],
+      "aliases": ["कृष्णभीर", "krishnabhir"]
+    },
+    {
+      "key": "tia_airhead",
+      "kind": "airhead",
+      "name": "Tribhuvan International Airport · airhead",
+      "district": "Kathmandu",
+      "lat": 27.6939, "lng": 85.3582, "coord_confidence": "published",
+      "figures": [],
+      "notes": [
+        { "t_npt": "2026-09-02T12:00:00+05:45", "text": "Foreign relief flights land here: Indian Air Force (fifth flight, 5.5 t medicines and an 11-member team), PLA Air Force Y-20 (second batch, DNA experts, drones), ROKAF KC-330 (44-member team, 5 search dogs), UAE relief aircraft (second).", "source": "Khabarhub / Rising Nepal / OnlineKhabar / Republica, 1–2 Sep 2026 — see the International Assistance board", "url": "https://english.khabarhub.com/2026/02/566102/" }
+      ],
+      "photo_terms": ["विमानस्थल", "airport", "air force", "kc-330", "y-20"],
+      "aliases": []
+    }
+  ]
+}

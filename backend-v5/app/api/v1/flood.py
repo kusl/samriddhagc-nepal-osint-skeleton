@@ -29,7 +29,7 @@ from app.models.river import RiverStation
 from app.models.story import Story
 from app.services import (dhm_photo_service, drp_service, flood_assistance_service,
                           flood_hydropower_service, flood_replay_service,
-                          nepalgov_service)
+                          flood_sites_service, nepalgov_service)
 from app.services.flood_intel_service import (CHARTER_ACTIVATION,
                                               CITE_TIER_NOTE,
                                               CITED_REPORTING,
@@ -311,11 +311,24 @@ async def flood_district_geo(
             "geometry": stored["geometry"],
         })
 
+    river = flood_replay_service.load_river_path()
+    if river:
+        corridor = flood_replay_service.river_corridor(river, _CORRIDOR)
+        corridor_kind = "channel"
+    else:
+        corridor = _CORRIDOR
+        corridor_kind = "schematic"
+
     return {
         "event_key": event,
         "count": len(features),
         "districts": {"type": "FeatureCollection", "features": features},
-        "corridor": _CORRIDOR,
+        # The real channel when the vendored OSM river is present: one entry
+        # per 100 m vertex, named where a published waypoint projects onto it,
+        # with the collapse origin carried through off the km axis. The
+        # schematic chord list is the fallback, and `corridor_kind` says which.
+        "corridor": corridor,
+        "corridor_kind": corridor_kind,
         # Named so nobody has to guess whether a district went missing between
         # the bulletin and the map.
         "unresolved": unresolved,
@@ -329,8 +342,10 @@ async def flood_district_geo(
                 "is published per district: the polygons carry no river "
                 "centreline, so a downstream kilometre figure could only be "
                 "estimated, and the corridor's own km marks are the event "
-                "record's. The corridor is a schematic path between named "
-                "places, not the river course.",
+                "record's. When corridor_kind is 'channel' the corridor is the "
+                "OpenStreetMap river channel (ODbL) densified to 100 m with the "
+                "published places projected onto it; 'schematic' means the "
+                "chord path between named places.",
     }
 
 
@@ -1565,6 +1580,19 @@ async def flood_press(
 # one assembled copy is served to everyone who asks within that minute.
 _REPLAY_TTL_SECONDS = 60
 _replay_cache: dict[str, Any] = {}
+
+
+@router.get("/sites")
+async def flood_sites(
+    event: str = Query(default=ACTIVE_EVENT_KEY, description="Event key"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Response sites for the impact map: burial grounds, DNA hubs, mortuaries,
+    transfer points, recovery reaches, the highway cut, the airhead, and the
+    flooded tunnels (from the tunnel ledger). Every figure names its document;
+    photographs are matched by caption and say so. Cached five minutes.
+    """
+    return await flood_sites_service.sites(db, event)
 
 
 @router.get("/assistance")
