@@ -331,6 +331,7 @@
 .widget-hero { grid-column: span 12; grid-row: span 8; }
 .widget-brief { grid-column: span 12; grid-row: span 9; }
 .widget-full { grid-column: span 12; grid-row: span 4; }
+.widget-band { grid-column: span 12; grid-row: span 6; }
 .widget-large { grid-column: span 8; grid-row: span 4; }
 .widget-medium { grid-column: span 6; grid-row: span 4; }
 .widget-small { grid-column: span 4; grid-row: span 4; }

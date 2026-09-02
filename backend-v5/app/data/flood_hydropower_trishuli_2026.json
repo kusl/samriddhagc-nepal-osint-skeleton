@@ -1,0 +1,475 @@
+{
+  "event_key": "trishuli-2026-08",
+  "title": "Hydropower tunnel rescue · Trishuli corridor",
+  "as_of": "2026-09-02",
+  "note": "Truth file for the tunnel ledger. Every figure carries the document it was read from. Coordinates marked approximate are snapped to the nearest named place on the channel and drawn as such. The service overlays the latest MoFA daily briefing and press mentions on top; nothing here is recomputed.",
+  "projects": [
+    {
+      "key": "upper_trishuli_1",
+      "name": "Upper Trishuli-1",
+      "short": "UT-1",
+      "capacity_mw": 216,
+      "river": "Trishuli",
+      "district": "Rasuwa",
+      "place": "Haku / Mailung",
+      "promoter": "Nepal Water & Energy Development Co. (NWEDC); Doosan main contractor, PowerChina civil, Andritz Hydro E&M",
+      "lat": 28.098,
+      "lng": 85.222,
+      "km": 32.2,
+      "coord_confidence": "approximate",
+      "coord_note": "approximate — snapped to the nearest named place on the channel; plant surveys are not published on this desk",
+      "status": "active",
+      "status_line": "Fifth attempt under way after four failed; mud chest-high inside; Korean tunnel team with the Nepali Army",
+      "teams": [
+        {
+          "country": "NP",
+          "unit": "Nepali Army",
+          "role": "tunnel rescue",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        },
+        {
+          "country": "KR",
+          "unit": "Republic of Korea tunnel rescue team",
+          "role": "tunnel rescue",
+          "source": "MoFA Nepal, Fifth Press Briefing on Bhote Koshi Floods, 2 Sep 2026 14:00",
+          "url": "https://nepal.gov.np/"
+        }
+      ],
+      "figures": [
+        {
+          "kind": "missing",
+          "value": 557,
+          "as_of": "2026-09-02",
+          "source": "Khabarhub, '557 workers still missing from Upper Trishuli-1', 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566179/",
+          "note": "PowerChina 385 · Andritz Hydro 94 · Doosan 56 · promoter 15 · Z Consult 7"
+        },
+        {
+          "kind": "believed_trapped",
+          "value": 115,
+          "as_of": "2026-09-02",
+          "source": "Khabarhub, '557 workers still missing from Upper Trishuli-1', 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566179/",
+          "note": "company estimate: headworks area and inside the main tunnel"
+        },
+        {
+          "kind": "rescued",
+          "value": 876,
+          "as_of": "2026-09-02",
+          "source": "Khabarhub, '557 workers still missing from Upper Trishuli-1', 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566179/",
+          "note": "rescued from the project site so far"
+        }
+      ],
+      "notes": [
+        {
+          "t_npt": "2026-09-02T14:00:00+05:45",
+          "text": "The Korean Tunnel Rescue Team is working with the Nepali teams to open the Upper Trisuli 1 tunnel; more support and logistics from the Republic of Korea are expected.",
+          "source": "MoFA Nepal, Fifth Press Briefing on Bhote Koshi Floods, 2 Sep 2026 14:00",
+          "url": "https://nepal.gov.np/"
+        },
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "Fifth rescue attempt initiated after four previous failed attempts; mud level reaches chest height.",
+          "source": "Khabarhub (Nepali), 'रसुवाका चार सुरुङमा उद्धारको कठिन परीक्षा', 2 Sep 2026",
+          "url": "https://khabarhub.com/2026/02/1019156/"
+        },
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "It could take 3–4 months to clear material trapped inside the tunnel.",
+          "source": "OnlineKhabar, 'Nepali Army: It could take 3–4 months to clear material trapped inside the tunnel', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/nepali-army-material-tunnel.html"
+        }
+      ]
+    },
+    {
+      "key": "trishuli_3a",
+      "name": "Upper Trishuli 3A",
+      "short": "3A",
+      "capacity_mw": 60,
+      "river": "Trishuli",
+      "district": "Nuwakot",
+      "place": "Betrawati (powerhouse)",
+      "promoter": "Nepal Electricity Authority",
+      "lat": 27.985,
+      "lng": 85.186,
+      "km": 45.0,
+      "coord_confidence": "approximate",
+      "coord_note": "approximate — snapped to the nearest named place on the channel; plant surveys are not published on this desk",
+      "status": "active",
+      "status_line": "Chinese tunnel team with a 93-strong joint team; outlet located; seven large rocks being blasted one by one; overnight rain refilled 1.5 m of water",
+      "teams": [
+        {
+          "country": "NP",
+          "unit": "Nepali Army (93-member joint team)",
+          "role": "tunnel rescue",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        },
+        {
+          "country": "CN",
+          "unit": "Chinese tunnel rescue team",
+          "role": "tunnel rescue",
+          "source": "MoFA Nepal, Fifth Press Briefing on Bhote Koshi Floods, 2 Sep 2026 14:00",
+          "url": "https://nepal.gov.np/"
+        }
+      ],
+      "figures": [],
+      "notes": [
+        {
+          "t_npt": "2026-09-02T14:00:00+05:45",
+          "text": "The Chinese Tunnel Rescue Team is mobilised in Upper Trisuli 3A and is working with the Nepali rescue team. They have opened some parts of the tunnel.",
+          "source": "MoFA Nepal, Fifth Press Briefing on Bhote Koshi Floods, 2 Sep 2026 14:00",
+          "url": "https://nepal.gov.np/"
+        },
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "Three excavators and one Bobcat; pumping out around 1.5 metres of water; compressor, breaker and blasting; tunnel outlet located.",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        },
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "The tunnel entrance appears to have been sealed by a slab; seven large rocks inside the tunnel are being blasted one by one. 'We are working according to a plan to enter the tunnel today.'",
+          "source": "OnlineKhabar, 'Rescuers hopeful as blocked tunnel is cleared at Trishuli 3A', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rescuers-tunnel-trishuli-3a.html"
+        },
+        {
+          "t_npt": "2026-08-29T09:00:00+05:45",
+          "text": "Army teams break into the upper part of the mud-swamped Trishuli 3A tunnel.",
+          "source": "Al Jazeera, 'Nepal rescuers drill into tunnels', 30 Aug 2026",
+          "url": "https://www.aljazeera.com/news/2026/8/30/nepal-rescuers-drill-into-tunnels-in-bid-to-reach-trapped-workers"
+        }
+      ]
+    },
+    {
+      "key": "trishuli_3b",
+      "name": "Upper Trishuli 3B",
+      "short": "3B",
+      "capacity_mw": 37,
+      "river": "Trishuli",
+      "district": "Nuwakot",
+      "place": "below Betrawati",
+      "promoter": "Nepal Electricity Authority",
+      "lat": 27.955,
+      "lng": 85.17,
+      "km": 50.0,
+      "coord_confidence": "approximate",
+      "coord_note": "approximate — snapped to the nearest named place on the channel; plant surveys are not published on this desk",
+      "status": "active",
+      "status_line": "61 Army personnel with three civilian rescuers and the project's managing director; project office and residential area identified; excavators cutting an access route",
+      "teams": [
+        {
+          "country": "NP",
+          "unit": "Nepali Army (61 personnel)",
+          "role": "tunnel rescue",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        }
+      ],
+      "figures": [],
+      "notes": [
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "61 Nepali Army personnel, three civilians and the project's managing director; excavator for access route; project office and residential areas identified.",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        }
+      ]
+    },
+    {
+      "key": "rasuwagadhi",
+      "name": "Rasuwagadhi",
+      "short": "RGHP",
+      "capacity_mw": 111,
+      "river": "Bhote Koshi",
+      "district": "Rasuwa",
+      "place": "Timure / Rasuwagadhi",
+      "promoter": "Rasuwagadhi Hydropower Company Ltd",
+      "lat": 28.265,
+      "lng": 85.375,
+      "km": 2.0,
+      "coord_confidence": "approximate",
+      "coord_note": "approximate — snapped to the nearest named place on the channel; plant surveys are not published on this desk",
+      "status": "suspended",
+      "status_line": "Search suspended: turbine floor three levels down completely filled with water and mud; rescuers had reached about 150 m before large rocks blocked the tunnel",
+      "teams": [
+        {
+          "country": "NP",
+          "unit": "Nepali Army",
+          "role": "tunnel rescue",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        }
+      ],
+      "figures": [],
+      "notes": [
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "'We stopped work yesterday. The turbine area three levels down is completely filled.' No survivors expected.",
+          "source": "Khabarhub (Nepali), 'रसुवाका चार सुरुङमा उद्धारको कठिन परीक्षा', 2 Sep 2026",
+          "url": "https://khabarhub.com/2026/02/1019156/"
+        },
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "Rescue teams had reached about 150 metres inside the tunnel; large rocks blocked further advance; search resumed Wednesday.",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        }
+      ]
+    },
+    {
+      "key": "chilime",
+      "name": "Chilime",
+      "short": "CHL",
+      "capacity_mw": 22,
+      "river": "Chilime Khola",
+      "district": "Rasuwa",
+      "place": "Chilime",
+      "promoter": "Chilime Hydropower Company Ltd",
+      "lat": 28.1865,
+      "lng": 85.2999,
+      "km": null,
+      "coord_confidence": "published",
+      "coord_note": "Wikidata Q17150837",
+      "status": "active",
+      "status_line": "Indian tunnel team with Nepali teams; officials remain optimistic of finding survivors",
+      "teams": [
+        {
+          "country": "NP",
+          "unit": "Nepali Army",
+          "role": "tunnel rescue",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        },
+        {
+          "country": "IN",
+          "unit": "Indian tunnel rescue team",
+          "role": "tunnel rescue",
+          "source": "MoFA Nepal, Fifth Press Briefing on Bhote Koshi Floods, 2 Sep 2026 14:00",
+          "url": "https://nepal.gov.np/"
+        }
+      ],
+      "figures": [],
+      "notes": [
+        {
+          "t_npt": "2026-09-02T14:00:00+05:45",
+          "text": "The Indian Tunnel Rescue Team is working closely with the Nepali rescue teams in two locations: Langtang and Chilime. Some work is done towards opening the tunnel but mud and boulders fill the inner side.",
+          "source": "MoFA Nepal, Fifth Press Briefing on Bhote Koshi Floods, 2 Sep 2026 14:00",
+          "url": "https://nepal.gov.np/"
+        },
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "'We remain optimistic. We may still rescue someone alive.'",
+          "source": "Khabarhub (Nepali), 'रसुवाका चार सुरुङमा उद्धारको कठिन परीक्षा', 2 Sep 2026",
+          "url": "https://khabarhub.com/2026/02/1019156/"
+        }
+      ]
+    },
+    {
+      "key": "langtang",
+      "name": "Langtang Khola",
+      "short": "LTG",
+      "capacity_mw": 10,
+      "river": "Langtang Khola",
+      "district": "Rasuwa",
+      "place": "Syabrubesi",
+      "promoter": "Langtang Hydropower",
+      "lat": 28.163,
+      "lng": 85.352,
+      "km": 14.3,
+      "coord_confidence": "approximate",
+      "coord_note": "approximate — snapped to the nearest named place on the channel; plant surveys are not published on this desk",
+      "status": "suspended",
+      "status_line": "Indian team with a joint party of 25; rescuers got 64 m in on hands and knees before the passage closed; a later report puts the reach at about 150 m",
+      "teams": [
+        {
+          "country": "NP",
+          "unit": "Nepali Army",
+          "role": "tunnel rescue",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        },
+        {
+          "country": "IN",
+          "unit": "Indian tunnel rescue team",
+          "role": "tunnel rescue",
+          "source": "MoFA Nepal, Fifth Press Briefing on Bhote Koshi Floods, 2 Sep 2026 14:00",
+          "url": "https://nepal.gov.np/"
+        }
+      ],
+      "figures": [],
+      "notes": [
+        {
+          "t_npt": "2026-09-02T14:00:00+05:45",
+          "text": "Indian Tunnel Rescue Team working at Langtang (with Chilime).",
+          "source": "MoFA Nepal, Fifth Press Briefing on Bhote Koshi Floods, 2 Sep 2026 14:00",
+          "url": "https://nepal.gov.np/"
+        },
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "Joint team of 25 rescuers including foreign staff, entering approximately 150 metres into the tunnel.",
+          "source": "OnlineKhabar, 'How is work being carried out inside the tunnels?', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/rasuwa-floods-how-is-work-being-carried-out-inside-the-tunnels.html"
+        },
+        {
+          "t_npt": "2026-09-02T09:00:00+05:45",
+          "text": "Rescuers penetrated 64 metres but could not advance further; extremely confined, crawling only. Search suspended.",
+          "source": "Khabarhub (Nepali), 'रसुवाका चार सुरुङमा उद्धारको कठिन परीक्षा', 2 Sep 2026",
+          "url": "https://khabarhub.com/2026/02/1019156/"
+        }
+      ]
+    },
+    {
+      "key": "sanjen",
+      "name": "Sanjen & Upper Sanjen",
+      "short": "SNJ",
+      "capacity_mw": 57.3,
+      "river": "Sanjen Khola",
+      "district": "Rasuwa",
+      "place": "Chilime valley",
+      "promoter": "Sanjen Jalavidhyut Company",
+      "lat": 28.235,
+      "lng": 85.325,
+      "km": null,
+      "coord_confidence": "approximate",
+      "coord_note": "approximate — snapped to the nearest named place on the channel; plant surveys are not published on this desk",
+      "status": "unreported",
+      "status_line": "Listed among the affected projects; no per-project rescue figures published",
+      "teams": [],
+      "figures": [],
+      "notes": [
+        {
+          "t_npt": "2026-09-01T09:00:00+05:45",
+          "text": "Joint rescue teams mobilised at Trishuli-3A, 3B, Upper Trishuli-1, Chilime, Rasuwagadhi and Langtang; Sanjen named among affected hydropower projects in press reporting.",
+          "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 1 Sep 2026",
+          "url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+        }
+      ]
+    },
+    {
+      "key": "mailung",
+      "name": "Mailung Khola",
+      "short": "MLK",
+      "capacity_mw": 14.3,
+      "river": "Mailung Khola",
+      "district": "Rasuwa",
+      "place": "Mailung",
+      "promoter": "Mailung Khola Hydropower",
+      "lat": 28.108,
+      "lng": 85.226,
+      "km": 32.2,
+      "coord_confidence": "approximate",
+      "coord_note": "approximate — snapped to the nearest named place on the channel; plant surveys are not published on this desk",
+      "status": "unreported",
+      "status_line": "Buildings at Mailung fully or partially destroyed; no per-project tunnel figures published",
+      "teams": [],
+      "figures": [],
+      "notes": [
+        {
+          "t_npt": "2026-09-01T09:00:00+05:45",
+          "text": "Buildings in Timure, Syafrubesi, Mailung and Bandare fully or partially destroyed.",
+          "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 1 Sep 2026",
+          "url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+        }
+      ]
+    }
+  ],
+  "corridor_figures": [
+    {
+      "kind": "unaccounted_all_projects",
+      "value": 934,
+      "as_of": "2026-08-29",
+      "source": "Kathmandu Post, 'Hundreds feared trapped in hydropower tunnels', 29 Aug 2026",
+      "url": "https://kathmandupost.com/national/2026/08/29/hundreds-feared-trapped-in-hydropower-tunnel",
+      "note": "IPPAN: unaccounted for across 11 hydropower projects"
+    },
+    {
+      "kind": "believed_inside_all",
+      "value": 500,
+      "as_of": "2026-09-01",
+      "source": "IPPAN / NDRRMA / Joint Rescue, desk situation panel, 1 Sep 2026",
+      "url": "https://www.nepaldisaster.com/stats",
+      "note": "~500 believed still inside tunnel systems (desk panel, IPPAN/NDRRMA)"
+    },
+    {
+      "kind": "airlifted_first_two_days",
+      "value": 279,
+      "as_of": "2026-09-01",
+      "source": "IPPAN / NDRRMA / Joint Rescue, desk situation panel, 1 Sep 2026",
+      "url": "https://www.nepaldisaster.com/stats",
+      "note": "airlifted from tunnels in the first two days"
+    },
+    {
+      "kind": "facilities_damaged",
+      "value": 27,
+      "as_of": "2026-09-01",
+      "source": "IPPAN / NDRRMA / Joint Rescue, desk situation panel, 1 Sep 2026",
+      "url": "https://www.nepaldisaster.com/stats",
+      "note": "hydropower facilities damaged or destroyed"
+    },
+    {
+      "kind": "rescued_upper_trishuli_tunnel",
+      "value": 350,
+      "as_of": "2026-08-27",
+      "source": "Rising Nepal Daily, 27 Aug 2026",
+      "url": "https://risingnepaldaily.com/news/85645",
+      "note": "'350 rescued from the Upper Trishuli hydropower tunnel; about 100 still trapped' — the report does not name which Upper Trishuli project"
+    }
+  ],
+  "aliases": {
+    "upper_trishuli_1": [
+      "upper trishuli-1",
+      "upper trishuli 1",
+      "upper trisuli 1",
+      "ut-1",
+      "ut1",
+      "माथिल्लो त्रिशूली-१",
+      "माथिल्लो त्रिशुली १",
+      "माथिल्लो त्रिशूली १"
+    ],
+    "trishuli_3a": [
+      "trishuli 3a",
+      "trisuli 3a",
+      "trishuli-3a",
+      "upper trishuli 3a",
+      "त्रिशूली ३ए",
+      "त्रिशुली ३ ए",
+      "३ए"
+    ],
+    "trishuli_3b": [
+      "trishuli 3b",
+      "trisuli 3b",
+      "trishuli-3b",
+      "upper trishuli 3b",
+      "त्रिशूली ३बी",
+      "३बी"
+    ],
+    "rasuwagadhi": [
+      "rasuwagadhi hydro",
+      "rasuwa garhi hydro",
+      "rasuwagadhi hep",
+      "रसुवागढी जलविद्युत",
+      "रसुवागढी आयोजना"
+    ],
+    "chilime": [
+      "chilime",
+      "चिलिमे"
+    ],
+    "langtang": [
+      "langtang hydro",
+      "langtang khola",
+      "लाङटाङ जलविद्युत",
+      "लाङटाङ खोला"
+    ],
+    "sanjen": [
+      "sanjen",
+      "सान्जेन"
+    ],
+    "mailung": [
+      "mailung",
+      "मैलुङ"
+    ]
+  }
+}

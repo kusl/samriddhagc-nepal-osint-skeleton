@@ -4,6 +4,7 @@ export type WidgetSize =
   | 'command'
   | 'hero'
   | 'full'
+  | 'band'
   | 'wide'
   | 'large'
   | 'half'
@@ -32,6 +33,7 @@ export const SIZE_MAP: Record<WidgetSize, WidgetDimensions> = {
   large: { cols: 8, rows: 4 },
   wide: { cols: 8, rows: 5 },
   full: { cols: 12, rows: 4 },
+  band: { cols: 12, rows: 6 },
   hero: { cols: 12, rows: 7 },
   situation: { cols: 12, rows: 8 },
   brief: { cols: 12, rows: 9 },

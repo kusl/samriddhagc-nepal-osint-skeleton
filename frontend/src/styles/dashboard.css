@@ -326,6 +326,7 @@
 /* Full width (12 cols) */
 .widget-brief { grid-column: span 12; grid-row: span 9; }
 .widget-full { grid-column: span 12; grid-row: span 4; }
+.widget-band { grid-column: span 12; grid-row: span 6; }
 .widget-hero { grid-column: span 12; grid-row: span 7; }
 .widget-command { grid-column: span 12; grid-row: span 10; }
 .widget-situation { grid-column: span 12; grid-row: span 8; min-height: 420px; }

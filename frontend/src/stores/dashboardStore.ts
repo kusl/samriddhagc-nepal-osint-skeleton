@@ -127,6 +127,7 @@ export const WIDGET_META: Record<string, {
   'flood-rescue-ops': { name: 'Rescue Operations', category: 'flood', consumerName: 'Rescue Operations' },
   'flood-damage-aid': { name: 'Damage & Relief', category: 'flood', consumerName: 'Damage & Relief Funds' },
   'flood-tunnel-rescue': { name: 'Tunnel Rescue', category: 'flood', consumerName: 'Hydropower Tunnel Rescue' },
+  'flood-assistance': { name: 'International Assistance', category: 'flood', consumerName: 'Who Sent What' },
   'flood-river-gauges': { name: 'Hydrology · Gauge Net', category: 'flood', consumerName: 'River Gauges' },
   'flood-satellite-intel': { name: 'Published Imagery Record', category: 'flood', consumerName: 'Imagery Sources' },
   'flood-satellite-map': { name: 'Live Flood Extent', category: 'flood', consumerName: 'Live Flood Extent' },
@@ -497,7 +498,7 @@ export const PRESETS: Record<string, Preset> = {
       // v72 public cut: Ground Imagery and Damage & Relief archived (loaders + Customize stay).
       'flood-district-map',
       'flood-district-toll', 'flood-missing-ledger',
-      'flood-rescue-ops', 'flood-tunnel-rescue',
+      'flood-rescue-ops', 'flood-tunnel-rescue', 'flood-assistance',
       'flood-river-gauges',
       // TIER 3 — the record: what others report, what NDRRMA published, who we trust.
       'flood-cited-reporting', 'flood-sitrep-log',
@@ -508,7 +509,7 @@ export const PRESETS: Record<string, Preset> = {
       'flood-district-map': true,
       'flood-operational-picture': true,
       'flood-district-toll': true, 'flood-missing-ledger': true,
-      'flood-rescue-ops': true, 'flood-tunnel-rescue': true,
+      'flood-rescue-ops': true, 'flood-tunnel-rescue': true, 'flood-assistance': true,
       'flood-river-gauges': true, 'flood-damage-aid': false,
       'flood-cited-reporting': true, 'flood-gov-services': false,
       'flood-source-matrix': true, 'flood-chronology': false,
@@ -548,8 +549,9 @@ export const PRESETS: Record<string, Preset> = {
       'flood-operational-picture': 'command',  // Row 3b: 12 cols, 10 rows — 3D replay of the flood front
       'flood-district-toll': 'half',          // Row 4: 6 cols
       'flood-missing-ledger': 'half',         // Row 4: 6 cols (6+6=12)
-      'flood-rescue-ops': 'half',             // Row 5: 6 cols
-      'flood-tunnel-rescue': 'half',          // Row 5: 6 cols (6+6=12)
+      'flood-rescue-ops': 'band',             // Row 5: 12 cols, 6 rows — force posture: agency bars + rescued + force losses
+      'flood-tunnel-rescue': 'hero',          // Row 5b: 12 cols, 7 rows — per-project tunnel ledger (8 rows + corridor strip)
+      'flood-assistance': 'hero',             // Row 5c: 12 cols, 7 rows — arc map + who-sent-what ledger
       'flood-river-gauges': 'full',           // Row 6: 12 cols — the open threat
       'flood-damage-aid': 'half',             // beside rescue ops — the money, half width
       'flood-ground-imagery': 'hero',         // Row 3b: 12 cols, 7 rows — official photographs + press link previews
@@ -836,7 +838,7 @@ export const useDashboardStore = create<DashboardState>()(
     }),
     {
       name: 'rta-dashboard-v14',  // v72: public cut — ground imagery, damage/relief, market, social archived
-      version: 72,
+      version: 74,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as DashboardState;
@@ -873,7 +875,8 @@ export const useDashboardStore = create<DashboardState>()(
           };
         }
 
-        if (version < 72 && state.activePreset === 'flood') {
+        if (version < 74 && state.activePreset === 'flood') {
+          // v74 adds the international-assistance board; v73 made the tunnel ledger a hero row and rescue ops full width.
           // v69 adds the 3D operational picture under the district map. As with every flood
           // revision since v62, a flood user takes the new desk wholesale.
           const preset = PRESETS.flood;

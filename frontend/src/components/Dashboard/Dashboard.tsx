@@ -97,6 +97,7 @@ const WIDGET_LOADERS: Record<string, WidgetLoader> = {
   'flood-rescue-ops': () => import('./widgets/FloodRescueOpsWidget').then((m) => ({ default: m.FloodRescueOpsWidget })),
   'flood-damage-aid': () => import('./widgets/FloodDamageAidWidget').then((m) => ({ default: m.FloodDamageAidWidget })),
   'flood-tunnel-rescue': () => import('./widgets/FloodTunnelRescueWidget').then((m) => ({ default: m.FloodTunnelRescueWidget })),
+  'flood-assistance': () => import('./widgets/FloodAssistanceWidget').then((m) => ({ default: m.FloodAssistanceWidget })),
   'flood-river-gauges': () => import('./widgets/FloodRiverGaugesWidget').then((m) => ({ default: m.FloodRiverGaugesWidget })),
   'flood-satellite-intel': () => import('./widgets/FloodSatelliteIntelWidget').then((m) => ({ default: m.FloodSatelliteIntelWidget })),
   'flood-satellite-map': () => import('./widgets/FloodSatelliteMapWidget').then((m) => ({ default: m.FloodSatelliteMapWidget })),

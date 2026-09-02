@@ -1,0 +1,685 @@
+{
+  "event_key": "trishuli_2026",
+  "title": "International assistance to the Bhote Koshi / Trishuli flood response — hand-verified ledger",
+  "verified_on": "2026-09-02",
+  "note": "Every row names the document it was read from. Where two documents give different sizes for the same team, both rows are kept with their dates; the client shows the newest and lists the rest. Money and tonnage are as announced by the donor or as reported by the named outlet, never summed across currencies. Coordinates are the sending country's capital and exist only to draw the arc.",
+  "kathmandu": {
+    "lat": 27.7172,
+    "lng": 85.324
+  },
+  "countries": [
+    {
+      "code": "IN",
+      "name": "India",
+      "lat": 28.6139,
+      "lng": 77.209,
+      "teams": [
+        {
+          "kind": "tunnel",
+          "personnel": 11,
+          "sites": [
+            "chilime",
+            "langtang"
+          ],
+          "since": "2026-08-30",
+          "source": "The Kathmandu Post, 'More countries join Nepal flood rescue efforts', 31 Aug 2026",
+          "url": "https://kathmandupost.com/national/2026/08/31/more-countries-join-nepal-flood-rescue-efforts",
+          "note": "11-member tunnel rescue team at Chilime; MoFA's 2 Sept briefing places the Indian team at Langtang and Chilime"
+        },
+        {
+          "kind": "forensic",
+          "personnel": 19,
+          "sites": [],
+          "since": "2026-08-29",
+          "source": "The Rising Nepal, 'Tunnel rescue teams from India, China, RoK, Singapore working', 1 Sep 2026",
+          "url": "https://risingnepaldaily.com/news/85938",
+          "note": "19-member DNA analysis team with Nepal Police (Kathmandu Post 31 Aug said 18)"
+        },
+        {
+          "kind": "sar",
+          "personnel": 11,
+          "sites": [],
+          "since": "2026-09-02",
+          "source": "Khabarhub, 'India sends fifth Air Force plane carrying 5.5 tons of medicines', 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566102/",
+          "note": "11-member team of experts with advanced search and rescue equipment on the fifth flight"
+        }
+      ],
+      "materials": [
+        {
+          "item": "Medicines",
+          "qty": 5.5,
+          "unit": "t",
+          "date": "2026-09-02",
+          "source": "Khabarhub, 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566102/",
+          "note": "fifth Indian Air Force flight"
+        },
+        {
+          "item": "Relief supplies",
+          "qty": 50,
+          "unit": "t",
+          "date": "2026-09-01",
+          "source": "AP / BBC / Reuters compilation in the desk's aid panel",
+          "url": null,
+          "note": "approximate cumulative tonnage",
+          "cumulative": true
+        },
+        {
+          "item": "Airtight body bags, freezers",
+          "qty": null,
+          "unit": null,
+          "date": "2026-08-31",
+          "source": "The Kathmandu Post, 31 Aug 2026",
+          "url": "https://kathmandupost.com/national/2026/08/31/more-countries-join-nepal-flood-rescue-efforts",
+          "note": null
+        }
+      ],
+      "money": [],
+      "flights": [
+        {
+          "n": 5,
+          "aircraft": "Indian Air Force transport",
+          "date": "2026-09-02",
+          "source": "Khabarhub, 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566102/"
+        }
+      ]
+    },
+    {
+      "code": "CN",
+      "name": "China",
+      "lat": 39.9042,
+      "lng": 116.4074,
+      "teams": [
+        {
+          "kind": "tunnel",
+          "personnel": 9,
+          "sites": [
+            "trishuli_3a"
+          ],
+          "since": "2026-08-30",
+          "source": "The Kathmandu Post, 31 Aug 2026",
+          "url": "https://kathmandupost.com/national/2026/08/31/more-countries-join-nepal-flood-rescue-efforts",
+          "note": "9-member team at Upper Trishuli 3A; Ministry of Emergency Management sent five tunnel experts first with four more to follow"
+        },
+        {
+          "kind": "forensic",
+          "personnel": 5,
+          "sites": [],
+          "since": "2026-09-01",
+          "source": "The Rising Nepal, 'Second batch of China's relief supplies arrives including drones, DNA experts and testing tools', 1 Sep 2026",
+          "url": "https://risingnepaldaily.com/news/85946",
+          "note": "five DNA experts on the PLA Air Force Y-20 that landed 17:30, 1 Sep; MoFA 2 Sep confirms a 5-member forensic team"
+        }
+      ],
+      "materials": [
+        {
+          "item": "Emergency supplies",
+          "qty": 50,
+          "unit": "t",
+          "date": "2026-08-29",
+          "source": "Desk aid panel (AP / BBC / Reuters / IFRC), 1 Sep 2026",
+          "url": null,
+          "note": "13,200 items, first batch",
+          "cumulative": false
+        },
+        {
+          "item": "Drones, DNA testing instruments and reagents, water purification, lighting",
+          "qty": null,
+          "unit": null,
+          "date": "2026-09-01",
+          "source": "The Rising Nepal, 1 Sep 2026",
+          "url": "https://risingnepaldaily.com/news/85946",
+          "note": "second batch, PLA Air Force Y-20"
+        },
+        {
+          "item": "Heavy rescue equipment via Kerung road",
+          "qty": null,
+          "unit": null,
+          "date": "2026-09-02",
+          "source": "OnlineKhabar, 'China opens road to Kerung border, allowing heavy rescue equipment into affected areas', 2 Sep 2026",
+          "url": "https://english.onlinekhabar.com/china-opens-road-to-kerung.html",
+          "note": null
+        }
+      ],
+      "money": [
+        {
+          "amount": 336000000,
+          "currency": "NPR",
+          "channel": "cash aid to flood victims",
+          "date": "2026-09-01",
+          "source": "My Republica, 'China provides Rs 336 million in cash aid', 1 Sep 2026",
+          "url": "https://myrepublica.nagariknetwork.com/news/china-provides-rs-336-million-in-cash-aid-to-nepals-flood-victims-39-96.html"
+        }
+      ],
+      "flights": [
+        {
+          "n": 2,
+          "aircraft": "PLA Air Force Y-20",
+          "date": "2026-09-01",
+          "source": "The Rising Nepal, 1 Sep 2026",
+          "url": "https://risingnepaldaily.com/news/85946"
+        }
+      ]
+    },
+    {
+      "code": "KR",
+      "name": "Republic of Korea",
+      "lat": 37.5665,
+      "lng": 126.978,
+      "teams": [
+        {
+          "kind": "tunnel",
+          "personnel": null,
+          "sites": [
+            "upper_trishuli_1"
+          ],
+          "since": "2026-08-31",
+          "source": "The Rising Nepal, 1 Sep 2026",
+          "url": "https://risingnepaldaily.com/news/85938",
+          "note": "specialised tunnel rescue team arrived; MoFA 2 Sep places it at Upper Trisuli 1"
+        },
+        {
+          "kind": "sar",
+          "personnel": 44,
+          "sites": [],
+          "since": "2026-09-02",
+          "source": "OnlineKhabar, 'South Korea to send 44-member disaster relief team to Nepal', 1 Sep 2026",
+          "url": "https://english.onlinekhabar.com/south-korea-flood-relief-team.html",
+          "note": "MoFA, KOICA and firefighters; 700 pieces of equipment and five search-and-rescue dogs; KC-330; about 10 days"
+        },
+        {
+          "kind": "forensic",
+          "personnel": null,
+          "sites": [],
+          "since": "2026-09-01",
+          "source": "MoFA Nepal, Fifth Press Briefing, 2 Sep 2026",
+          "url": "https://nepal.gov.np/",
+          "note": "an additional Korean forensic team has joined with equipment and instruments"
+        }
+      ],
+      "materials": [
+        {
+          "item": "Relief supplies",
+          "qty": null,
+          "unit": null,
+          "date": "2026-09-02",
+          "source": "Khabarhub, 'South Korean Air Force plane arrives in Kathmandu with relief supplies', 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566111/",
+          "note": "KC-330"
+        }
+      ],
+      "money": [
+        {
+          "amount": 1000000,
+          "currency": "USD",
+          "channel": "humanitarian assistance",
+          "date": "2026-08-29",
+          "source": "Desk aid panel (AP / BBC / Reuters / IFRC), 1 Sep 2026",
+          "url": null
+        }
+      ],
+      "flights": [
+        {
+          "n": 1,
+          "aircraft": "ROKAF KC-330",
+          "date": "2026-09-02",
+          "source": "Khabarhub, 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566111/"
+        }
+      ]
+    },
+    {
+      "code": "SG",
+      "name": "Singapore",
+      "lat": 1.3521,
+      "lng": 103.8198,
+      "teams": [
+        {
+          "kind": "dvi",
+          "personnel": 6,
+          "sites": [],
+          "since": "2026-09-01",
+          "source": "MoFA Nepal, Fifth Press Briefing, 2 Sep 2026",
+          "url": "https://nepal.gov.np/",
+          "note": "Disaster Victim Identification team of 6 arrived; 13 more arriving 2 Sep with DNA testing equipment; more to follow with high-capacity drones"
+        },
+        {
+          "kind": "dvi",
+          "personnel": 13,
+          "sites": [],
+          "since": "2026-09-02",
+          "source": "MoFA Nepal, Fifth Press Briefing, 2 Sep 2026",
+          "url": "https://nepal.gov.np/",
+          "note": "second DVI element with DNA testing equipment"
+        }
+      ],
+      "materials": [
+        {
+          "item": "Humanitarian supplies (civilian and Singapore Armed Forces)",
+          "qty": null,
+          "unit": null,
+          "date": "2026-08-31",
+          "source": "The Kathmandu Post, 31 Aug 2026",
+          "url": "https://kathmandupost.com/national/2026/08/31/more-countries-join-nepal-flood-rescue-efforts",
+          "note": "Singapore Police Force DVI officers deployed at Nepal's request"
+        }
+      ],
+      "money": [],
+      "flights": []
+    },
+    {
+      "code": "US",
+      "name": "United States",
+      "lat": 38.9072,
+      "lng": -77.0369,
+      "teams": [],
+      "materials": [
+        {
+          "item": "Water filters, tarpaulins, blankets, sanitation kits, solar lights",
+          "qty": 40,
+          "unit": "t",
+          "date": "2026-09-02",
+          "source": "Khabarhub, 'Rasuwa flood: US donates 40 tons of emergency relief supplies', 2 Sep 2026",
+          "url": "https://english.khabarhub.com/2026/02/566138/",
+          "note": "delivered by Samaritan's Purse for 2,600 families"
+        }
+      ],
+      "money": [
+        {
+          "amount": 500000,
+          "currency": "USD",
+          "channel": "flood response",
+          "date": "2026-09-01",
+          "source": "The Himalayan Times, 'US announces $500,000 aid for Nepal flood response', 1 Sep 2026",
+          "url": "https://thehimalayantimes.com/kathmandu/us-announces-500000-aid-for-nepal-flood-response"
+        }
+      ],
+      "flights": []
+    },
+    {
+      "code": "AU",
+      "name": "Australia",
+      "lat": -35.2809,
+      "lng": 149.13,
+      "teams": [
+        {
+          "kind": "consular",
+          "personnel": 12,
+          "sites": [],
+          "since": "2026-08-31",
+          "source": "The Kathmandu Post, 31 Aug 2026",
+          "url": "https://kathmandupost.com/national/2026/08/31/more-countries-join-nepal-flood-rescue-efforts",
+          "note": "crisis-response and consular officers and Australian Federal Police"
+        }
+      ],
+      "materials": [],
+      "money": [
+        {
+          "amount": 2000000,
+          "currency": "AUD",
+          "channel": "WFP emergency food assistance and logistics",
+          "date": "2026-08-30",
+          "source": "The Himalayan Times, 'Australia provides AUD 2m for flood relief in Nepal', 2 Sep 2026",
+          "url": "https://thehimalayantimes.com/nepal/australia-provides-aud-2m-for-flood-relief-in-nepal"
+        },
+        {
+          "amount": 8000000,
+          "currency": "AUD",
+          "channel": "humanitarian support (as reported)",
+          "date": "2026-08-31",
+          "source": "The Kathmandu Post, 31 Aug 2026",
+          "url": "https://kathmandupost.com/national/2026/08/31/more-countries-join-nepal-flood-rescue-efforts"
+        }
+      ],
+      "flights": []
+    },
+    {
+      "code": "AE",
+      "name": "United Arab Emirates",
+      "lat": 24.4539,
+      "lng": 54.3773,
+      "teams": [],
+      "materials": [
+        {
+          "item": "Urgent relief (second aircraft)",
+          "qty": null,
+          "unit": null,
+          "date": "2026-09-01",
+          "source": "My Republica, 'UAE sends second tranche of urgent relief for flood, landslide victims in Nepal', 1 Sep 2026",
+          "url": "https://myrepublica.nagariknetwork.com/news/uae-sends-second-aircraft-carrying-urgent-relief-for-flood-landslide-victim-10-44.html",
+          "note": null
+        }
+      ],
+      "money": [],
+      "flights": [
+        {
+          "n": 2,
+          "aircraft": "UAE relief aircraft",
+          "date": "2026-09-01",
+          "source": "My Republica, 1 Sep 2026",
+          "url": "https://myrepublica.nagariknetwork.com/news/uae-sends-second-aircraft-carrying-urgent-relief-for-flood-landslide-victim-10-44.html"
+        }
+      ]
+    },
+    {
+      "code": "JP",
+      "name": "Japan",
+      "lat": 35.6762,
+      "lng": 139.6503,
+      "teams": [],
+      "materials": [
+        {
+          "item": "Specialised equipment (expected)",
+          "qty": null,
+          "unit": null,
+          "date": "2026-08-31",
+          "source": "The Kathmandu Post, 31 Aug 2026",
+          "url": "https://kathmandupost.com/national/2026/08/31/more-countries-join-nepal-flood-rescue-efforts",
+          "note": "announced, not yet reported arrived"
+        }
+      ],
+      "money": [],
+      "flights": []
+    }
+  ],
+  "announced_only": [
+    "Qatar",
+    "United Kingdom",
+    "New Zealand",
+    "Malaysia",
+    "Bangladesh",
+    "Pakistan",
+    "Myanmar"
+  ],
+  "announced_only_source": {
+    "source": "The Kathmandu Post, 31 Aug 2026",
+    "url": "https://kathmandupost.com/national/2026/08/31/more-countries-join-nepal-flood-rescue-efforts"
+  },
+  "capitals": {
+    "GB": [
+      51.5074,
+      -0.1278
+    ],
+    "DK": [
+      55.6761,
+      12.5683
+    ],
+    "NL": [
+      52.3676,
+      4.9041
+    ],
+    "ID": [
+      -6.2088,
+      106.8456
+    ],
+    "QA": [
+      25.2854,
+      51.531
+    ],
+    "NZ": [
+      -41.2865,
+      174.7762
+    ],
+    "MY": [
+      3.139,
+      101.6869
+    ],
+    "BD": [
+      23.8103,
+      90.4125
+    ],
+    "PK": [
+      33.6844,
+      73.0479
+    ],
+    "MM": [
+      19.7633,
+      96.0785
+    ],
+    "CH": [
+      46.948,
+      7.4474
+    ],
+    "DE": [
+      52.52,
+      13.405
+    ],
+    "FR": [
+      48.8566,
+      2.3522
+    ],
+    "TR": [
+      39.9334,
+      32.8597
+    ],
+    "CA": [
+      45.4215,
+      -75.6972
+    ],
+    "NO": [
+      59.9139,
+      10.7522
+    ],
+    "SE": [
+      59.3293,
+      18.0686
+    ],
+    "FI": [
+      60.1699,
+      24.9384
+    ],
+    "IE": [
+      53.3498,
+      -6.2603
+    ],
+    "ES": [
+      40.4168,
+      -3.7038
+    ],
+    "IT": [
+      41.9028,
+      12.4964
+    ],
+    "BE": [
+      50.8503,
+      4.3517
+    ],
+    "AT": [
+      48.2082,
+      16.3738
+    ],
+    "PH": [
+      14.5995,
+      120.9842
+    ],
+    "TH": [
+      13.7563,
+      100.5018
+    ],
+    "VN": [
+      21.0285,
+      105.8542
+    ],
+    "LK": [
+      6.9271,
+      79.8612
+    ],
+    "BT": [
+      27.4728,
+      89.639
+    ],
+    "IL": [
+      31.7683,
+      35.2137
+    ],
+    "SA": [
+      24.7136,
+      46.6753
+    ],
+    "KW": [
+      29.3759,
+      47.9774
+    ],
+    "OM": [
+      23.588,
+      58.3829
+    ],
+    "EG": [
+      30.0444,
+      31.2357
+    ],
+    "ZA": [
+      -33.9249,
+      18.4241
+    ],
+    "BR": [
+      -15.7975,
+      -47.8919
+    ],
+    "MX": [
+      19.4326,
+      -99.1332
+    ],
+    "RU": [
+      55.7558,
+      37.6173
+    ],
+    "UA": [
+      50.4501,
+      30.5234
+    ],
+    "PL": [
+      52.2297,
+      21.0122
+    ],
+    "CZ": [
+      50.0755,
+      14.4378
+    ],
+    "HK": [
+      22.3193,
+      114.1694
+    ],
+    "TW": [
+      25.033,
+      121.5654
+    ],
+    "MN": [
+      47.8864,
+      106.9057
+    ],
+    "KZ": [
+      51.1694,
+      71.4491
+    ]
+  },
+  "country_aliases": {
+    "IN": [
+      "india",
+      "indian",
+      "भारत",
+      "भारतीय"
+    ],
+    "CN": [
+      "china",
+      "chinese",
+      "चीन",
+      "चिनियाँ"
+    ],
+    "KR": [
+      "south korea",
+      "republic of korea",
+      "korean",
+      "कोरिया",
+      "कोरियाली"
+    ],
+    "SG": [
+      "singapore",
+      "सिंगापुर"
+    ],
+    "US": [
+      "united states",
+      "u.s.",
+      "american",
+      "usaid",
+      "अमेरिका",
+      "अमेरिकी"
+    ],
+    "AU": [
+      "australia",
+      "australian",
+      "अष्ट्रेलिया"
+    ],
+    "AE": [
+      "uae",
+      "united arab emirates",
+      "emirati",
+      "युएई"
+    ],
+    "JP": [
+      "japan",
+      "japanese",
+      "जापान"
+    ],
+    "GB": [
+      "united kingdom",
+      "britain",
+      "british",
+      "बेलायत"
+    ],
+    "QA": [
+      "qatar",
+      "कतार"
+    ],
+    "NZ": [
+      "new zealand"
+    ],
+    "MY": [
+      "malaysia",
+      "मलेसिया"
+    ],
+    "BD": [
+      "bangladesh",
+      "बंगलादेश"
+    ],
+    "PK": [
+      "pakistan",
+      "पाकिस्तान"
+    ],
+    "MM": [
+      "myanmar"
+    ],
+    "DE": [
+      "germany",
+      "german",
+      "जर्मनी"
+    ],
+    "CH": [
+      "switzerland",
+      "swiss",
+      "स्विट्जरल्याण्ड"
+    ],
+    "FR": [
+      "france",
+      "french",
+      "फ्रान्स"
+    ],
+    "TR": [
+      "türkiye",
+      "turkey",
+      "turkish"
+    ],
+    "IL": [
+      "israel",
+      "israeli",
+      "इजरायल"
+    ],
+    "CA": [
+      "canada",
+      "canadian",
+      "क्यानडा"
+    ]
+  }
+}

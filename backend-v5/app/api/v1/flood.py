@@ -27,8 +27,9 @@ from app.models.flood_event import (FloodLiveSnapshot, FloodMediaItem,
                                     FloodSitrep)
 from app.models.river import RiverStation
 from app.models.story import Story
-from app.services import (dhm_photo_service, drp_service,
-                          flood_replay_service, nepalgov_service)
+from app.services import (dhm_photo_service, drp_service, flood_assistance_service,
+                          flood_hydropower_service, flood_replay_service,
+                          nepalgov_service)
 from app.services.flood_intel_service import (CHARTER_ACTIVATION,
                                               CITE_TIER_NOTE,
                                               CITED_REPORTING,
@@ -1564,6 +1565,30 @@ async def flood_press(
 # one assembled copy is served to everyone who asks within that minute.
 _REPLAY_TTL_SECONDS = 60
 _replay_cache: dict[str, Any] = {}
+
+
+@router.get("/assistance")
+async def flood_assistance(days: int = Query(default=10, ge=1, le=60,
+                                             description="Press-scan window")):
+    """International assistance board: per-country teams, materials, money and
+    flights read from named documents; the newest MoFA briefing's tunnel and
+    forensic sentences matched to countries automatically; IFRC GO personnel,
+    surge alerts and appeal figures; press mentions from the story store.
+    Nothing is summed across currencies. Cached five minutes in-process.
+    """
+    return await flood_assistance_service.assistance(days=days)
+
+
+@router.get("/hydropower")
+async def flood_hydropower(days: int = Query(default=12, ge=1, le=60,
+                                             description="Press-scan window")):
+    """The tunnel-rescue ledger: every hydropower project on the corridor with
+    the figures, teams and notes read from named documents, the newest MoFA
+    press briefing's tunnel and forensic sections parsed automatically, and
+    press mentions scanned from the story store. Figures nobody has published
+    are absent, never zero. Cached five minutes in-process.
+    """
+    return await flood_hydropower_service.hydropower(days=days)
 
 
 @router.get("/replay")
