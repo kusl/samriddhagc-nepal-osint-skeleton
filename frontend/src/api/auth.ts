@@ -167,3 +167,16 @@ export async function updateUser(
 export async function deactivateUser(userId: string): Promise<void> {
   await apiClient.delete(`/auth/users/${userId}`)
 }
+
+/**
+ * Stateless public consumer session (POST /auth/public).
+ *
+ * Restored 2026-09-01: App.tsx imports this for its guest auto-login bootstrap
+ * but the export was missing from this module, so the app crashed at import
+ * time and never mounted. Unlike `guestLogin` this creates no DB user — the
+ * backend issues a signed public-consumer token (app/api/v1/auth.py:134).
+ */
+export async function publicLogin(): Promise<LoginResponse> {
+  const response = await apiClient.post<LoginResponse>('/auth/public')
+  return response.data
+}

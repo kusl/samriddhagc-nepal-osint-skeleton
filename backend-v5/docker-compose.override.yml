@@ -1,0 +1,11 @@
+# Local revival override (2026-09-01).
+services:
+  api:
+    ports:
+      # v5's API off :8000 — the v6 geoint app owns that port locally.
+      - "127.0.0.1:8001:8000"
+  migrate:
+    # Repo bug: the compose command is `alembic upgrade head`, but the history
+    # branches at 070 into two heads (071, and 072->076), so `head` is ambiguous
+    # and the container exits 255 every boot. `heads` applies both branches.
+    command: alembic upgrade heads

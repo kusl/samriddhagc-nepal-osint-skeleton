@@ -192,7 +192,6 @@ export const IntelBriefHeroWidget = memo(function IntelBriefHeroWidget() {
             <motion.div
               variants={fadeUp}
               style={{
-                borderLeft: `3px solid ${threatColor}`,
                 background: `color-mix(in srgb, ${threatColor} 6%, var(--bg-elevated))`,
                 padding: '10px 14px',
                 borderRadius: '0 4px 4px 0',

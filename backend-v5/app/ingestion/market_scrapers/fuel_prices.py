@@ -26,6 +26,10 @@ class FuelPrices:
     lpg: Decimal  # Per cylinder
     effective_date: Optional[datetime] = None
     effective_date_bs: Optional[str] = None  # Bikram Sambat date
+    # Where the figure came from. NOC's own table when it answers; otherwise
+    # the newest press report that carried both per-litre prices.
+    source: str = "Nepal Oil Corporation"
+    source_url: str = NOC_RETAIL_URL
 
 
 def parse_price(text: str) -> Optional[Decimal]:
@@ -78,6 +82,11 @@ def extract_bs_sort_key(date_str: str) -> Optional[tuple[int, int, int]]:
 
 
 async def fetch_fuel_prices() -> Optional[FuelPrices]:
+    prices = await _fetch_fuel_from_noc()
+    return prices if prices else await fetch_fuel_from_news()
+
+
+async def _fetch_fuel_from_noc() -> Optional[FuelPrices]:
     """Fetch fuel prices from NOC website.
 
     Returns:
@@ -197,6 +206,72 @@ async def fetch_fuel_prices() -> Optional[FuelPrices]:
         return None
 
 
+_DEVA = str.maketrans("०१२३४५६७८९", "0123456789")
+_PETROL_RE = re.compile(r"(?:petrol|पेट्रोल)[^0-9०-९]{0,80}?(?:रु\.?|rs\.?|npr)?\s*([0-9०-९]{3}(?:[.,][0-9०-९]{1,2})?)", re.I)
+_DIESEL_RE = re.compile(r"(?:diesel|डिजेल)[^0-9०-९]{0,80}?(?:रु\.?|rs\.?|npr)?\s*([0-9०-९]{3}(?:[.,][0-9०-९]{1,2})?)", re.I)
+
+
+def _plausible(v: Optional[Decimal], lo: int, hi: int) -> Optional[Decimal]:
+    return v if v is not None and lo <= v <= hi else None
+
+
+def _first_price(rx: re.Pattern, text: str, lo: int, hi: int) -> Optional[Decimal]:
+    for m in rx.finditer(text):
+        raw = m.group(1).translate(_DEVA).replace(",", ".")
+        try:
+            v = _plausible(Decimal(raw), lo, hi)
+        except Exception:
+            v = None
+        if v is not None:
+            return v
+    return None
+
+
+async def fetch_fuel_from_news(days: int = 60) -> Optional[FuelPrices]:
+    """Backup when NOC is unreachable: the newest press report in the desk's own
+    story store that states BOTH per-litre prices. NOC price notices are
+    reprinted by every outlet within the hour, in Nepali or English, so this is
+    usually hours old at worst. The outlet is named as the source.
+    """
+    try:
+        from sqlalchemy import text as sql_text
+        from app.core.database import AsyncSessionLocal
+    except Exception as e:  # noqa: BLE001
+        logger.warning("fuel news backup unavailable: %s", e)
+        return None
+    q = sql_text(
+        "SELECT title, summary, content, source_name, url, published_at "
+        "FROM stories WHERE published_at > now() - make_interval(days => :days) "
+        "AND (title ~* 'petrol|diesel|पेट्रोल|डिजेल' OR summary ~* 'petrol|diesel|पेट्रोल|डिजेल') "
+        "ORDER BY published_at DESC LIMIT 60"
+    )
+    try:
+        async with AsyncSessionLocal() as db:
+            rows = (await db.execute(q, {"days": days})).all()
+    except Exception as e:  # noqa: BLE001
+        logger.warning("fuel news backup query failed: %s", e)
+        return None
+    for title, summary, content, outlet, url, published_at in rows:
+        blob = " ".join(x for x in (title, summary, content) if x)
+        petrol = _first_price(_PETROL_RE, blob, 120, 260)
+        diesel = _first_price(_DIESEL_RE, blob, 100, 250)
+        if petrol is None or diesel is None:
+            continue
+        logger.info("Fuel prices from press (%s): petrol %s diesel %s", outlet, petrol, diesel)
+        return FuelPrices(
+            petrol=petrol,
+            diesel=diesel,
+            kerosene=Decimal(0),
+            lpg=Decimal(0),
+            effective_date=published_at,
+            effective_date_bs=None,
+            source=f"NOC price as reported by {outlet}",
+            source_url=url or NOC_RETAIL_URL,
+        )
+    logger.warning("fuel news backup: no report with both prices in the last %d days", days)
+    return None
+
+
 async def fetch_petrol_price() -> Optional[dict]:
     """Fetch petrol price per litre."""
     prices = await fetch_fuel_prices()
@@ -206,8 +281,8 @@ async def fetch_petrol_price() -> Optional[dict]:
             "unit": "NPR/litre",
             "date": prices.effective_date,
             "date_bs": prices.effective_date_bs,
-            "source": "Nepal Oil Corporation",
-            "source_url": NOC_RETAIL_URL,
+            "source": prices.source,
+            "source_url": prices.source_url,
         }
     return None
 
@@ -221,7 +296,7 @@ async def fetch_diesel_price() -> Optional[dict]:
             "unit": "NPR/litre",
             "date": prices.effective_date,
             "date_bs": prices.effective_date_bs,
-            "source": "Nepal Oil Corporation",
-            "source_url": NOC_RETAIL_URL,
+            "source": prices.source,
+            "source_url": prices.source_url,
         }
     return None

@@ -7,6 +7,7 @@ import {
   type WidgetDimensions,
   type WidgetSize,
 } from '../components/Dashboard/widgetGrid';
+import { isPresetEnabled } from '../config/deployment';
 
 export type { WidgetSize } from '../components/Dashboard/widgetGrid';
 
@@ -117,6 +118,27 @@ export const WIDGET_META: Record<string, {
   weather: { name: 'Weather & Forecast', category: 'disasters', consumerName: 'Weather' },
   seismic: { name: 'Seismic Activity', category: 'disasters', consumerName: 'Earthquakes' },
 
+  // Trishuli glacier-collapse flood — NDRRMA official figures, no BIPAD aggregates
+  'flood-situation-command': { name: 'Flood Situation Command', category: 'flood', consumerName: 'Flood Situation' },
+  'flood-district-map': { name: 'District Impact Map', category: 'flood', consumerName: 'Districts Affected' },
+  'flood-operational-picture': { name: 'Operational Picture · 3D', category: 'flood', consumerName: 'Watch How It Happened' },
+  'flood-district-toll': { name: 'District Toll', category: 'flood', consumerName: 'Deaths by District' },
+  'flood-missing-ledger': { name: 'Missing Ledger', category: 'flood', consumerName: 'Missing Persons' },
+  'flood-rescue-ops': { name: 'Rescue Operations', category: 'flood', consumerName: 'Rescue Operations' },
+  'flood-damage-aid': { name: 'Damage & Relief', category: 'flood', consumerName: 'Damage & Relief Funds' },
+  'flood-tunnel-rescue': { name: 'Tunnel Rescue', category: 'flood', consumerName: 'Hydropower Tunnel Rescue' },
+  'flood-river-gauges': { name: 'Hydrology · Gauge Net', category: 'flood', consumerName: 'River Gauges' },
+  'flood-satellite-intel': { name: 'Published Imagery Record', category: 'flood', consumerName: 'Imagery Sources' },
+  'flood-satellite-map': { name: 'Live Flood Extent', category: 'flood', consumerName: 'Live Flood Extent' },
+  'flood-chronology': { name: 'Event Chronology', category: 'flood', consumerName: 'How It Happened' },
+  'flood-damage-explorer': { name: 'Damage Site Explorer', category: 'flood', consumerName: 'Before & After Satellite' },
+  'flood-cited-reporting': { name: 'Reporting Log', category: 'flood', consumerName: 'What Others Report' },
+  'flood-assessment': { name: 'Intelligence Assessment', category: 'flood', consumerName: 'What We Know' },
+  'flood-gov-services': { name: 'Response Portals', category: 'flood', consumerName: 'Report, Find, Donate' },
+  'flood-source-matrix': { name: 'Source Reliability Matrix', category: 'flood', consumerName: 'How Much To Trust Each Source' },
+  'flood-ground-imagery': { name: 'Ground Imagery', category: 'flood', consumerName: 'Photos From The Ground' },
+  'flood-sitrep-log': { name: 'NDRRMA Sitrep Log', category: 'flood', consumerName: 'Official Situation Reports' },
+
   // Election Monitor Widgets - ECN data (result.election.gov.np)
   'election-pr': { name: 'PR Seat Projection', category: 'elections' },
   'election-seats': { name: 'HOR Seat Tracker', category: 'elections' },
@@ -189,18 +211,29 @@ export const PRESETS: Record<string, Preset> = {
   news: {
     id: 'news',
     name: 'News Dashboard',
-    description: 'News Map with stats, provincial monitor, live feed, fact-check, clusters, markets, alerts and govt updates',
+    description: 'Situation map, the numbers, then the feeds: live news, developing stories, clusters, narratives, disasters, government',
+    // v71 hierarchy (founder, 2026-09-02): the map and the numbers first, then
+    // the two feeds, then analysis, then reference. Fact-check, provincial
+    // monitor, weather and source-reliability are parked (visibility false,
+    // still in Customize) until they carry data worth the space.
     order: [
-      'map', 'kpi', 'newsfeed', 'developing-stories',
-      'fact-check', 'stories', 'social', 'narrative-tracker', 'province-monitor', 'market',
-      'weather', 'source-reliability', 'disasters', 'govt'
+      // TIER 1 — the picture and the numbers
+      'map', 'kpi',
+      // TIER 2 — what is happening now
+      'newsfeed', 'developing-stories',
+      // TIER 3 — analysis
+      'stories', 'narrative-tracker',
+      // TIER 4 — reference
+      'disasters', 'govt',
+      // parked (v72: market archived with the Economy tab — NRB tables empty on the public build;
+      // social archived — the Reddit feed is not wanted on the public desk)
+      'market', 'social', 'fact-check', 'province-monitor', 'weather', 'source-reliability',
     ],
     visibility: {
       map: true, 'election-live': false, kpi: true, newsfeed: true,
-      'developing-stories': true, 'fact-check': true, stories: true, social: true,
-      'narrative-tracker': true, 'province-monitor': true, market: true,
-      disasters: true, govt: true, weather: true, 'source-reliability': true,
-      // Hidden
+      'developing-stories': true, 'fact-check': false, stories: true, social: false,
+      'narrative-tracker': true, 'province-monitor': false, market: false,
+      disasters: true, govt: true, weather: false, 'source-reliability': false,
       'election-map': false, 'election-status': false,
       'political-pulse': false, briefing: false, entities: false,
       seismic: false, elections: false,
@@ -208,20 +241,20 @@ export const PRESETS: Record<string, Preset> = {
     },
     sizes: {
       map: 'situation',               // Row 1: 12 cols, double height (news map)
-      'election-live': 'hero',        // Row 2: 12 cols (2x2 live streams)
-      kpi: 'full',                    // Row 3: 12 cols
-      newsfeed: 'large',              // Row 4: 8 cols (live feed)
-      'developing-stories': 'small',  // Row 4: 4 cols (8+4=12)
-      'fact-check': 'medium',         // Row 5: 6 cols
-      stories: 'medium',              // Row 5: 6 cols (6+6=12)
-      social: 'medium',               // Row 6: 6 cols
-      'narrative-tracker': 'medium',  // Row 6: 6 cols (6+6=12)
-      'province-monitor': 'large',    // Row 7: 8 cols
-      market: 'small',                // Row 7: 4 cols (8+4=12)
-      weather: 'medium',              // Row 8: 6 cols
-      'source-reliability': 'medium', // Row 8: 6 cols (6+6=12)
-      disasters: 'medium',            // Row 9: 6 cols
-      govt: 'medium',                 // Row 9: 6 cols (6+6=12)
+      'election-live': 'hero',        // (parked) 12 cols
+      kpi: 'full',                    // Row 2: 12 cols — the numbers, flood toll included
+      newsfeed: 'large',              // Row 3: 8 cols (live feed)
+      'developing-stories': 'small',  // Row 3: 4 cols (8+4=12)
+      stories: 'medium',              // Row 4: 6 cols
+      'narrative-tracker': 'medium',  // Row 4: 6 cols (6+6=12)
+      disasters: 'medium',            // Row 5: 6 cols
+      govt: 'medium',                 // Row 5: 6 cols (6+6=12)
+      market: 'medium',               // Row 6: 6 cols
+      social: 'medium',               // Row 6: 6 cols (6+6=12)
+      'fact-check': 'medium',         // parked
+      'province-monitor': 'large',    // parked
+      weather: 'medium',              // parked
+      'source-reliability': 'medium', // parked
     }
   },
 
@@ -320,6 +353,12 @@ export const PRESETS: Record<string, Preset> = {
     }
   },
 
+  // ARCHIVED — the Accountability tab was pulled from the product on 2026-09-01. The
+  // preset, every widget it names and their loaders are all still here and reachable
+  // from Customize; only the entry point is gone. To restore: put
+  // { id: 'parliament', label: 'Accountability' } back in PRESET_TABS
+  // (DashboardHeader.tsx) and, if you want the shortcut, the `key === 'a'` branch in
+  // Dashboard.tsx.
   parliament: {
     id: 'parliament',
     name: 'Accountability',
@@ -438,6 +477,87 @@ export const PRESETS: Record<string, Preset> = {
       rivers: 'medium',    // Row 3: 6 cols
       disasters: 'medium', // Row 3: 6 cols (6+6=12)
       govt: 'full',        // Row 4: 12 cols
+    }
+  },
+
+  flood: {
+    id: 'flood',
+    name: 'Flood Desk',
+    description: 'Trishuli glacier-collapse flood as an intelligence product: graded sources, DTG-stamped figures, numbered assessment, operational picture, rescue, hydrology, chronology',
+    // v67: MILSPEC rebuild. Every widget renders through components/flood/milspec.tsx.
+    // Live Flood Extent and Published Imagery Record left the desk (founder call, 01 SEP):
+    // 250 m/px flood water showed nothing at corridor scale, and the product log was a
+    // wall of prose. Both keep their loaders and Customize entries; flip visibility to restore.
+    order: [
+      // TIER 1 — the picture: numbers, the 3D replay, the written read.
+      'flood-situation-command',
+      'flood-operational-picture',
+      'flood-assessment',
+      // TIER 2 — the evidence: the district choropleth, the ledgers, rescue, hydrology.
+      // v72 public cut: Ground Imagery and Damage & Relief archived (loaders + Customize stay).
+      'flood-district-map',
+      'flood-district-toll', 'flood-missing-ledger',
+      'flood-rescue-ops', 'flood-tunnel-rescue',
+      'flood-river-gauges',
+      // TIER 3 — the record: what others report, what NDRRMA published, who we trust.
+      'flood-cited-reporting', 'flood-sitrep-log',
+      'flood-source-matrix',
+    ],
+    visibility: {
+      'flood-situation-command': true, 'flood-assessment': true,
+      'flood-district-map': true,
+      'flood-operational-picture': true,
+      'flood-district-toll': true, 'flood-missing-ledger': true,
+      'flood-rescue-ops': true, 'flood-tunnel-rescue': true,
+      'flood-river-gauges': true, 'flood-damage-aid': false,
+      'flood-cited-reporting': true, 'flood-gov-services': false,
+      'flood-source-matrix': true, 'flood-chronology': false,
+      'flood-ground-imagery': false, 'flood-sitrep-log': true,
+      // Archived, not deleted (v70 hierarchy cut): tunnel rescue is a panel the rescue widget can
+      // carry, the chronology lives in the 3D replay's HUD, the portals are one click from the
+      // header. Loaders and Customize entries remain.
+      'flood-satellite-map': false, 'flood-satellite-intel': false,
+      'flood-damage-explorer': false,
+      // The generic disaster widgets are BIPAD/DHM-derived and undercount this event —
+      // flood-river-gauges supersedes `rivers` here.
+      rivers: false, disasters: false, weather: false, seismic: false, map: false,
+      // Hidden
+      'election-map': false, kpi: false, stories: false, newsfeed: false,
+      elections: false, entities: false, briefing: false, social: false,
+      govt: false, threats: false, market: false,
+      'economic-news': false, 'price-watch': false, 'trade-customs': false,
+      'public-spending': false, 'nrb-macro': false, 'nrb-prices': false, 'nrb-banking': false,
+      'fiscal-position': false, 'external-sector': false, 'monetary-conditions': false,
+      'prices-cost-pressure': false, 'govt-loan-tracker': false, 'govt-contracts': false,
+      'debt-tracker': false,
+      'election-pr': false, 'election-seats': false, 'election-status': false,
+      'swing-analysis': false, 'close-races': false, 'incumbency': false, 'candidates': false,
+      'party-switch': false, neta: false, 'election-live': false,
+      'intel-brief-hero': false, 'political-pulse': false, 'province-monitor': false,
+      'narrative-tracker': false, 'developing-stories': false, 'fact-check': false,
+      'promise-tracker': false, 'parliament-session': false, 'govt-decisions': false,
+      'bill-tracker': false, 'parliament-activity': false,
+      'situation-brief': false, 'source-reliability': false,
+      'cases-active': false, 'collab-feed': false, 'verification-queue': false,
+      'entity-watchlist': false, 'analyst-notes': false, 'analyst-leaderboard': false,
+    },
+    sizes: {
+      'flood-situation-command': 'hero',      // Row 1: 12 cols, 7 rows — control strip + figures + trajectory
+      'flood-assessment': 'situation',        // Row 2: 12 cols, 8 rows — numbered SITREP
+      'flood-district-map': 'command',        // Row 3: 12 cols, 10 rows — operational picture
+      'flood-operational-picture': 'command',  // Row 3b: 12 cols, 10 rows — 3D replay of the flood front
+      'flood-district-toll': 'half',          // Row 4: 6 cols
+      'flood-missing-ledger': 'half',         // Row 4: 6 cols (6+6=12)
+      'flood-rescue-ops': 'half',             // Row 5: 6 cols
+      'flood-tunnel-rescue': 'half',          // Row 5: 6 cols (6+6=12)
+      'flood-river-gauges': 'full',           // Row 6: 12 cols — the open threat
+      'flood-damage-aid': 'half',             // beside rescue ops — the money, half width
+      'flood-ground-imagery': 'hero',         // Row 3b: 12 cols, 7 rows — official photographs + press link previews
+      'flood-cited-reporting': 'half',        // Row 8: 6 cols
+      'flood-sitrep-log': 'half',             // Row 8: 6 cols (6+6=12) — NDRRMA's own reports, as published
+      'flood-gov-services': 'full',           // Row 9: 12 cols — portals + government statements
+      'flood-source-matrix': 'hero',          // Row 10: 12 cols, 7 rows — every source, graded (22 rows need the height)
+      'flood-chronology': 'situation',        // Row 11: 12 cols — how it happened
     }
   },
 
@@ -687,7 +807,7 @@ export const useDashboardStore = create<DashboardState>()(
 
       applyPreset: (presetId) => {
         const preset = PRESETS[presetId];
-        if (!preset) return;
+        if (!preset || !isPresetEnabled(presetId)) return;
         set({
           widgetOrder: [...preset.order],
           widgetVisibility: { ...preset.visibility },
@@ -715,14 +835,145 @@ export const useDashboardStore = create<DashboardState>()(
         })),
     }),
     {
-      name: 'rta-dashboard-v14',  // v61: restore province monitor to its original placement and size
-      version: 61,
+      name: 'rta-dashboard-v14',  // v72: public cut — ground imagery, damage/relief, market, social archived
+      version: 72,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as DashboardState;
         }
 
         const state = persistedState as DashboardState;
+
+        // A deployment can turn a preset off (VITE_DISABLED_PRESETS). Its tab is
+        // gone from the header, so a user parked on it would be stranded on a
+        // layout with no way back — move them to News wholesale.
+        if (state.activePreset && !isPresetEnabled(state.activePreset)) {
+          const preset = PRESETS.news;
+          return {
+            ...state,
+            activePreset: 'news',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 72 && state.activePreset === 'news') {
+          // News hierarchy cut: a News user takes the new layout wholesale, the
+          // same way flood users have on every flood revision.
+          const preset = PRESETS.news;
+          return {
+            ...state,
+            activePreset: 'news',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 72 && state.activePreset === 'flood') {
+          // v69 adds the 3D operational picture under the district map. As with every flood
+          // revision since v62, a flood user takes the new desk wholesale.
+          const preset = PRESETS.flood;
+          return {
+            ...state,
+            activePreset: 'flood',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 66) {
+          // Accountability lost its tab this version. A user parked on it would land on a
+          // preset with no way back, so they are moved to News with News's own layout;
+          // flood users get the consolidated desk wholesale, as in v62-v65.
+          if (state.activePreset === 'flood' || state.activePreset === 'parliament') {
+            const target = state.activePreset === 'parliament' ? 'news' : 'flood';
+            const preset = PRESETS[target];
+            return {
+              ...state,
+              activePreset: target,
+              widgetOrder: [...preset.order],
+              widgetVisibility: { ...preset.visibility },
+              widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+              widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+            };
+          }
+          // No id scrub: flood-damage-explorer and every parliament widget keep their
+          // loaders, so a custom layout holding them still renders.
+        }
+
+        if (version < 65) {
+          if (state.activePreset === 'flood') {
+            const preset = PRESETS.flood;
+            return {
+              ...state,
+              activePreset: 'flood',
+              widgetOrder: [...preset.order],
+              widgetVisibility: { ...preset.visibility },
+              widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+              widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+            };
+          }
+          // Same scrub as v63's flood-before-after: a non-flood user who once customised
+          // the flood desk still holds the retired id, which has no loader.
+          if (Array.isArray(state.widgetOrder)) {
+            state.widgetOrder = state.widgetOrder.filter((id) => id !== 'flood-vantor-pairs');
+          }
+          delete state.widgetVisibility?.['flood-vantor-pairs'];
+          delete state.widgetSizes?.['flood-vantor-pairs'];
+          delete state.widgetDimensions?.['flood-vantor-pairs'];
+        }
+
+        if (version < 64 && state.activePreset === 'flood') {
+          const preset = PRESETS.flood;
+          return {
+            ...state,
+            activePreset: 'flood',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
+
+        if (version < 63) {
+          if (state.activePreset === 'flood') {
+            const preset = PRESETS.flood;
+            return {
+              ...state,
+              activePreset: 'flood',
+              widgetOrder: [...preset.order],
+              widgetVisibility: { ...preset.visibility },
+              widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+              widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+            };
+          }
+          // A non-flood user who once customised the flood desk still holds the retired
+          // id; leaving it would render a widget with no loader.
+          if (Array.isArray(state.widgetOrder)) {
+            state.widgetOrder = state.widgetOrder.filter((id) => id !== 'flood-before-after');
+          }
+          delete state.widgetVisibility?.['flood-before-after'];
+          delete state.widgetSizes?.['flood-before-after'];
+          delete state.widgetDimensions?.['flood-before-after'];
+        }
+
+        if (version < 62 && state.activePreset === 'flood') {
+          const preset = PRESETS.flood;
+          return {
+            ...state,
+            activePreset: 'flood',
+            widgetOrder: [...preset.order],
+            widgetVisibility: { ...preset.visibility },
+            widgetSizes: { ...preset.sizes } as Record<string, WidgetSize>,
+            widgetDimensions: dimensionsFromSizes(preset.sizes as Record<string, WidgetSize>),
+          };
+        }
 
         if (version < 61) {
           if (state.activePreset === 'news' || state.activePreset === 'analyst' || state.activePreset === 'intelligence') {

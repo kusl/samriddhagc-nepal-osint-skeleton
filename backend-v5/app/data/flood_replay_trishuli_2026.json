@@ -1,0 +1,1677 @@
+{
+  "event_key": "trishuli-2026-08",
+  "title": "Trishuli glacier-collapse flood — 26 August 2026 — operational replay",
+  "t0_npt": "2026-08-26T08:37:00+05:45",
+  "t_end_npt": "2026-09-01T18:00:00+05:45",
+  "notes": [
+    "Front keyframes exist only where a source states place + time; the engine interpolates between them and must label those positions ESTIMATED.",
+    "Beats with time_published=false carry 09:00 NPT of their day as a placeholder clock; the HUD shows the day only.",
+    "km is downstream of Rasuwagadhi on the served corridor; the origin is −20 km per NDRRMA ('approximately 20 km upstream of Rasuwagadhi').",
+    "Toll marks are official NDRRMA figures only; the two 1 Sept figures (987 at 09:00, 1,050 at 18:00) are both official, at different clocks."
+  ],
+  "places": [
+    {
+      "key": "langtang_origin",
+      "name": "Langtang Lirung collapse origin",
+      "name_ne": "लाङटाङ लिरुङ",
+      "lat": 28.256,
+      "lng": 85.517,
+      "km": null,
+      "role": "origin",
+      "source": "Desk corridor endpoint (districts/geo) · Phys.org / Planet Labs; NDRRMA: north-facing slope near the Lhende River, ~20 km upstream of Rasuwagadhi",
+      "source_url": "https://phys.org/news/2026-08-satellite-images-bedrock-glacier-collapsed.html"
+    },
+    {
+      "key": "rasuwagadhi",
+      "name": "Rasuwagadhi / Gyirong Port (border post)",
+      "name_ne": "रसुवागढी",
+      "lat": 28.278,
+      "lng": 85.379,
+      "km": 0,
+      "role": "impact",
+      "source": "Desk damage-site + corridor waypoint (km 0); NDRRMA SitRep #01",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+    },
+    {
+      "key": "rasuwagadhi_gauge",
+      "name": "DHM gauge · Bhotekoshi at Rasuwagadi (st. 23251)",
+      "lat": 28.271297,
+      "lng": 85.377649,
+      "km": 1,
+      "role": "gauge",
+      "source": "DHM Flood Forecasting (hydrology.gov.np) telemetry, as served by the desk rivers feed",
+      "source_url": "https://www.hydrology.gov.np/"
+    },
+    {
+      "key": "timure",
+      "name": "Timure",
+      "name_ne": "टिमुरे",
+      "lat": 28.263,
+      "lng": 85.372,
+      "km": 2,
+      "role": "impact",
+      "source": "Desk damage-site (km 2); NDRRMA SitRep #01 lists Timure among settlements with buildings fully or partially destroyed",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+    },
+    {
+      "key": "syabrubesi",
+      "name": "Syabrubesi",
+      "name_ne": "स्याफ्रुबेसी",
+      "lat": 28.16,
+      "lng": 85.348,
+      "km": 16,
+      "role": "impact",
+      "source": "Desk damage-site + corridor waypoint (km 16); NDRRMA SitRep #01",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+    },
+    {
+      "key": "syabrubesi_gauge",
+      "name": "DHM gauge · Bhote Koshi at Shyaprubesi (st. 2810)",
+      "lat": 28.17065,
+      "lng": 85.342554,
+      "km": 15,
+      "role": "gauge",
+      "source": "DHM Flood Forecasting (hydrology.gov.np) telemetry, as served by the desk rivers feed",
+      "source_url": "https://www.hydrology.gov.np/"
+    },
+    {
+      "key": "dhunche",
+      "name": "Dhunche (Rasuwa district HQ)",
+      "name_ne": "धुन्चे",
+      "lat": 28.1128,
+      "lng": 85.2961,
+      "km": 24,
+      "role": "response",
+      "source": "OSM Nominatim place hit; Kathmandu Post names it as an air-evacuation pickup point",
+      "source_url": "https://nominatim.openstreetmap.org/search?format=json&q=Dhunche,+Nepal"
+    },
+    {
+      "key": "mailung",
+      "name": "Mailung",
+      "name_ne": "मैलुङ",
+      "lat": 28.0718,
+      "lng": 85.207,
+      "km": 34,
+      "role": "impact",
+      "source": "OSM Nominatim hamlet hit; NDRRMA SitRep #01 lists Mailung among settlements with buildings destroyed",
+      "source_url": "https://nominatim.openstreetmap.org/search?format=json&q=Mailung,+Rasuwa,+Nepal"
+    },
+    {
+      "key": "betrawati",
+      "name": "Betrawati",
+      "name_ne": "बेत्रावती",
+      "lat": 27.976,
+      "lng": 85.187,
+      "km": 45,
+      "role": "impact",
+      "source": "Desk damage-site + corridor waypoint (km 45); Nominatim confirms Bidur-10, Nuwakot",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+    },
+    {
+      "key": "betrawati_gauge",
+      "name": "DHM gauge · Trishuli at Betrawati (st. 943)",
+      "lat": 27.97,
+      "lng": 85.18,
+      "km": 45,
+      "role": "gauge",
+      "source": "DHM Flood Forecasting (hydrology.gov.np) telemetry, as served by the desk rivers feed",
+      "source_url": "https://www.hydrology.gov.np/"
+    },
+    {
+      "key": "trishuli_bazar",
+      "name": "Trishuli Bazar",
+      "name_ne": "त्रिशूली बजार",
+      "lat": 27.921,
+      "lng": 85.144,
+      "km": 53,
+      "role": "impact",
+      "source": "Desk damage-site + corridor waypoint (km 53)",
+      "source_url": "https://english.onlinekhabar.com/trishuli-bazar-ruins-rasuwa-flood.html"
+    },
+    {
+      "key": "galchhi",
+      "name": "Galchhi",
+      "name_ne": "गल्छी",
+      "lat": 27.833,
+      "lng": 84.999,
+      "km": 75,
+      "role": "corridor",
+      "source": "Desk corridor waypoint (km 75); NDRRMA arrival table",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+    },
+    {
+      "key": "gajuri",
+      "name": "Gajuri",
+      "name_ne": "गजुरी",
+      "lat": 27.8047,
+      "lng": 84.8771,
+      "km": 91,
+      "role": "corridor",
+      "source": "OSM Nominatim village hit (0.4 km off the served corridor chord)",
+      "source_url": "https://nominatim.openstreetmap.org/search?format=json&q=Gajuri,+Dhading,+Nepal"
+    },
+    {
+      "key": "malekhu",
+      "name": "Malekhu",
+      "name_ne": "मलेखु",
+      "lat": 27.8137,
+      "lng": 84.8272,
+      "km": 97,
+      "role": "corridor",
+      "source": "OSM Nominatim hamlet hit; NDRRMA arrival table names Malekhu",
+      "source_url": "https://nominatim.openstreetmap.org/search?format=json&q=Malekhu,+Dhading,+Nepal"
+    },
+    {
+      "key": "malekhu_gauge",
+      "name": "DHM gauge · Trishuli at Furke Khola, Malekhu (st. 31967)",
+      "lat": 27.802439,
+      "lng": 84.844102,
+      "km": 96,
+      "role": "gauge",
+      "source": "DHM Flood Forecasting (hydrology.gov.np) telemetry, as served by the desk rivers feed",
+      "source_url": "https://www.hydrology.gov.np/"
+    },
+    {
+      "key": "mugling",
+      "name": "Mugling",
+      "name_ne": "मुग्लिङ",
+      "lat": 27.8562,
+      "lng": 84.561,
+      "km": 128,
+      "role": "corridor",
+      "source": "OSM Nominatim hamlet hit (Trishuli–Marsyangdi confluence). km is a projection onto the served Galchhi→Devghat chord (place lies ~12 km off it) — approximate",
+      "source_url": "https://nominatim.openstreetmap.org/search?format=json&q=Mugling,+Nepal"
+    },
+    {
+      "key": "kalikhola_gauge",
+      "name": "DHM gauge · Trishuli at Kali Khola (st. 19583)",
+      "lat": 27.833,
+      "lng": 84.546,
+      "km": 130,
+      "role": "gauge",
+      "source": "DHM Flood Forecasting (hydrology.gov.np) telemetry, as served by the desk rivers feed",
+      "source_url": "https://www.hydrology.gov.np/"
+    },
+    {
+      "key": "devghat",
+      "name": "Devghat confluence (Trishuli × Kali Gandaki → Narayani)",
+      "name_ne": "देवघाट",
+      "lat": 27.717,
+      "lng": 84.415,
+      "km": 150,
+      "role": "corridor",
+      "source": "Desk corridor waypoint (km 150); NDRRMA arrival table",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+    },
+    {
+      "key": "devghat_gauge",
+      "name": "DHM gauge · Narayani at Devghat (st. 4140)",
+      "lat": 27.71,
+      "lng": 84.43,
+      "km": 150,
+      "role": "gauge",
+      "source": "DHM Flood Forecasting (hydrology.gov.np) telemetry, as served by the desk rivers feed",
+      "source_url": "https://www.hydrology.gov.np/"
+    },
+    {
+      "key": "narayanghat",
+      "name": "Narayanghat / Bharatpur",
+      "name_ne": "नारायणघाट",
+      "lat": 27.69,
+      "lng": 84.428,
+      "km": 160,
+      "role": "impact",
+      "source": "Desk corridor waypoint (km 160)",
+      "source_url": "https://www.nepaldisaster.com/stats"
+    },
+    {
+      "key": "corridor",
+      "name": "Bhote Koshi–Trishuli–Narayani corridor (whole)",
+      "lat": 27.95,
+      "lng": 84.95,
+      "km": null,
+      "role": "corridor",
+      "source": "NDRRMA SitRep #01: 'affecting multiple districts along the Bhote Koshi–Trishuli–Narayani corridor'; anchor = corridor mid-point near Galchhi",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+    },
+    {
+      "key": "rasuwa_district",
+      "name": "Rasuwa district",
+      "name_ne": "रसुवा",
+      "lat": 28.1871,
+      "lng": 85.444,
+      "km": null,
+      "role": "district",
+      "source": "Desk districts/geo centroid; NDRRMA district toll board",
+      "source_url": "https://nirajbhusal.github.io/rasuwa-flood-bulletin/"
+    },
+    {
+      "key": "nuwakot_district",
+      "name": "Nuwakot district",
+      "name_ne": "नुवाकोट",
+      "lat": 27.9041,
+      "lng": 85.2051,
+      "km": null,
+      "role": "district",
+      "source": "Desk districts/geo centroid; NDRRMA district toll board",
+      "source_url": "https://nirajbhusal.github.io/rasuwa-flood-bulletin/"
+    },
+    {
+      "key": "dhading_district",
+      "name": "Dhading district",
+      "name_ne": "धादिङ",
+      "lat": 27.902,
+      "lng": 84.9805,
+      "km": null,
+      "role": "district",
+      "source": "Desk districts/geo centroid; NDRRMA district toll board",
+      "source_url": "https://nirajbhusal.github.io/rasuwa-flood-bulletin/"
+    },
+    {
+      "key": "chitwan_district",
+      "name": "Chitwan district",
+      "name_ne": "चितवन",
+      "lat": 27.566,
+      "lng": 84.3926,
+      "km": null,
+      "role": "district",
+      "source": "Desk districts/geo centroid; NDRRMA district toll board",
+      "source_url": "https://nirajbhusal.github.io/rasuwa-flood-bulletin/"
+    }
+  ],
+  "keyframes": [
+    {
+      "t_npt": "2026-08-26T08:37:00+05:45",
+      "place_key": "langtang_origin",
+      "km": -20,
+      "confidence": "published",
+      "source": "Seismic networks · Planet Labs imagery, reported by Phys.org (desk chronology t0)",
+      "source_url": "https://phys.org/news/2026-08-satellite-images-bedrock-glacier-collapsed.html",
+      "note": "Ms 5.2 seismic signal at 02:52 UTC = 08:37 NPT. NDRRMA's sitrep gives 'approximately 08:40' for the avalanche entering Lhende Khola, ~20 km upstream of Rasuwagadhi; Al Jazeera gives 08:40 (02:55 GMT). The instrumental time is used as t0; km −20 per the NDRRMA distance."
+    },
+    {
+      "t_npt": "2026-08-26T08:44:00+05:45",
+      "place_key": "rasuwagadhi",
+      "km": 0,
+      "confidence": "published",
+      "source": "Wikipedia, 'Timeline of the 2026 Nepal floods' (CCTV at Gyirong Port; citing CDSB footage and Kathmandu Post's '20 km in approximately seven minutes')",
+      "source_url": "https://en.wikipedia.org/wiki/Timeline_of_the_2026_Nepal_floods",
+      "note": "'A CCTV camera captures the beginning of the destruction of Gyirong Port' at 08:44; the main Wikipedia article says 'seven minutes after the seismic event'. Consistent with DHM station 23251 (Bhotekoshi at Rasuwagadi) last transmitting at 08:40 NPT in the desk rivers feed. Our chronology stamps the Al Jazeera destruction beat at 09:15 — that beat is kept verbatim; the front fix uses the CCTV time. Tertiary source: grade C3."
+    },
+    {
+      "t_npt": "2026-08-26T08:50:00+05:45",
+      "place_key": "syabrubesi",
+      "km": 16,
+      "confidence": "published",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "note": "'The Bhote Koshi–Syafrubesi hydrological station stopped transmitting data at around 08:50 hrs.' Kathmandu Post independently gives 08:50. Desk rivers feed: DHM stations 2810 and 2788 at Shyaprubesi last read 03:05Z = 08:50 NPT. Gauge loss taken as the front's arrival."
+    },
+    {
+      "t_npt": "2026-08-26T09:20:00+05:45",
+      "place_key": "betrawati",
+      "km": 45,
+      "confidence": "published",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "note": "'Betrawati water-level monitoring station also stopped transmitting data'; last reading 3.55 m. Desk rivers feed: DHM station 943 last reading 3.549 m at 03:35Z = 09:20 NPT — exact match."
+    },
+    {
+      "t_npt": "2026-08-26T10:28:00+05:45",
+      "place_key": "galchhi",
+      "km": 75,
+      "confidence": "published",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "note": "NDRRMA technical summary: 'reaching Galchhi (10:28 hrs)'. Kathmandu Post words the same 10:28 as the moment a FORECAST was issued ('flood was expected to reach the Dhading-Galchhi area and pass Muglin') — unreconciled; the authority's arrival table is used for the front."
+    },
+    {
+      "t_npt": "2026-08-26T11:50:00+05:45",
+      "place_key": "malekhu",
+      "km": 97,
+      "confidence": "published",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT · Kathmandu Post (same minute)",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "note": "NDRRMA: 'Malekhu (11:50 hrs)'; Kathmandu Post: 'floodwaters had reached the Malekhu area' at 11:50am. Cross-corroborated."
+    },
+    {
+      "t_npt": "2026-08-26T13:00:00+05:45",
+      "place_key": "mugling",
+      "km": 128,
+      "confidence": "published",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT · Kathmandu Post (same minute)",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "note": "NDRRMA: 'Mugling (13:00 hrs)'; Kathmandu Post: 'flood had already passed Muglin' at 1:00pm. Time is published; km along the served corridor is a chord projection (approximate)."
+    },
+    {
+      "t_npt": "2026-08-26T15:20:00+05:45",
+      "place_key": "devghat",
+      "km": 150,
+      "confidence": "published",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT · Kathmandu Post (same minute)",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "note": "NDRRMA: 'Devghat (15:20 hrs)'; Kathmandu Post: 'flood had reached the Narayani-Devghat area' at 3:20pm. Peak (16:00) is a beat, not a second fix at the same km."
+    }
+  ],
+  "beats": [
+    {
+      "t_npt": "2026-08-26T08:37:00+05:45",
+      "time_published": true,
+      "kind": "trigger",
+      "headline": "Bedrock collapses beneath the Langtang Lirung glacier",
+      "detail": "Ice, rock and water fall into the valley inside Langtang National Park. The impact energy registers as an Ms 5.2 seismic signal at 02:52 UTC and is detected worldwide. Reporting places the collapse at about 09:15 Nepal local time; both timings are as published and are not reconciled here.",
+      "place_key": "langtang_origin",
+      "source": "Seismic networks · Planet Labs imagery, reported by Phys.org",
+      "source_url": "https://phys.org/news/2026-08-satellite-images-bedrock-glacier-collapsed.html",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T08:40:00+05:45",
+      "time_published": true,
+      "kind": "trigger",
+      "headline": "NDRRMA: ice–rock avalanche enters Lhende Khola",
+      "detail": "'At approximately 08:40 hrs on 26 August 2026, an ice–rock avalanche in the upper watershed near the Nepal–China border affected Lhende Khola, generating a large flood and debris flow that entered the Bhote Koshi River.' An estimated 1 km² of rock-glacier material detached from a north-facing slope ~20 km upstream of Rasuwagadhi.",
+      "place_key": "langtang_origin",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "confidence": "published",
+      "note": "Al Jazeera independently gives 'about 8:40am local time (02:55 GMT)'. Three minutes after the seismic signal (08:37)."
+    },
+    {
+      "t_npt": "2026-08-26T08:40:00+05:45",
+      "time_published": true,
+      "kind": "impact",
+      "headline": "Last Bhote Koshi reading before the gauges go dark: 1.62 m",
+      "detail": "Kathmandu Post: the river stood at 1.62 metres at 8:40am. The desk's DHM feed attributes that 1.62 m to station 23251 'Bhotekoshi at Rasuwagadi', last transmitted 08:40 NPT; NDRRMA names the station as Bhote Koshi–Syafrubesi.",
+      "place_key": "rasuwagadhi_gauge",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published",
+      "note": "Value and time published; station attribution differs between NDRRMA/KP (Syabrubesi) and the DHM feed (Rasuwagadi)."
+    },
+    {
+      "t_npt": "2026-08-26T08:44:00+05:45",
+      "time_published": true,
+      "kind": "impact",
+      "headline": "CCTV captures the beginning of the destruction of Gyirong Port",
+      "detail": "'A CCTV camera captures the beginning of the destruction of Gyirong Port.' The debris flow 'covered 20 km in approximately seven minutes, a speed of around 180 km/h'.",
+      "place_key": "rasuwagadhi",
+      "source": "Wikipedia, 'Timeline of the 2026 Nepal floods' (citing CDSB footage; Kathmandu Post)",
+      "source_url": "https://en.wikipedia.org/wiki/Timeline_of_the_2026_Nepal_floods",
+      "confidence": "published",
+      "note": "Tertiary source (C3); the same event is carried by our chronology at 09:15 (Al Jazeera). Both kept."
+    },
+    {
+      "t_npt": "2026-08-26T08:50:00+05:45",
+      "time_published": true,
+      "kind": "impact",
+      "headline": "Syabrubesi hydrological station stops transmitting",
+      "detail": "'The Bhote Koshi–Syafrubesi hydrological station stopped transmitting data at around 08:50 hrs.' Desk DHM feed: stations 2810 (Bhote Koshi) and 2788 (Langtang Khola) at Shyaprubesi both last read 08:50 NPT.",
+      "place_key": "syabrubesi_gauge",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T09:00:00+05:45",
+      "time_published": false,
+      "kind": "impact",
+      "headline": "Buildings in Timure, Syafrubesi, Mailung and Bandare fully or partially destroyed",
+      "detail": "NDRRMA: buildings in Timure, Syafrubesi, Mailung and Bandare were fully or partially destroyed; Timure Health Post, Timure Health Desk at Rasuwagadhi and the Plant Quarantine Office in Timure among facilities lost. No clock time is published for the water reaching Timure.",
+      "place_key": "timure",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "confidence": "derived",
+      "note": "No time published → 09:00 NPT of the event day, time_published false."
+    },
+    {
+      "t_npt": "2026-08-26T09:00:00+05:45",
+      "time_published": false,
+      "kind": "impact",
+      "headline": "Trishuli Bazar swept within minutes of a normal Wednesday morning",
+      "detail": "'Trishuli Bazar in Nuwakot was bustling with its usual morning activity on Wednesday. Residents had begun their daily routines as normal. Within minutes, however, a sudden and powerful flood swept through the area.'",
+      "place_key": "trishuli_bazar",
+      "source": "OnlineKhabar, 'Trishuli Bazar in ruins after devastating flood', 26 Aug 2026",
+      "source_url": "https://english.onlinekhabar.com/trishuli-bazar-ruins-rasuwa-flood.html",
+      "confidence": "derived",
+      "note": "'Morning' only, no clock time → 09:00 NPT, time_published false. The interpolated front passes km 53 at about 09:35 (estimated)."
+    },
+    {
+      "t_npt": "2026-08-26T09:05:00+05:45",
+      "time_published": true,
+      "kind": "warning",
+      "headline": "Authorities receive word of a major flood entering the Bhotekoshi from Tibet",
+      "detail": "'Authorities received information at 9:05am that a major flood had entered the Bhotekoshi from the Tibetan side.'",
+      "place_key": "rasuwagadhi",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T09:15:00+05:45",
+      "time_published": true,
+      "kind": "impact",
+      "headline": "Surge destroys the Gyirong Port / Rasuwagadhi border crossing",
+      "detail": "The flood enters the Bhote Koshi from the Tibet side and takes out the crossing. Imagery from April 2024 shows several large buildings and a basketball court on the site; afterwards almost nothing stands and the ground is scoured to bedrock.",
+      "place_key": "rasuwagadhi",
+      "source": "Al Jazeera satellite imagery analysis",
+      "source_url": "https://www.aljazeera.com/news/2026/8/27/satellite-images-show-destruction-from-nepal-tibet-floods",
+      "confidence": "published",
+      "note": "Chronology stamp. Al Jazeera's own text gives 08:40 local (02:55 GMT) for the collapse and no time for the crossing; the front keyframe for Rasuwagadhi uses the 08:44 CCTV time. Kept verbatim as our chronology carries it."
+    },
+    {
+      "t_npt": "2026-08-26T09:15:00+05:45",
+      "time_published": true,
+      "kind": "impact",
+      "headline": "Flood runs about 100 km down the Lende Khola and Trishuli",
+      "detail": "Water rises as much as 9 m in 30 minutes along the valley, through Timure, Syabrubesi and on into Nuwakot, Dhading and Chitwan. Bodies were later recovered as far as 240 km downstream inside India.",
+      "place_key": "corridor",
+      "source": "Bloomberg visual investigation",
+      "source_url": "https://www.bloomberg.com/graphics/2026-nepal-flash-flood/",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T09:15:00+05:45",
+      "time_published": true,
+      "kind": "warning",
+      "headline": "DHM confirms a major flood wave; 679,295 warning SMS go out",
+      "detail": "'By 09:15 hrs, DHM confirmed a major flood wave and issued downstream warnings for communities along the Trishuli corridor.' 'A total of 679,295 warning SMS messages were disseminated through Nepal Telecom and Ncell to downstream riverine communities.' Kathmandu Post: SMS alerts sent 9:15–9:16am to riverbank residents in Rasuwa, Nuwakot, Dhading and Chitwan.",
+      "place_key": "corridor",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T09:20:00+05:45",
+      "time_published": true,
+      "kind": "impact",
+      "headline": "Betrawati station stops transmitting; last reading 3.55 m",
+      "detail": "'Betrawati water-level monitoring station also stopped transmitting data'; last reading 3.55 metres. Desk DHM feed: station 943 last reading 3.549 m at 09:20 NPT.",
+      "place_key": "betrawati_gauge",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T10:28:00+05:45",
+      "time_published": true,
+      "kind": "warning",
+      "headline": "Forecast issued: flood to reach Dhading–Galchhi and pass Muglin within hours",
+      "detail": "'It is forecast that the flood shall reach the Dhading-Galchhi area and pass Muglin within a few hours.'",
+      "place_key": "galchhi",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published",
+      "note": "Same 10:28 clock that NDRRMA's table treats as the Galchhi ARRIVAL. Unreconciled; both kept."
+    },
+    {
+      "t_npt": "2026-08-26T11:26:00+05:45",
+      "time_published": true,
+      "kind": "warning",
+      "headline": "Phurke (Malekhu) station rises above the danger mark",
+      "detail": "'The river level at the Phurke (Malekhu) monitoring station had risen above the danger mark.' Desk DHM feed: station 31967 danger level 8.0 m; last transmitted value 10.48 m at 11:40 NPT.",
+      "place_key": "malekhu_gauge",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T11:43:00+05:45",
+      "time_published": true,
+      "kind": "impact",
+      "headline": "Phurke river bridge and the Malekhu station are swept away",
+      "detail": "'The flood swept away the Phurke river bridge and other structures, along with the Malekhu monitoring station.'",
+      "place_key": "malekhu",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T12:00:00+05:45",
+      "time_published": false,
+      "kind": "response",
+      "headline": "Copernicus EMS Rapid Mapping activated as EMSR927",
+      "detail": "The EU's emergency mapping service opens an activation over four Areas of Interest in Rasuwa, tasking commercial satellites to grade building damage rather than only trace the water.",
+      "place_key": "rasuwa_district",
+      "source": "Copernicus Emergency Management Service",
+      "source_url": "https://mapping.emergency.copernicus.eu/activations/EMSR927/",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-08-26T13:30:00+05:45",
+      "time_published": true,
+      "kind": "warning",
+      "headline": "Devghat at 4.76 m; main surge expected about 15:30",
+      "detail": "'The river level at Devghat reached 4.76 metres.' The main surge was expected at roughly 3:30pm.",
+      "place_key": "devghat_gauge",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T14:14:00+05:45",
+      "time_published": true,
+      "kind": "warning",
+      "headline": "Kalikhola station rises above the danger mark; peak 12.3 m",
+      "detail": "'The water level at the Kalikhola monitoring station rose above the danger mark'; its peak level was 12.3 m. Desk DHM feed: station 19583 'Trishuli River at Kali Khola', danger level 12.1 m.",
+      "place_key": "kalikhola_gauge",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T15:55:00+05:45",
+      "time_published": true,
+      "kind": "response",
+      "headline": "88 people rescued by Army helicopter as of 15:55",
+      "detail": "'88 people have been rescued by helicopter from various flood-affected areas' as of 3:55pm — the first sourced rescue-flight count of the event.",
+      "place_key": "rasuwa_district",
+      "source": "OnlineKhabar, 'Rasuwa Floods: Army helicopters rescue 88 people', 26 Aug 2026",
+      "source_url": "https://english.onlinekhabar.com/rasuwa-floods-army-helicopters-rescue-88-people.html",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T16:00:00+05:45",
+      "time_published": true,
+      "kind": "impact",
+      "headline": "Peak at Devghat: ~5,850 m³/s, 6.57 m",
+      "detail": "'At Devghat, the peak discharge reached approximately 5,850 m³/s at 16:00 hrs, with an estimated total flood volume of 57.40 million m³, including approximately 19.96 million m³ of excess flood water above base flow.' Kathmandu Post: 'water level at Devghat peaked at 6.57 metres' at 4:00pm.",
+      "place_key": "devghat",
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT · Kathmandu Post",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T18:30:00+05:45",
+      "time_published": true,
+      "kind": "assessment",
+      "headline": "Devghat falls back to about 4 m",
+      "detail": "'The water level at Devghat had fallen back to about 4 metres.'",
+      "place_key": "devghat_gauge",
+      "source": "Kathmandu Post, 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "source_url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-26T18:43:00+05:45",
+      "time_published": true,
+      "kind": "response",
+      "headline": "International Charter Activation 1052 opened for Nepal",
+      "detail": "Requested by the Asian Disaster Reduction Center on behalf of the Department of Hydrology and Meteorology, Ministry of Energy, Water Resources and Irrigation. Project managed by Samir Belabbes (UNITAR), with 18 products published from NRSC, ISRO, the British Geological Survey, SERTIT, ICIMOD and Copernicus EMS.",
+      "place_key": "corridor",
+      "source": "International Charter Space and Major Disasters",
+      "source_url": "https://disasterscharter.org/activations/flood-in-nepal-activation-1052-",
+      "confidence": "published",
+      "note": "Charter activation time per our chronology (12:58 UTC). Wikipedia's timeline reads the same page as 18:13 NPT — 30 min apart; chronology is authoritative."
+    },
+    {
+      "t_npt": "2026-08-27T09:00:00+05:45",
+      "time_published": false,
+      "kind": "assessment",
+      "headline": "First consolidated toll: 165 dead, 826 missing",
+      "detail": "One day after the collapse, with the downstream districts not yet reached.",
+      "place_key": "corridor",
+      "source": "NDRRMA situation update, 27 Aug 2026",
+      "source_url": "https://reliefweb.int/report/nepal/nepal-flood-response-situation-report-1-27-august-2026",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-08-27T09:00:00+05:45",
+      "time_published": false,
+      "kind": "response",
+      "headline": "350 rescued from the Upper Trishuli hydropower tunnel; about 100 still inside",
+      "detail": "'As many as 350 people stranded in the tunnel of the Upper Trishuli Hydropower have been rescued.' 'Rescue operation for some 100 workers and locals still stranded inside the tunnel is going on.' Teams deployed from the Army's tactical headquarters at Trishuli.",
+      "place_key": "rasuwa_district",
+      "source": "Rising Nepal Daily, 27 Aug 2026",
+      "source_url": "https://risingnepaldaily.com/news/85645",
+      "confidence": "derived",
+      "note": "Day only; the article does not say which Upper Trishuli project. Placed on the district."
+    },
+    {
+      "t_npt": "2026-08-27T10:30:00+05:45",
+      "time_published": false,
+      "kind": "assessment",
+      "headline": "Sentinel-2 acquires the post-event natural-colour scene",
+      "detail": "Paired against the 12 August acquisition, it shows the increase in river water along the Trishuli.",
+      "place_key": "corridor",
+      "source": "ESA / Copernicus",
+      "source_url": "https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Sentinel-2/Nepal_flash_flood_imaged_by_satellites",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-08-27T10:50:00+05:45",
+      "time_published": true,
+      "kind": "assessment",
+      "headline": "WorldView-3 counts 240+ buildings destroyed at Syabrubesi",
+      "detail": "A 05:05 UTC acquisition gives Copernicus EMS the first hard damage count of the event: more than 240 buildings destroyed and 32 damaged in the mapped area around Syabrubesi. NDRRMA's national toll stood at 165 dead that morning.",
+      "place_key": "syabrubesi",
+      "source": "Copernicus EMS · WorldView-3 via European Space Imaging",
+      "source_url": "https://eu-space.europa.eu/components/earth-observation-copernicus/image-of-the-day/copernicus-emergency-management-service-maps-flood-damages-northern-nepal",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-27T10:50:00+05:45",
+      "time_published": false,
+      "kind": "assessment",
+      "headline": "Vantor releases the first post-event 30 cm pass over the corridor",
+      "detail": "Maxar's open-data programme publishes a 27 August scene over Rasuwagadhi, Timure and Syabrubesi under CC BY-NC 4.0. At 71 per cent monsoon cloud it is far from clear, but the braided debris channel reads through the gaps against an October 2021 baseline.",
+      "place_key": "rasuwagadhi",
+      "source": "Vantor Open Data (formerly Maxar Open Data)",
+      "source_url": "https://vantor-opendata.s3.amazonaws.com/events/Nepal-Flooding-Aug-2026/collection.json",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-08-28T09:00:00+05:45",
+      "time_published": false,
+      "kind": "assessment",
+      "headline": "Toll rises to 579 dead, 1,924 missing",
+      "detail": "Reach extends into Nuwakot and Chitwan; about 93,000 people assessed as affected and roughly 500 foreign nationals unaccounted for.",
+      "place_key": "corridor",
+      "source": "NDRRMA situation update, 28 Aug 2026",
+      "source_url": "https://www.nepaldisaster.com/stats",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-08-28T12:00:00+05:45",
+      "time_published": false,
+      "kind": "assessment",
+      "headline": "Charter publishes the first Nuwakot and Timure impact products",
+      "detail": "Pre/post imagery for Nuwakot district damages and the Timure-Syaburbensi impact map.",
+      "place_key": "nuwakot_district",
+      "source": "International Charter Space and Major Disasters",
+      "source_url": "https://disasterscharter.org/activations/flood-in-nepal-activation-1052-",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-08-29T09:00:00+05:45",
+      "time_published": false,
+      "kind": "assessment",
+      "headline": "Toll rises to 626 dead as Chitwan recoveries mount",
+      "detail": "Chitwan, roughly 160 km downstream, has by now recovered more bodies than any other district.",
+      "place_key": "chitwan_district",
+      "source": "NDRRMA situation update, 29 Aug 2026",
+      "source_url": "https://www.nepaldisaster.com/stats",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-08-29T09:00:00+05:45",
+      "time_published": false,
+      "kind": "assessment",
+      "headline": "IPPAN: 934 unaccounted for across 11 hydropower projects",
+      "detail": "'934 people linked to 11 hydropower projects, including those under construction, remain unaccounted for' (IPPAN). NEA's acting managing director put the figure at over 200 workers. Named: Upper Trishuli-1 (254 rescued), Langtang Khola (42 unaccounted), Chilime (8), Rasuwagadhi (49), Upper Trishuli-3A (40–45), Upper Trishuli-3B (20–25), Upper Trishuli-3 (213 initially missing, 85 rescued).",
+      "place_key": "rasuwa_district",
+      "source": "Kathmandu Post, 'Hundreds feared trapped in hydropower tunnels after Bhotekoshi flood', 29 Aug 2026",
+      "source_url": "https://kathmandupost.com/national/2026/08/29/hundreds-feared-trapped-in-hydropower-tunnels-after-bhotekoshi-flood",
+      "confidence": "derived",
+      "note": "Article updated 12:02 PM — a publication time, not an event time → 09:00 NPT, time_published false."
+    },
+    {
+      "t_npt": "2026-08-29T09:00:00+05:45",
+      "time_published": false,
+      "kind": "response",
+      "headline": "Army teams break into the upper part of the mud-swamped Trishuli 3A tunnel",
+      "detail": "Army rescue teams 'broke through into the upper part of a mud-swamped tunnel' at Trishuli 3A on Saturday evening, then 'began pumping air as well as sending in a camera'. More than 100 workers may still be alive and trapped inside tunnels at Trishuli 3A and 3B.",
+      "place_key": "rasuwa_district",
+      "source": "Al Jazeera, 'Nepal rescuers drill into tunnels in bid to reach trapped workers', 30 Aug 2026",
+      "source_url": "https://www.aljazeera.com/news/2026/8/30/nepal-rescuers-drill-into-tunnels-in-bid-to-reach-trapped-workers",
+      "confidence": "derived",
+      "note": "'Saturday evening' = 29 Aug; no clock → 09:00 NPT of that day, time_published false. The recon dossier's 'Sunday afternoon' was wrong. 3A's own coordinates are unsourced, so the beat sits on the district."
+    },
+    {
+      "t_npt": "2026-08-30T07:00:00+05:45",
+      "time_published": true,
+      "kind": "response",
+      "headline": "Army has rescued 2,697 people from Rasuwa as of 07:00 Sunday",
+      "detail": "'The Nepali Army has rescued 2,697 people affected by flooding in Rasuwa district as of 7am on Sunday, using helicopters and ground teams' — 2,497 evacuated by air from Timure, Syabrubesi, Dhunche and Mailung (including 216 foreign nationals) and 200 by ground teams.",
+      "place_key": "rasuwa_district",
+      "source": "Kathmandu Post, 'Nepali Army rescues 2,697 people from flood-hit Rasuwa', 30 Aug 2026",
+      "source_url": "https://kathmandupost.com/national/2026/08/30/nepali-army-rescues-2-697-people-from-flood-hit-rasuwa",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-08-30T09:00:00+05:45",
+      "time_published": false,
+      "kind": "impact",
+      "headline": "Prithvi Highway severed at Krishnabhir",
+      "detail": "'The road began sinking on Sunday morning after the swollen river battered the highway embankment.' NDRRMA: 'Prithvi Highway (Mugling–Dhading section): Transportation is completely obstructed due to toe cutting at Krishna Bhir and Parewa Bhir.'",
+      "place_key": "dhading_district",
+      "source": "Kathmandu Post, 'Trishuli flood severs Prithvi Highway, cutting off key route into Kathmandu', 30 Aug 2026 · NDRRMA SitRep #01",
+      "source_url": "https://kathmandupost.com/national/2026/08/30/trishuli-flood-severs-prithvi-highway-cutting-off-key-route-into-kathmandu",
+      "confidence": "derived",
+      "note": "'Sunday morning' only → 09:00 NPT, time_published false. Krishnabhir has no geocoder hit and no sourced coordinate, so the beat sits on Dhading district; the camera frames the Malekhu–Mugling reach."
+    },
+    {
+      "t_npt": "2026-08-30T09:00:00+05:45",
+      "time_published": false,
+      "kind": "warning",
+      "headline": "Chinese authorities send flood-warning notices after upstream flow increases",
+      "detail": "'Flood warning notices were sent on 30 August after Chinese authorities reported increased water flow upstream.'",
+      "place_key": "langtang_origin",
+      "source": "Wikipedia, '2026 Nepal floods' (Chinese authorities' notices)",
+      "source_url": "https://en.wikipedia.org/wiki/2026_Nepal_floods",
+      "confidence": "derived",
+      "note": "Tertiary (C3); precedes and is distinct from the 31 Aug water-ministry warning in our chronology."
+    },
+    {
+      "t_npt": "2026-08-31T09:00:00+05:45",
+      "time_published": false,
+      "kind": "assessment",
+      "headline": "Toll passes 900: 903 dead, 4,247 missing, 10,451 rescued",
+      "detail": "UN OCHA reports access as the binding constraint on the response, with the Prithvi Highway cut at Krishnabhir.",
+      "place_key": "corridor",
+      "source": "NDRRMA, reported by UN OCHA, 31 Aug 2026",
+      "source_url": "https://news.un.org/en/story/2026/08/1168233",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-08-31T09:00:00+05:45",
+      "time_published": false,
+      "kind": "response",
+      "headline": "Controlled explosion in a tunnel at Upper Trishuli 3A in the early hours",
+      "detail": "'In the early hours of 31 August, a controlled explosion was carried out in a tunnel at the Upper Trishuli 3A Hydropower Station.'",
+      "place_key": "rasuwa_district",
+      "source": "Wikipedia, '2026 Nepal floods'",
+      "source_url": "https://en.wikipedia.org/wiki/2026_Nepal_floods",
+      "confidence": "derived",
+      "note": "Tertiary (C3); 'early hours' only → 09:00 NPT, time_published false."
+    },
+    {
+      "t_npt": "2026-08-31T12:00:00+05:45",
+      "time_published": false,
+      "kind": "warning",
+      "headline": "China warns of a fresh glacier collapse and new water building up",
+      "detail": "China's water ministry warns of continuing risk along the border after upstream flows picked up again, with new water accumulating behind the collapse debris. The threat to the valley is not over.",
+      "place_key": "langtang_origin",
+      "source": "Ministry of Water Resources, PRC, 31 Aug 2026",
+      "source_url": "https://en.wikipedia.org/wiki/2026_Nepal_floods",
+      "confidence": "derived"
+    },
+    {
+      "t_npt": "2026-09-01T09:00:00+05:45",
+      "time_published": true,
+      "kind": "assessment",
+      "headline": "NDRRMA reports 987 dead, 3,916 missing, 11,814 rescued",
+      "detail": "Preliminary damage put at Rs 200bn, with rebuilding projected as high as Rs 762bn. AP and the New York Times reported the toll passing 1,000 the same day; both figures stand as published. This is the deadliest disaster in Nepal since the 2015 earthquake.",
+      "place_key": "corridor",
+      "source": "NDRRMA bulletin, 1 Sept 2026 09:00 NPT",
+      "source_url": "https://www.nepaldisaster.com/stats",
+      "confidence": "published"
+    },
+    {
+      "t_npt": "2026-09-01T18:00:00+05:45",
+      "time_published": true,
+      "kind": "assessment",
+      "headline": "NDRRMA situation board, 18:00: 1,050 dead, 3,916 missing, 11,993 rescued",
+      "detail": "Transcription of NDRRMA's published situation board for 16 Bhadra 18:00 (1 Sept 2026): deaths 1,050, missing 3,916, injured 292, rescued 11,993, foreign nationals missing 583. District split (Chitwan 321, Nawalparasi East 216, Nawalparasi West 170, Nuwakot 142, Gorkha 65, Dhading 57, Rasuwa 41, Tanahun 38) sums to the total. Same day, 09:00 bulletin: 987. AP/NYT reported 1,010.",
+      "place_key": "corridor",
+      "source": "NDRRMA situation board १६ भदौ १८:००, via Rasuwa flood bulletin (compilation) — desk /flood/official.latest",
+      "source_url": "https://nirajbhusal.github.io/rasuwa-flood-bulletin/",
+      "confidence": "published",
+      "note": "Both 987 (09:00, NDRRMA PDF) and 1,050 (18:00, NDRRMA board) are official same-day figures at different clocks; the counter shows each with its source."
+    }
+  ],
+  "camera": [
+    {
+      "t_npt": "2026-08-26T08:37:00+05:45",
+      "center": [
+        85.47,
+        28.345
+      ],
+      "zoom": 10.6,
+      "pitch": 62,
+      "bearing": 215,
+      "hold_s": 6,
+      "label": "Origin — Langtang Himal north side: the Lhende source zone (NDRRMA, ~20 km upstream) and the Langtang Lirung marker, looking down-valley toward Rasuwagadhi"
+    },
+    {
+      "t_npt": "2026-08-26T08:44:00+05:45",
+      "center": [
+        85.372,
+        28.24
+      ],
+      "zoom": 13,
+      "pitch": 60,
+      "bearing": 193,
+      "hold_s": 3,
+      "label": "Border post — Rasuwagadhi / Gyirong Port"
+    },
+    {
+      "t_npt": "2026-08-26T08:50:00+05:45",
+      "center": [
+        85.33,
+        28.12
+      ],
+      "zoom": 12.5,
+      "pitch": 62,
+      "bearing": 200,
+      "hold_s": 3,
+      "label": "Bhote Koshi gorge — Syabrubesi"
+    },
+    {
+      "t_npt": "2026-08-26T09:20:00+05:45",
+      "center": [
+        85.17,
+        27.95
+      ],
+      "zoom": 12,
+      "pitch": 58,
+      "bearing": 215,
+      "hold_s": 3,
+      "label": "Trishuli gorge — Betrawati"
+    },
+    {
+      "t_npt": "2026-08-26T09:40:00+05:45",
+      "center": [
+        85.15,
+        27.94
+      ],
+      "zoom": 12,
+      "pitch": 55,
+      "bearing": 220,
+      "hold_s": 3,
+      "label": "Trishuli Bazar reach"
+    },
+    {
+      "t_npt": "2026-08-26T10:28:00+05:45",
+      "center": [
+        84.95,
+        27.82
+      ],
+      "zoom": 11,
+      "pitch": 45,
+      "bearing": 236,
+      "hold_s": 3,
+      "label": "Nuwakot plain — Galchhi"
+    },
+    {
+      "t_npt": "2026-08-26T11:50:00+05:45",
+      "center": [
+        84.85,
+        27.81
+      ],
+      "zoom": 11.5,
+      "pitch": 42,
+      "bearing": 250,
+      "hold_s": 3,
+      "label": "Gajuri – Malekhu"
+    },
+    {
+      "t_npt": "2026-08-26T13:00:00+05:45",
+      "center": [
+        84.56,
+        27.85
+      ],
+      "zoom": 11,
+      "pitch": 40,
+      "bearing": 235,
+      "hold_s": 3,
+      "label": "Mugling confluence"
+    },
+    {
+      "t_npt": "2026-08-26T15:20:00+05:45",
+      "center": [
+        84.43,
+        27.68
+      ],
+      "zoom": 11,
+      "pitch": 35,
+      "bearing": 246,
+      "hold_s": 4,
+      "label": "Devghat / Chitwan — Narayani enters the plain"
+    },
+    {
+      "t_npt": "2026-08-26T16:00:00+05:45",
+      "center": [
+        84.43,
+        27.68
+      ],
+      "zoom": 11,
+      "pitch": 35,
+      "bearing": 246,
+      "hold_s": 4,
+      "label": "Devghat peak — hold"
+    },
+    {
+      "t_npt": "2026-08-27T09:00:00+05:45",
+      "center": [
+        84.9,
+        27.95
+      ],
+      "zoom": 8.6,
+      "pitch": 35,
+      "bearing": 230,
+      "hold_s": 6,
+      "label": "Whole corridor — first toll"
+    },
+    {
+      "t_npt": "2026-08-29T09:00:00+05:45",
+      "center": [
+        84.45,
+        27.68
+      ],
+      "zoom": 9.5,
+      "pitch": 35,
+      "bearing": 246,
+      "hold_s": 4,
+      "label": "Chitwan — recoveries mount"
+    },
+    {
+      "t_npt": "2026-08-30T09:00:00+05:45",
+      "center": [
+        84.78,
+        27.83
+      ],
+      "zoom": 10.5,
+      "pitch": 42,
+      "bearing": 250,
+      "hold_s": 4,
+      "label": "Malekhu–Mugling reach — Prithvi Highway cut"
+    },
+    {
+      "t_npt": "2026-09-01T09:00:00+05:45",
+      "center": [
+        84.9,
+        27.95
+      ],
+      "zoom": 8.6,
+      "pitch": 35,
+      "bearing": 230,
+      "hold_s": 8,
+      "label": "Whole corridor — districts filling"
+    }
+  ],
+  "toll_marks": [
+    {
+      "t_npt": "2026-08-27T09:00:00+05:45",
+      "deaths": 165,
+      "missing": 826,
+      "source": "NDRRMA situation update, 27 Aug 2026 (desk official.trajectory)",
+      "source_url": "https://reliefweb.int/report/nepal/nepal-flood-response-situation-report-1-27-august-2026"
+    },
+    {
+      "t_npt": "2026-08-28T09:00:00+05:45",
+      "deaths": 579,
+      "missing": 1924,
+      "source": "NDRRMA situation update, 28 Aug 2026 (desk official.trajectory)",
+      "source_url": "https://www.nepaldisaster.com/stats"
+    },
+    {
+      "t_npt": "2026-08-29T09:00:00+05:45",
+      "deaths": 626,
+      "missing": 1924,
+      "source": "NDRRMA situation update, 29 Aug 2026 (desk official.trajectory)",
+      "source_url": "https://www.nepaldisaster.com/stats"
+    },
+    {
+      "t_npt": "2026-08-31T09:00:00+05:45",
+      "deaths": 903,
+      "missing": 4247,
+      "rescued": 10451,
+      "source": "NDRRMA, reported by UN OCHA, 31 Aug 2026 (desk official.trajectory)",
+      "source_url": "https://news.un.org/en/story/2026/08/1168233"
+    },
+    {
+      "t_npt": "2026-09-01T09:00:00+05:45",
+      "deaths": 987,
+      "missing": 3916,
+      "rescued": 11814,
+      "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026 09:00 NPT",
+      "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "note": "09:00 bulletin figure (injured 279, personnel 21,011). Superseded the same day by the 18:00 board."
+    },
+    {
+      "t_npt": "2026-09-01T18:00:00+05:45",
+      "deaths": 1050,
+      "missing": 3916,
+      "rescued": 11993,
+      "source": "NDRRMA situation board १६ भदौ १८:००, via Rasuwa flood bulletin (compilation) — desk official.trajectory as_of 2026-09-01",
+      "source_url": "https://nirajbhusal.github.io/rasuwa-flood-bulletin/",
+      "note": "Board clock 18:00 NPT stated in the source title; district split sums to 1,050. Press figures the same day (AP/NYT 1,010; The Hindu 1,003) are not toll marks."
+    }
+  ],
+  "sources": [
+    {
+      "label": "NDRRMA, Rasuwa Flood Situation Report (English) #01, 01 Sept 2026",
+      "url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "NDRRMA situation reports index (EN + NE)",
+      "url": "https://ndrrma.gov.np/np/rasuwa/situation",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "NDRRMA situation updates, compiled (nepaldisaster.com)",
+      "url": "https://www.nepaldisaster.com/stats",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "NDRRMA situation board transcription (Rasuwa flood bulletin compilation)",
+      "url": "https://nirajbhusal.github.io/rasuwa-flood-bulletin/",
+      "grade_hint": "B3"
+    },
+    {
+      "label": "ReliefWeb, Nepal flood response situation report 1, 27 Aug 2026",
+      "url": "https://reliefweb.int/report/nepal/nepal-flood-response-situation-report-1-27-august-2026",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "UN OCHA / UN News, 31 Aug 2026",
+      "url": "https://news.un.org/en/story/2026/08/1168233",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "DHM Flood Forecasting telemetry (desk rivers feed)",
+      "url": "https://www.hydrology.gov.np/",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "Phys.org — seismic detection and Planet Labs imagery",
+      "url": "https://phys.org/news/2026-08-satellite-images-bedrock-glacier-collapsed.html",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "Al Jazeera — satellite imagery analysis, 27 Aug 2026",
+      "url": "https://www.aljazeera.com/news/2026/8/27/satellite-images-show-destruction-from-nepal-tibet-floods",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "Al Jazeera — rescuers drill into tunnels, 30 Aug 2026",
+      "url": "https://www.aljazeera.com/news/2026/8/30/nepal-rescuers-drill-into-tunnels-in-bid-to-reach-trapped-workers",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "Bloomberg — visual investigation",
+      "url": "https://www.bloomberg.com/graphics/2026-nepal-flash-flood/",
+      "grade_hint": "B2"
+    },
+    {
+      "label": "Copernicus EMS activation EMSR927",
+      "url": "https://mapping.emergency.copernicus.eu/activations/EMSR927/",
+      "grade_hint": "A1"
+    },
+    {
+      "label": "Copernicus EMS / WorldView-3 via European Space Imaging",
+      "url": "https://eu-space.europa.eu/components/earth-observation-copernicus/image-of-the-day/copernicus-emergency-management-service-maps-flood-damages-northern-nepal",
+      "grade_hint": "A1"
+    },
+    {
+      "label": "ESA / Copernicus Sentinel-2",
+      "url": "https://www.esa.int/Applications/Observing_the_Earth/Copernicus/Sentinel-2/Nepal_flash_flood_imaged_by_satellites",
+      "grade_hint": "A2"
+    },
+    {
+      "label": "Vantor (Maxar) Open Data collection",
+      "url": "https://vantor-opendata.s3.amazonaws.com/events/Nepal-Flooding-Aug-2026/collection.json",
+      "grade_hint": "A1"
+    },
+    {
+      "label": "International Charter Activation 1052",
+      "url": "https://disasterscharter.org/activations/flood-in-nepal-activation-1052-",
+      "grade_hint": "A2"
+    },
+    {
+      "label": "Kathmandu Post — 'How the Bhotekoshi flood unfolded over 10 hours', 27 Aug 2026",
+      "url": "https://kathmandupost.com/climate-environment/2026/08/27/how-the-bhotekoshi-flood-unfolded-over-10-hours",
+      "grade_hint": "B3"
+    },
+    {
+      "label": "Kathmandu Post — 'Hundreds feared trapped in hydropower tunnels', 29 Aug 2026",
+      "url": "https://kathmandupost.com/national/2026/08/29/hundreds-feared-trapped-in-hydropower-tunnels-after-bhotekoshi-flood",
+      "grade_hint": "B3"
+    },
+    {
+      "label": "Kathmandu Post — 'Nepali Army rescues 2,697 people from flood-hit Rasuwa', 30 Aug 2026",
+      "url": "https://kathmandupost.com/national/2026/08/30/nepali-army-rescues-2-697-people-from-flood-hit-rasuwa",
+      "grade_hint": "B3"
+    },
+    {
+      "label": "Kathmandu Post — 'Trishuli flood severs Prithvi Highway', 30 Aug 2026",
+      "url": "https://kathmandupost.com/national/2026/08/30/trishuli-flood-severs-prithvi-highway-cutting-off-key-route-into-kathmandu",
+      "grade_hint": "B3"
+    },
+    {
+      "label": "OnlineKhabar — 'Trishuli Bazar in ruins after devastating flood', 26 Aug 2026",
+      "url": "https://english.onlinekhabar.com/trishuli-bazar-ruins-rasuwa-flood.html",
+      "grade_hint": "B3"
+    },
+    {
+      "label": "OnlineKhabar — 'Rasuwa Floods: Army helicopters rescue 88 people', 26 Aug 2026",
+      "url": "https://english.onlinekhabar.com/rasuwa-floods-army-helicopters-rescue-88-people.html",
+      "grade_hint": "B3"
+    },
+    {
+      "label": "Rising Nepal Daily — Upper Trishuli tunnel rescue, 27 Aug 2026",
+      "url": "https://risingnepaldaily.com/news/85645",
+      "grade_hint": "B3"
+    },
+    {
+      "label": "Wikipedia — '2026 Nepal floods' (used for its citations only)",
+      "url": "https://en.wikipedia.org/wiki/2026_Nepal_floods",
+      "grade_hint": "C3"
+    },
+    {
+      "label": "Wikipedia — 'Timeline of the 2026 Nepal floods' (used for its citations only)",
+      "url": "https://en.wikipedia.org/wiki/Timeline_of_the_2026_Nepal_floods",
+      "grade_hint": "C3"
+    },
+    {
+      "label": "OpenStreetMap Nominatim (place coordinates)",
+      "url": "https://nominatim.openstreetmap.org/",
+      "grade_hint": "C3"
+    }
+  ],
+  "film": {
+    "title": "THE TRISHULI FLOOD · HOW IT HAPPENED",
+    "note": "Director's cut. Every narration line is a chronology beat or a sentence quoted from a cited source; every card is a display-tier file (CC0 / public domain / CC BY / CC BY-NC) or a text citation. Times are event time; duration_s and hold_s are real seconds of playback.",
+    "scenes": [
+      {
+        "key": "prologue",
+        "title": "THE PICTURE",
+        "t_from": "2026-08-26T08:37:00+05:45",
+        "t_to": "2026-08-26T08:37:00+05:45",
+        "duration_s": 0,
+        "hold_s": 12,
+        "camera": {
+          "center": [
+            85.02,
+            27.98
+          ],
+          "zoom": 8.7,
+          "pitch": 48,
+          "bearing": 18
+        },
+        "narration": [
+          {
+            "text": "A total of 5 districts are affected, including 2 severely affected districts (Rasuwa and Nuwakot) with approximately 1.6 million people impacted. A total of 41 motorable bridges have been washed away.",
+            "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01",
+            "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+          }
+        ],
+        "cards": [
+          {
+            "kind": "commons",
+            "file": "Nepal flood 2026 before after.gif",
+            "caption": "The corridor from orbit, 24 versus 26 August."
+          }
+        ]
+      },
+      {
+        "key": "collapse",
+        "title": "08:37 · THE COLLAPSE",
+        "t_from": "2026-08-26T08:37:00+05:45",
+        "t_to": "2026-08-26T08:40:00+05:45",
+        "duration_s": 12,
+        "hold_s": 12,
+        "camera": {
+          "center": [
+            85.452,
+            28.372
+          ],
+          "zoom": 11.5,
+          "pitch": 52,
+          "bearing": 215
+        },
+        "fx": "collapse",
+        "narration": [
+          {
+            "beat": 0
+          },
+          {
+            "text": "Preliminary analysis based on high-resolution satellite imagery indicates that the event originated from a north-facing slope near the Lhende River, where an estimated 1 km² section of rock-glacier material detached and rapidly moved downslope.",
+            "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01",
+            "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+          }
+        ],
+        "cards": [
+          {
+            "kind": "commons",
+            "file": "Landsat Nepal flood 2026-08-26.png"
+          },
+          {
+            "kind": "commons",
+            "file": "Nepal flood before 2026-08-24 Copernicus Sentinel2-L1C.png",
+            "caption": "The same valley two days before."
+          }
+        ]
+      },
+      {
+        "key": "lhende",
+        "title": "DOWN THE LHENDE",
+        "t_from": "2026-08-26T08:40:00+05:45",
+        "t_to": "2026-08-26T08:44:00+05:45",
+        "duration_s": 28,
+        "hold_s": 0,
+        "follow": {
+          "zoom": 12.3,
+          "pitch": 50,
+          "lead_km": 1.1
+        },
+        "narration": [
+          {
+            "beat": 1
+          },
+          {
+            "text": "The detached ice and rock mass generated an ice–rock avalanche that entrained loose proglacial sediments along its downstream path, transforming into a highly mobile sediment- and water-laden debris flow.",
+            "source": "NDRRMA, Rasuwa Flood Situation Report (English) #01",
+            "source_url": "https://ndrrma.gov.np/mediafiles/rasuwa/Rasuwa_Flood_SitRep_Temp_ENG_01_01092026.pdf"
+          }
+        ],
+        "cards": []
+      },
+      {
+        "key": "gyirong",
+        "title": "08:44 · GYIRONG PORT / RASUWAGADHI",
+        "t_from": "2026-08-26T08:44:00+05:45",
+        "t_to": "2026-08-26T08:46:00+05:45",
+        "duration_s": 6,
+        "hold_s": 36,
+        "camera": {
+          "center": [
+            85.381,
+            28.281
+          ],
+          "zoom": 14.2,
+          "pitch": 50,
+          "bearing": 205
+        },
+        "narration": [
+          {
+            "beat": 3
+          },
+          {
+            "beat": 8
+          }
+        ],
+        "cards": [
+          {
+            "kind": "video",
+            "file": "Mudslide at Gyirong Port 1.webm"
+          },
+          {
+            "kind": "commons",
+            "file": "Gyirong Port before and after the flood satellite 2026.png"
+          },
+          {
+            "kind": "vantor",
+            "site": "rasuwagadhi",
+            "level": "detail",
+            "caption": "Same frame, before and after: Vantor 0.3 m pass over the border post."
+          }
+        ]
+      },
+      {
+        "key": "timure_syabru",
+        "title": "TIMURE AND SYABRUBESI",
+        "t_from": "2026-08-26T08:46:00+05:45",
+        "t_to": "2026-08-26T08:50:00+05:45",
+        "duration_s": 24,
+        "hold_s": 22,
+        "follow": {
+          "zoom": 12.3,
+          "pitch": 50,
+          "lead_km": 1.1
+        },
+        "hold_camera": {
+          "center": [
+            85.349,
+            28.168
+          ],
+          "zoom": 14.1,
+          "pitch": 50,
+          "bearing": 190
+        },
+        "narration": [
+          {
+            "beat": 5
+          },
+          {
+            "beat": 4
+          },
+          {
+            "beat": 25
+          }
+        ],
+        "cards": [
+          {
+            "kind": "vantor",
+            "site": "syabrubesi",
+            "level": "detail",
+            "caption": "Syabrubesi, same frame before and after."
+          },
+          {
+            "kind": "cite",
+            "beat": 25
+          }
+        ]
+      },
+      {
+        "key": "gorge",
+        "title": "THE TRISHULI GORGE",
+        "t_from": "2026-08-26T08:50:00+05:45",
+        "t_to": "2026-08-26T09:20:00+05:45",
+        "duration_s": 46,
+        "hold_s": 14,
+        "follow": {
+          "zoom": 12.3,
+          "pitch": 50,
+          "lead_km": 1.1
+        },
+        "hold_camera": {
+          "center": [
+            85.18,
+            27.982
+          ],
+          "zoom": 13.6,
+          "pitch": 50,
+          "bearing": 200
+        },
+        "narration": [
+          {
+            "beat": 9
+          },
+          {
+            "beat": 7
+          },
+          {
+            "beat": 10
+          },
+          {
+            "beat": 11
+          }
+        ],
+        "cards": [
+          {
+            "kind": "vantor",
+            "site": "betrawati",
+            "level": "detail",
+            "caption": "Betrawati, same frame before and after.",
+            "t_npt": "2026-08-26T09:15:00+05:45"
+          }
+        ]
+      },
+      {
+        "key": "trishuli_bazar",
+        "title": "TRISHULI BAZAR",
+        "t_from": "2026-08-26T09:20:00+05:45",
+        "t_to": "2026-08-26T09:40:00+05:45",
+        "duration_s": 16,
+        "hold_s": 18,
+        "follow": {
+          "zoom": 12.3,
+          "pitch": 50,
+          "lead_km": 1.1
+        },
+        "hold_camera": {
+          "center": [
+            85.146,
+            27.93
+          ],
+          "zoom": 14.0,
+          "pitch": 50,
+          "bearing": 195
+        },
+        "narration": [
+          {
+            "beat": 6
+          }
+        ],
+        "cards": [
+          {
+            "kind": "vantor",
+            "site": "trishuli_bazar",
+            "level": "detail",
+            "caption": "Trishuli Bazar, same frame before and after."
+          },
+          {
+            "kind": "cite",
+            "beat": 6
+          }
+        ]
+      },
+      {
+        "key": "to_galchhi",
+        "title": "TO GALCHHI",
+        "t_from": "2026-08-26T09:40:00+05:45",
+        "t_to": "2026-08-26T10:28:00+05:45",
+        "duration_s": 30,
+        "hold_s": 6,
+        "follow": {
+          "zoom": 11.8,
+          "pitch": 50,
+          "lead_km": 1.1
+        },
+        "narration": [
+          {
+            "beat": 12
+          }
+        ],
+        "cards": []
+      },
+      {
+        "key": "malekhu",
+        "title": "MALEKHU · THE BRIDGE",
+        "t_from": "2026-08-26T10:28:00+05:45",
+        "t_to": "2026-08-26T11:50:00+05:45",
+        "duration_s": 32,
+        "hold_s": 14,
+        "follow": {
+          "zoom": 12.0,
+          "pitch": 50,
+          "lead_km": 1.1
+        },
+        "hold_camera": {
+          "center": [
+            84.83,
+            27.812
+          ],
+          "zoom": 13.5,
+          "pitch": 50,
+          "bearing": 240
+        },
+        "narration": [
+          {
+            "beat": 13
+          },
+          {
+            "beat": 14
+          }
+        ],
+        "cards": [
+          {
+            "kind": "cite",
+            "beat": 14
+          }
+        ]
+      },
+      {
+        "key": "mugling_devghat",
+        "title": "MUGLING TO DEVGHAT · THE PEAK",
+        "t_from": "2026-08-26T11:50:00+05:45",
+        "t_to": "2026-08-26T16:00:00+05:45",
+        "duration_s": 50,
+        "hold_s": 16,
+        "follow": {
+          "zoom": 11.5,
+          "pitch": 50,
+          "lead_km": 1.1
+        },
+        "hold_camera": {
+          "center": [
+            84.43,
+            27.725
+          ],
+          "zoom": 13.0,
+          "pitch": 50,
+          "bearing": 200
+        },
+        "narration": [
+          {
+            "beat": 16
+          },
+          {
+            "beat": 17
+          },
+          {
+            "beat": 19
+          }
+        ],
+        "cards": [
+          {
+            "kind": "cite",
+            "beat": 19
+          }
+        ]
+      },
+      {
+        "key": "first_night",
+        "title": "THE FIRST NIGHT",
+        "t_from": "2026-08-26T16:00:00+05:45",
+        "t_to": "2026-08-27T09:00:00+05:45",
+        "duration_s": 22,
+        "hold_s": 0,
+        "camera": {
+          "center": [
+            85.05,
+            27.95
+          ],
+          "zoom": 9.0,
+          "pitch": 50,
+          "bearing": 15
+        },
+        "narration": [
+          {
+            "beat": 18
+          },
+          {
+            "beat": 21
+          },
+          {
+            "beat": 20
+          }
+        ],
+        "cards": [
+          {
+            "kind": "photo",
+            "match": "NA-061",
+            "t_npt": "2026-08-26T16:00:00+05:45"
+          },
+          {
+            "kind": "photo",
+            "match": "Mi-17",
+            "t_npt": "2026-08-26T22:00:00+05:45"
+          }
+        ]
+      },
+      {
+        "key": "toll_days",
+        "title": "THE DAYS AFTER · THE TOLL CLIMBS",
+        "t_from": "2026-08-27T09:00:00+05:45",
+        "t_to": "2026-09-01T18:00:00+05:45",
+        "duration_s": 78,
+        "hold_s": 0,
+        "camera": {
+          "center": [
+            85.0,
+            27.98
+          ],
+          "zoom": 8.8,
+          "pitch": 48,
+          "bearing": 30
+        },
+        "narration": [
+          {
+            "beat": 22
+          },
+          {
+            "beat": 23
+          },
+          {
+            "beat": 27
+          },
+          {
+            "beat": 29
+          },
+          {
+            "beat": 30
+          },
+          {
+            "beat": 31
+          },
+          {
+            "beat": 32
+          },
+          {
+            "beat": 33
+          },
+          {
+            "beat": 35
+          },
+          {
+            "beat": 37
+          },
+          {
+            "beat": 38
+          },
+          {
+            "beat": 39
+          }
+        ],
+        "cards": [
+          {
+            "kind": "photo",
+            "match": "tunnel",
+            "t_npt": "2026-08-27T09:00:00+05:45"
+          },
+          {
+            "kind": "photo",
+            "match": "excavator",
+            "t_npt": "2026-08-28T09:00:00+05:45"
+          },
+          {
+            "kind": "photo",
+            "match": "airlifted from cut-off",
+            "t_npt": "2026-08-29T09:00:00+05:45"
+          },
+          {
+            "kind": "photo",
+            "match": "relief supplies",
+            "t_npt": "2026-08-30T09:00:00+05:45"
+          },
+          {
+            "kind": "cite",
+            "beat": 37,
+            "t_npt": "2026-08-31T12:00:00+05:45"
+          }
+        ]
+      },
+      {
+        "key": "board",
+        "title": "1 SEP 18:00 · THE BOARD",
+        "t_from": "2026-09-01T18:00:00+05:45",
+        "t_to": "2026-09-01T18:00:00+05:45",
+        "duration_s": 0,
+        "hold_s": 22,
+        "camera": {
+          "center": [
+            85.02,
+            27.98
+          ],
+          "zoom": 8.7,
+          "pitch": 48,
+          "bearing": 18
+        },
+        "narration": [
+          {
+            "beat": 39
+          }
+        ],
+        "cards": [
+          {
+            "kind": "end"
+          }
+        ]
+      }
+    ]
+  }
+}

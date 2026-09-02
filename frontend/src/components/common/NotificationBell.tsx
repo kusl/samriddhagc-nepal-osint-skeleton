@@ -26,7 +26,11 @@ export function NotificationBell() {
   const navigate = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const queryClient = useQueryClient()
-  const { isGuest } = useAuthStore()
+  const { isGuest, isAuthenticated } = useAuthStore()
+  // Anonymous visitors have no notifications, and while the guest bootstrap is
+  // still in flight there is no token at all — gating on !isGuest alone let
+  // these queries fire unauthenticated on first paint and 401.
+  const canLoadNotifications = isAuthenticated && !isGuest
   const {
     unreadCount,
     isOpen,
@@ -42,7 +46,7 @@ export function NotificationBell() {
   const unreadQuery = useQuery({
     queryKey: ['notifications', 'badge'],
     queryFn: () => fetchNotificationFeed({ tab: 'all', limit: 1 }),
-    enabled: !isGuest,
+    enabled: canLoadNotifications,
     refetchInterval: 30000,
   })
 
@@ -51,14 +55,14 @@ export function NotificationBell() {
     queryFn: ({ pageParam }) => fetchNotificationFeed({ tab: activeTab, limit: 20, cursor: pageParam as string | null }),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
-    enabled: !isGuest,
+    enabled: canLoadNotifications,
     refetchInterval: isOpen ? 30000 : false,
   })
 
   const preferencesQuery = useQuery({
     queryKey: ['notifications', 'preferences'],
     queryFn: fetchNotificationPreferences,
-    enabled: !isGuest && (isOpen || preferencesOpen),
+    enabled: canLoadNotifications && (isOpen || preferencesOpen),
     staleTime: 60000,
   })
 

@@ -1,3 +1,5 @@
+import { IS_PUBLIC_ONLY, isPresetEnabled } from '../../config/deployment'
+
 export type TourPlacement = 'top' | 'right' | 'bottom' | 'left' | 'center'
 
 export interface DashboardTourStep {
@@ -16,7 +18,7 @@ const DESKTOP_STEPS: DashboardTourStep[] = [
   {
     id: 'presets',
     title: 'Switch dashboard views',
-    description: 'These tabs swap the dashboard composition. Use them to move between news, accountability, and election-focused views.',
+    description: 'These tabs swap the dashboard composition. Use them to move between the news, flood, and economy views.',
     targetId: 'preset-tabs',
     placement: 'bottom',
     mobileEnabled: false,
@@ -79,45 +81,6 @@ const DESKTOP_STEPS: DashboardTourStep[] = [
     presetId: 'economy',
   },
   {
-    id: 'accountability-tab',
-    title: 'Then move into Accountability',
-    description: 'After you understand the live picture, move to Accountability when you want to track promises, bills, parliamentary activity, and government decisions.',
-    targetId: 'accountability-tab',
-    placement: 'bottom',
-    mobileEnabled: false,
-    presetId: 'parliament',
-  },
-  {
-    id: 'accountability-overview',
-    title: 'This is the accountability workspace',
-    description: 'The Accountability view pulls manifesto promises and legislative tracking into one place so users can monitor delivery, not just headlines.',
-    targetId: 'accountability-overview',
-    placement: 'bottom',
-    mobileEnabled: false,
-    requiresScroll: true,
-    presetId: 'parliament',
-  },
-  {
-    id: 'bill-tracker',
-    title: 'Use Bill Tracker for legislative movement',
-    description: 'Bill Tracker shows which bills are registered, debated, stalled, or moving through committee so users can follow how legislation is actually progressing.',
-    targetId: 'bill-tracker',
-    placement: 'top',
-    mobileEnabled: false,
-    requiresScroll: true,
-    presetId: 'parliament',
-  },
-  {
-    id: 'parliament-session',
-    title: 'Use Parliamentary Session for chamber context',
-    description: 'Parliamentary Session summarizes what happened inside the chamber, including agenda, discussion flow, and the current session picture behind the headlines.',
-    targetId: 'parliament-session',
-    placement: 'top',
-    mobileEnabled: false,
-    requiresScroll: true,
-    presetId: 'parliament',
-  },
-  {
     id: 'account-menu',
     title: 'Guest versus account',
     description: 'Guest sessions are temporary and read-only. Create an account when you want a persistent identity and future personalized features.',
@@ -167,15 +130,6 @@ const MOBILE_STEPS: DashboardTourStep[] = [
     presetId: 'economy',
   },
   {
-    id: 'accountability-tab',
-    title: 'Use Accountability for follow-through',
-    description: 'After checking the news flow, open Accountability to monitor promises, bills, and parliamentary follow-through.',
-    targetId: 'accountability-tab',
-    placement: 'bottom',
-    mobileEnabled: true,
-    presetId: 'parliament',
-  },
-  {
     id: 'help-tour',
     title: 'Return here anytime',
     description: 'Open Guide to replay this walkthrough later. If you are still in a guest session, create an account when you want a persistent identity.',
@@ -187,5 +141,14 @@ const MOBILE_STEPS: DashboardTourStep[] = [
 ]
 
 export function getDashboardTourSteps(isMobile: boolean): DashboardTourStep[] {
-  return isMobile ? MOBILE_STEPS : DESKTOP_STEPS
+  const steps = isMobile ? MOBILE_STEPS : DESKTOP_STEPS
+
+  // Never walk someone to a tab this deployment does not render, and on the
+  // public build drop the account steps — there is no sign-up to send them to.
+  return steps.filter((step) => {
+    if (step.presetId && !isPresetEnabled(step.presetId)) return false
+    if (IS_PUBLIC_ONLY && step.guestCta === 'create-account') return false
+    if (IS_PUBLIC_ONLY && step.id === 'account-menu') return false
+    return true
+  })
 }

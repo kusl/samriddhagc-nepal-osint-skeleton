@@ -93,18 +93,23 @@ const TIMELINE_BUCKET_MINUTES = 30
 // Base layer options - Light map default (professional news style like Live UA Map)
 type BaseLayerType = 'light' | 'minimal' | 'terrain' | 'satellite' | 'dark'
 
+// CARTO's basemap CDN began requiring an API key: unauthenticated tiles are
+// still served, but stamped "API KEY REQUIRED" across every one of them, which
+// made the whole situation map unusable. Esri's basemaps remain open with
+// attribution, so the light/minimal/dark options point there instead. Verified
+// keyless 2026-09-01.
 const BASE_LAYERS: Record<BaseLayerType, { name: string; url: string; overlayUrl?: string; attribution: string; maxZoom: number }> = {
   light: {
     name: 'Light',
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '© OpenStreetMap © CARTO',
-    maxZoom: 19,
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© Esri, HERE, Garmin, © OpenStreetMap contributors',
+    maxZoom: 16,
   },
   minimal: {
     name: 'Minimal',
-    url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-    attribution: '© OpenStreetMap © CARTO',
-    maxZoom: 19,
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© Esri, HERE, Garmin, © OpenStreetMap contributors',
+    maxZoom: 16,
   },
   terrain: {
     name: 'Terrain',
@@ -120,9 +125,9 @@ const BASE_LAYERS: Record<BaseLayerType, { name: string; url: string; overlayUrl
   },
   dark: {
     name: 'Dark',
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    attribution: '© CartoDB © OpenStreetMap',
-    maxZoom: 19,
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    attribution: '© Esri, HERE, Garmin, © OpenStreetMap contributors',
+    maxZoom: 16,
   },
 }
 

@@ -1,4 +1,5 @@
 import { Compass, Newspaper, ShieldCheck, Sparkles, X } from 'lucide-react'
+import { IS_PUBLIC_ONLY } from '../../config/deployment'
 
 interface WelcomeModalProps {
   isOpen: boolean
@@ -16,7 +17,7 @@ const CAPABILITIES = [
   },
   {
     title: 'Follow what is developing',
-    description: 'Use the national, provincial, and accountability views to understand what matters first.',
+    description: 'Use the national, provincial, and flood views to understand what matters first.',
     icon: Compass,
   },
   {
@@ -178,9 +179,11 @@ export function WelcomeModal({
               maxWidth: 680,
             }}
           >
-            This dashboard shows live Nepal news and verified developments. {isGuest
-              ? 'You are in a temporary guest session right now. The tour will also show you the accountability view so you can move beyond breaking news into institutional tracking.'
-              : 'The tour will show you both the live news workspace and the accountability view so you can move between reporting and institutional tracking quickly.'}
+            This dashboard shows live Nepal news and verified developments. {IS_PUBLIC_ONLY
+              ? 'Everything here is open — no account needed. The tour will show you the live news workspace and the flood desk.'
+              : isGuest
+                ? 'You are in a temporary guest session right now. The tour will also show you the accountability view so you can move beyond breaking news into institutional tracking.'
+                : 'The tour will show you both the live news workspace and the accountability view so you can move between reporting and institutional tracking quickly.'}
           </p>
 
           <div
@@ -260,7 +263,7 @@ export function WelcomeModal({
             </div>
 
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {isGuest && (
+              {isGuest && !IS_PUBLIC_ONLY && (
                 <button
                   type="button"
                   onClick={onCreateAccount}

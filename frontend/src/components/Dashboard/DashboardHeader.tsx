@@ -9,12 +9,19 @@ import { useNotificationStore } from '../../stores/notificationStore';
 import { subscribeViewerCount, getViewerCountSnapshot, getViewerCountServerSnapshot } from '../../api/websocket';
 import { NotificationBell } from '../common/NotificationBell';
 import { DisplayPreferencesDrawer } from '../common/DisplayPreferencesDrawer';
+import { IS_PUBLIC_ONLY, isPresetEnabled } from '../../config/deployment';
 
-const PRESET_TABS = [
+// Accountability is archived: PRESETS.parliament and every widget it names are still
+// registered, so re-adding { id: 'parliament', label: 'Accountability' } here restores it.
+const ALL_PRESET_TABS = [
   { id: 'news', label: 'News' },
+  { id: 'flood', label: 'Flood' },
   { id: 'economy', label: 'Economy' },
-  { id: 'parliament', label: 'Accountability' },
 ] as const;
+
+// A deployment can drop tabs whose backing data it does not have
+// (VITE_DISABLED_PRESETS) — see src/config/deployment.ts.
+const PRESET_TABS = ALL_PRESET_TABS.filter(tab => isPresetEnabled(tab.id));
 
 const subscribeOnlineStatus = (cb: () => void) => {
   window.addEventListener('online', cb);
@@ -111,7 +118,6 @@ export const DashboardHeader = memo(function DashboardHeader() {
             NepalOSINT
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span className={isConnected ? 'live-dot' : 'offline-dot'} />
             <span style={{
               fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em',
               color: isConnected ? 'var(--status-low)' : 'var(--status-critical)',
@@ -134,8 +140,6 @@ export const DashboardHeader = memo(function DashboardHeader() {
                     ? 'news-tab'
                     : tab.id === 'economy'
                       ? 'economy-tab'
-                    : tab.id === 'parliament'
-                      ? 'accountability-tab'
                       : undefined
                 }
                 style={{
@@ -299,6 +303,7 @@ export const DashboardHeader = memo(function DashboardHeader() {
                     >
                       Display preferences
                     </button>
+                    {!IS_PUBLIC_ONLY && (
                     <button
                       onClick={handleGoToLogin}
                       style={{
@@ -312,6 +317,7 @@ export const DashboardHeader = memo(function DashboardHeader() {
                     >
                       Sign In / Create Account
                     </button>
+                    )}
                   </>
                 ) : (
                   <>

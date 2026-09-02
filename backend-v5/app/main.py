@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import get_settings
@@ -168,6 +169,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# Outermost: every JSON body over 1 KB leaves compressed. The replay payload is
+# ~350 KB raw and every viewer fetches it; the flood tab as a whole is several
+# such responses, so this is the single biggest lever on bandwidth per user.
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 # Include API router
 app.include_router(api_v1_router)

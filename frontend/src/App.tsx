@@ -11,6 +11,7 @@ import { publicLogin } from './api/auth'
 import { fetchNotificationPreferences, updateNotificationPreferences } from './api/notifications'
 import { useNotificationStore } from './stores/notificationStore'
 import { getProvinceForDistrict } from './data/districts'
+import { IS_PUBLIC_ONLY } from './config/deployment'
 
 const CandidateDeepDive = lazy(() => import('./components/elections/CandidateDeepDive').then((m) => ({ default: m.CandidateDeepDive })))
 const MainLayout = lazy(() => import('./components/layout/MainLayout').then((m) => ({ default: m.MainLayout })))
@@ -79,9 +80,11 @@ function App() {
   const wasAuthenticatedRef = useRef(isAuthenticated)
   const notificationPrefsSyncRef = useRef<string | null>(null)
   const shouldRenderPublicConsumerView = !isAuthenticated
-    && location.pathname !== '/login'
-    && location.pathname !== '/choose-username'
-    && !location.pathname.startsWith('/dev')
+    && (IS_PUBLIC_ONLY || (
+      location.pathname !== '/login'
+      && location.pathname !== '/choose-username'
+      && !location.pathname.startsWith('/dev')
+    ))
   const shouldAttemptGuestBootstrap = shouldRenderPublicConsumerView
 
   useEffect(() => {
@@ -215,7 +218,7 @@ function App() {
   // UI TEST ROUTE
   // ============================================
 
-  if (location.pathname === '/uitest' || location.pathname === '/uitest/') {
+  if (!IS_PUBLIC_ONLY && (location.pathname === '/uitest' || location.pathname === '/uitest/')) {
     return (
       <>
         <Suspense fallback={null}>
@@ -242,8 +245,13 @@ function App() {
         <AnimatedRoutes>
           <Routes>
             <Route path="/" element={<NewDashboard />} />
-            <Route path="/login" element={withRouteSuspense(<Login />)} />
+            <Route
+              path="/login"
+              element={IS_PUBLIC_ONLY ? <Navigate to="/" replace /> : withRouteSuspense(<Login />)}
+            />
             <Route path="/disasters" element={withRouteSuspense(<DisasterAlerts />)} />
+            {/* Flood is a dashboard preset now; keep circulated /flood links working. */}
+            <Route path="/flood" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </AnimatedRoutes>
@@ -288,6 +296,8 @@ function App() {
           <Routes>
             <Route path="/" element={<NewDashboard />} />
             <Route path="/disasters" element={withRouteSuspense(<DisasterAlerts />)} />
+            {/* Flood is a dashboard preset now; keep circulated /flood links working. */}
+            <Route path="/flood" element={<Navigate to="/" replace />} />
 
             {/* Dev-only routes */}
             <Route path="/analysis" element={withRouteSuspense(<ProtectedRoute requiredRole="dev"><Analysis /></ProtectedRoute>)} />

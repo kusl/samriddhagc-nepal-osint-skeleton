@@ -16,6 +16,12 @@ from bs4 import BeautifulSoup
 logger = logging.getLogger(__name__)
 
 FENEGOSIDA_URL = "https://fenegosida.org/"
+# The association's site is a JavaScript app now; the numbers it shows come
+# from this endpoint (found in its bundle). One row per rate type, Nepali
+# labels, today's and yesterday's figure. Tried first; the HTML scrape below
+# is kept only as a fallback for the day the API moves.
+FENEGOSIDA_API = "https://api.fenegosida.org/api/website/v1/Dashboard/today"
+_UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36 NepalOSINT/5.0"
 
 
 @dataclass
@@ -41,12 +47,74 @@ def extract_price(text: str) -> Optional[Decimal]:
     return None
 
 
+async def fetch_from_api() -> Optional[GoldSilverPrices]:
+    """Today's board from the association's own API.
+
+    rateType strings (Nepali): छापावाल सुन = hallmark gold, असली चाँदी = silver;
+    (१ तोला) per tola, (१० ग्राम) per 10 g. The field is named
+    todayBaseRatePerGram but carries the rate for the unit in the label.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.get(FENEGOSIDA_API, headers={"Accept": "application/json", "User-Agent": _UA})
+            r.raise_for_status()
+            rows = r.json()
+    except Exception as e:  # noqa: BLE001 — the HTML path is the fallback
+        logger.warning(f"FENEGOSIDA API unavailable: {e}")
+        return None
+    if not isinstance(rows, list):
+        return None
+    gold_tola = gold_10g = silver_tola = silver_10g = None
+    stamp = None
+    for row in rows:
+        label = str(row.get("rateType") or "")
+        val = row.get("todayBaseRatePerGram")
+        if val is None:
+            continue
+        try:
+            price = Decimal(str(val))
+        except Exception:
+            continue
+        is_gold = "सुन" in label or "gold" in label.lower()
+        is_silver = "चाँदी" in label or "silver" in label.lower()
+        per_tola = "तोला" in label or "tola" in label.lower()
+        per_10g = "१०" in label or "10" in label
+        if is_gold and per_tola:
+            gold_tola = price
+        elif is_gold and per_10g:
+            gold_10g = price
+        elif is_silver and per_tola:
+            silver_tola = price
+        elif is_silver and per_10g:
+            silver_10g = price
+        stamp = stamp or row.get("todayDate")
+    if not gold_tola and not silver_tola:
+        return None
+    date = None
+    if stamp:
+        try:
+            date = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+        except ValueError:
+            date = None
+    return GoldSilverPrices(
+        gold_per_tola=gold_tola or Decimal(0),
+        silver_per_tola=silver_tola or Decimal(0),
+        gold_per_10g=gold_10g,
+        silver_per_10g=silver_10g,
+        date=date or datetime.now(timezone.utc),
+        date_bs=None,
+    )
+
+
 async def fetch_gold_silver_prices() -> Optional[GoldSilverPrices]:
-    """Fetch gold and silver prices from FENEGOSIDA.
+    """Fetch gold and silver prices from FENEGOSIDA (API first, HTML fallback).
 
     Returns:
         GoldSilverPrices object or None if fetch fails
     """
+    api = await fetch_from_api()
+    if api:
+        return api
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(

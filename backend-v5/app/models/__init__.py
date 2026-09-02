@@ -11,6 +11,15 @@ from app.models.story_feature import StoryFeature
 from app.models.experience_record import ExperienceRecord, ExperienceType
 from app.models.analysis_batch import AnalysisBatch, BatchStatus
 from app.models.rl_model_version import RLModelVersion, ModelType
+from app.models.flood_event import (
+    FloodChronologyEntry,
+    FloodImageryProduct,
+    FloodLiveSnapshot,
+    FloodMediaItem,
+    FloodOfficialToll,
+    FloodSituationPanel,
+    FloodSitrep,
+)
 from app.models.disaster import (
     DisasterIncident,
     DisasterAlert,
@@ -252,6 +261,13 @@ from app.models.graph import (
 )
 
 __all__ = [
+    "FloodOfficialToll",
+    "FloodSituationPanel",
+    "FloodImageryProduct",
+    "FloodChronologyEntry",
+    "FloodSitrep",
+    "FloodMediaItem",
+    "FloodLiveSnapshot",
     "Base",
     "TimestampMixin",
     "Story",

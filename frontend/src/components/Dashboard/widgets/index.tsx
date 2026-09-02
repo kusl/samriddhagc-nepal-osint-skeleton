@@ -212,7 +212,7 @@ export function BriefingWidget() {
     <Widget id="briefing" icon={<FileText size={14} />}>
       <div style={{ padding: '16px' }}>
         <div style={{ fontSize: '9px', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '8px' }}>Intelligence Assessment</div>
-        <div style={{ background: 'var(--bg-elevated)', borderLeft: '3px solid var(--status-medium)', padding: '12px' }}>
+        <div style={{ background: 'var(--bg-elevated)', padding: '12px' }}>
           <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--status-medium)', marginBottom: '6px' }}>ELEVATED RISK</div>
           <div style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
             Multiple converging factors suggest elevated situational awareness required. Monsoon flooding combined with election tensions create compound risk scenarios.

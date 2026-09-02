@@ -921,10 +921,10 @@ function SituationMapWidget() {
       });
 
       // Light tile layer (CartoDB Voyager — bright, readable)
-      tileLayerRef.current = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      tileLayerRef.current = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
         maxZoom: 19,
-        attribution: '© OpenStreetMap © CARTO',
-        subdomains: 'abcd',
+        maxNativeZoom: 16,
+        attribution: '© Esri, HERE, Garmin, © OpenStreetMap contributors',
       }).addTo(mapInstance.current);
 
       L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);
@@ -1616,7 +1616,6 @@ function SituationMapWidget() {
           </span>
         ) : (
           <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/30">
-            <span className={`w-1.5 h-1.5 rounded-full ${loading ? 'bg-amber-500' : 'bg-emerald-500'}`} />
             <span className="text-[9px] font-semibold tracking-wide text-emerald-400">LIVE</span>
           </span>
         )}
@@ -2059,7 +2058,7 @@ function SituationMapWidget() {
                             ? 'linear-gradient(180deg, rgba(255, 107, 0, 0.10) 0%, rgba(255, 107, 0, 0.05) 100%)'
                             : 'linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)',
                           color: isFocused ? PRO_THEME.text.primary : PRO_THEME.text.secondary,
-                          boxShadow: isFocused ? `inset 2px 0 0 ${config.color}` : 'inset 2px 0 0 transparent',
+                          boxShadow: 'none',
                           transition: 'all 0.15s',
                         }}
                       >
@@ -2147,7 +2146,7 @@ function SituationMapWidget() {
                             ? 'linear-gradient(180deg, rgba(255, 107, 0, 0.10) 0%, rgba(255, 107, 0, 0.05) 100%)'
                             : 'linear-gradient(180deg, rgba(255,255,255,0.025) 0%, rgba(255,255,255,0.01) 100%)',
                           color: isFocused ? PRO_THEME.text.primary : PRO_THEME.text.secondary,
-                          boxShadow: isFocused ? `inset 2px 0 0 ${color}` : 'inset 2px 0 0 transparent',
+                          boxShadow: 'none',
                           transition: 'all 0.15s',
                         }}
                       >
@@ -2186,7 +2185,7 @@ function SituationMapWidget() {
                   background: 'linear-gradient(180deg, rgba(255, 107, 0, 0.10) 0%, rgba(255, 107, 0, 0.05) 100%)',
                   borderRadius: '5px',
                   border: `1px solid ${COMMAND_ACCENT}`,
-                  boxShadow: 'inset 2px 0 0 var(--bloomberg-orange, #FF6B00)',
+                  boxShadow: 'none',
                 }}>
                   <div>
                     <div style={{ fontSize: '9px', color: PRO_THEME.text.muted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '3px' }}>
@@ -2502,16 +2501,6 @@ function SituationMapWidget() {
                             onMouseEnter={e => { if (!isExpanded) e.currentTarget.style.background = PRO_THEME.bg.hover; }}
                             onMouseLeave={e => { if (!isExpanded) e.currentTarget.style.background = isExpanded ? PRO_THEME.accentMuted : 'transparent'; }}
                           >
-                            {/* Left accent bar */}
-                            <div style={{
-                              position: 'absolute',
-                              left: 0,
-                              top: 0,
-                              bottom: 0,
-                              width: '2px',
-                              background: isMultiSource ? '#10b981' : config.color,
-                              opacity: 0.8,
-                            }} />
 
                             {/* Content */}
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
@@ -3171,12 +3160,6 @@ function SituationMapWidget() {
                 background: PRO_THEME.bg.elevated,
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{
-                    width: '6px',
-                    height: '6px',
-                    borderRadius: '50%',
-                    background: '#22c55e',
-                  }} />
                   <span style={{ fontSize: '10px', fontWeight: 600, color: PRO_THEME.text.secondary, letterSpacing: '0.5px', textTransform: 'uppercase' }}>
                     Live Feed
                   </span>
@@ -3219,16 +3202,6 @@ function SituationMapWidget() {
                   onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = PRO_THEME.bg.elevated; }}
                   onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {/* Accent bar */}
-                  <div style={{
-                    position: 'absolute',
-                    left: 0,
-                    top: 0,
-                    bottom: 0,
-                    width: '2px',
-                    background: config.color,
-                    opacity: isSelected ? 1 : 0.5,
-                  }} />
 
                   {/* Meta row */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>

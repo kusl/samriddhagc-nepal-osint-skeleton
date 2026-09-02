@@ -42,8 +42,8 @@ export const CommandPalette = memo(function CommandPalette() {
 
   // Presets
   const presetIds = user?.role === 'analyst' || user?.role === 'dev'
-    ? (['news', 'economy', 'parliament', 'intelligence'] as const)
-    : (['news', 'economy', 'parliament'] as const);
+    ? (['news', 'flood', 'economy', 'parliament', 'intelligence'] as const)
+    : (['news', 'flood', 'economy', 'parliament'] as const);
   for (const pid of presetIds) {
     const p = PRESETS[pid];
     if (!p) continue;

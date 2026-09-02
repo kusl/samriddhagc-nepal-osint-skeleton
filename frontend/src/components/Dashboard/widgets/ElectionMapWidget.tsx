@@ -504,10 +504,10 @@ export function ElectionMapContent({ sizeKey = 'election-map' }: { sizeKey?: str
       attributionControl: false,
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
       maxZoom: 19,
-      attribution: '© OpenStreetMap © CARTO',
-      subdomains: 'abcd',
+      maxNativeZoom: 16,
+      attribution: '© Esri, HERE, Garmin, © OpenStreetMap contributors',
     }).addTo(mapInstance.current);
 
     L.control.zoom({ position: 'bottomright' }).addTo(mapInstance.current);

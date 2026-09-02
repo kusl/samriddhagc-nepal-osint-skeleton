@@ -537,7 +537,6 @@
 }
 
 .bloomberg-theme .kpi-threat {
-  border-left-width: 2px;
 }
 
 .bloomberg-theme .kpi-label {
@@ -657,7 +656,6 @@
 
 .bloomberg-theme .feed-item:hover {
   background: #1c1d22;
-  border-left: 2px solid var(--bloomberg-orange);
   padding-left: 8px;
 }
 
@@ -914,7 +912,6 @@
 }
 
 .bloomberg-command-item.selected {
-  border-left: 2px solid var(--bloomberg-orange);
   padding-left: 14px;
 }
 
@@ -1395,7 +1392,6 @@
 
 .bloomberg-theme .map-event-item:hover {
   background: #1c1d22;
-  border-left: 2px solid var(--bloomberg-orange);
   padding-left: 10px;
 }
 

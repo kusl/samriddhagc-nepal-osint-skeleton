@@ -103,10 +103,6 @@ function ProvinceRow({ prov, anomaly, sitrep, isExpanded, onToggle }: {
         {/* Province name */}
         <td style={{ padding: '7px 8px', verticalAlign: 'middle' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{
-              width: '3px', height: '16px', borderRadius: '1px',
-              background: threat.color, flexShrink: 0,
-            }} />
             <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', whiteSpace: 'nowrap' }}>
               {prov.name}
             </span>
@@ -192,7 +188,6 @@ function ProvinceRow({ prov, anomaly, sitrep, isExpanded, onToggle }: {
                 fontSize: '11px', lineHeight: 1.6, color: 'var(--text-primary)',
                 padding: '8px 10px', margin: '4px 0 8px',
                 background: 'var(--bg-elevated, rgba(255,255,255,0.02))',
-                borderLeft: `3px solid ${threat.color}`,
               }}>
                 {summary}
               </div>

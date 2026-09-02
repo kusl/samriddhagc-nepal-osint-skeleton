@@ -17,6 +17,8 @@ from app.services.clustering import ClusteringService
 from app.services.embeddings import EmbeddingService
 from app.services.analysis import BriefingService
 from app.services.disaster_service import DisasterIngestionService
+from app.services.flood_live_sync_service import FloodLiveSyncService
+from app.services.loss_sync_service import LossSyncService
 from app.services.river_service import RiverMonitoringService
 from app.services.weather_service import WeatherService
 from app.services.announcement_service import AnnouncementService
@@ -43,6 +45,8 @@ EMBEDDING_INTERVAL = 21600      # 6 hours — capped embedding backfill for cost
 ANALYSIS_BATCH_INTERVAL = 7200  # 2 hours
 BATCH_CHECK_INTERVAL = 900      # 15 minutes
 BIPAD_POLL_INTERVAL = 300       # 5 minutes
+LOSS_SYNC_INTERVAL = 900        # 15 minutes (BIPAD casualty/damage assessments)
+FLOOD_LIVE_INTERVAL = 600       # 10 minutes (NDRRMA/OPMCM official flood feeds)
 RIVER_POLL_INTERVAL = settings.river_poll_interval_seconds
 KPI_BROADCAST_INTERVAL = 60     # 1 minute (KPI cache auto-refreshes)
 WEATHER_POLL_INTERVAL = 3600    # 1 hour (DHM updates daily)
@@ -356,6 +360,57 @@ async def poll_bipad_disasters():
                 await invalidate_kpi_cache()
     except Exception as e:
         logger.exception(f"Error polling BIPAD: {e}")
+
+
+async def sync_flood_loss():
+    """Reconcile BIPAD casualty and damage assessments (every 15 min).
+
+    BIPAD publishes an incident immediately with an empty loss record and fills
+    the figures in over the following hours, so ingest alone would leave every
+    death toll and damage estimate at zero. This job pulls the real numbers and
+    keeps re-checking recent incidents while their assessments are still moving.
+    """
+    logger.info("Syncing BIPAD loss assessments...")
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await LossSyncService(db).sync(limit=400)
+            logger.info(
+                "Loss sync complete: %d updated of %d considered (+%d deaths)",
+                result.updated, result.considered, result.deaths_added,
+            )
+            if result.updated:
+                await invalidate_kpi_cache()
+    except Exception as e:
+        logger.exception(f"Error syncing BIPAD loss data: {e}")
+
+
+async def sync_flood_live():
+    """Mirror the official flood feeds for the active event (every 10 min).
+
+    BIPAD's incident pipeline cannot see this disaster — it carried 7 deaths
+    nationwide while NDRRMA was reporting over a thousand from the flood alone
+    — so the desk's figures come from the disaster authority's own publications
+    instead. This job pulls them: the situation board, the rescue register, the
+    OPMCM portal's public filings, the situation-report PDFs, and the
+    photographs the government publishes for redistribution.
+
+    The service guards its own writes (a toll only moves on a revision whose
+    district split sums to the total and whose count has not fallen) and
+    isolates each feed, so a single ministry being down degrades one panel
+    rather than the page.
+    """
+    logger.info("Syncing official flood feeds...")
+    try:
+        async with AsyncSessionLocal() as db:
+            result = await FloodLiveSyncService(db).run()
+            logger.info(
+                "Flood live sync complete: toll=%s sitreps=%s media=%s",
+                (result.get("toll") or {}).get("deaths"),
+                (result.get("sitreps") or {}).get("created"),
+                (result.get("media") or {}).get("total_items"),
+            )
+    except Exception as e:
+        logger.exception(f"Error syncing official flood feeds: {e}")
 
 
 async def poll_river_monitoring():
@@ -1581,6 +1636,34 @@ def start_scheduler():
         id="poll_bipad",
         name="Poll BIPAD Disasters",
         replace_existing=True,
+    )
+
+    # Casualty/damage assessments lag the incident report, so this runs on its
+    # own slower cadence rather than inside the 5-minute incident poll.
+    scheduler.add_job(
+        sync_flood_loss,
+        trigger=IntervalTrigger(seconds=LOSS_SYNC_INTERVAL),
+        id="sync_flood_loss",
+        name="Sync BIPAD Loss Assessments",
+        replace_existing=True,
+        next_run_time=now,
+    )
+
+    # The official flood feeds move on their own cadence — NDRRMA revises the
+    # situation board a few times a day — so this polls faster than the loss
+    # sync but writes only when a revision passes the service's guards.
+    scheduler.add_job(
+        sync_flood_live,
+        trigger=IntervalTrigger(seconds=FLOOD_LIVE_INTERVAL),
+        id="sync_flood_live",
+        name="Sync Official Flood Feeds",
+        replace_existing=True,
+        next_run_time=now,
+        # APScheduler's one-second default grace drops the boot run outright:
+        # thirty other jobs fire at startup and this one loses the race. Five
+        # minutes means a busy boot delays the first sync instead of skipping
+        # it, which on a live disaster feed is the difference that matters.
+        misfire_grace_time=300,
     )
 
     if settings.river_monitoring_enabled:

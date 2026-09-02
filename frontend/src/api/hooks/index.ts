@@ -253,3 +253,10 @@ export {
   useTopAircraft,
   aviationKeys,
 } from './useAviation';
+
+// Manifesto promise tracker hooks
+export {
+  usePromiseSummary,
+  promiseKeys,
+} from './usePromises';
+export type { PromiseSummary, ManifestoPromiseItem } from '../promises';

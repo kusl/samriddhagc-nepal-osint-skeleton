@@ -206,6 +206,25 @@ async def require_analyst(
     return user
 
 
+async def require_persistent_user(
+    user: User = Depends(get_current_user),
+) -> User:
+    """Require a user that actually exists as a row in `users`.
+
+    /auth/public hands anonymous visitors a synthetic identity whose id is a
+    derived UUID5 with no matching row, so any endpoint that persists per-user
+    state (notification preferences, read marks, follows) would otherwise fail
+    with a ForeignKeyViolationError surfacing as a 500. Reject it up front with
+    a 403 the client can reason about; reads stay open to anonymous visitors.
+    """
+    if AuthService.is_public_consumer(user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Sign in to save preferences",
+        )
+    return user
+
+
 async def require_dev(
     user: User = Depends(get_current_user),
 ) -> User:

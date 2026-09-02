@@ -47,6 +47,7 @@ export interface CabinetActionPublicItem {
 }
 
 export interface CabinetActionSummary {
+  total_actions: number;
   total_scored_actions: number;
   completed_on_time: number;
   completed_late: number;

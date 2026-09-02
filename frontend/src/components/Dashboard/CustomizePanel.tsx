@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, GripVertical, Sliders } from 'lucide-react';
 import { useDashboardStore, WIDGET_META, PRESETS, WidgetSize, canAccessWidget, getWidgetDisplayName, isWidgetWIP } from '../../stores/dashboardStore';
+import { IS_PUBLIC_ONLY, isPresetEnabled } from '../../config/deployment';
 import { useAuthStore } from '../../store/slices/authSlice';
 
 const SIZES: WidgetSize[] = ['hero', 'brief', 'full', 'large', 'medium', 'small', 'mini'];
@@ -19,8 +20,8 @@ const ARCHIVED_WIDGET_IDS = new Set([
 ]);
 
 // Presets available for each role
-const CONSUMER_PRESETS = ['news', 'economy', 'parliament'];
-const ANALYST_PRESETS = ['news', 'economy', 'parliament', 'intelligence'];
+const CONSUMER_PRESETS = ['news', 'flood', 'economy', 'parliament'];
+const ANALYST_PRESETS = ['news', 'flood', 'economy', 'parliament', 'intelligence'];
 
 export function CustomizePanel() {
   const {
@@ -46,7 +47,10 @@ export function CustomizePanel() {
   // Filter presets based on role
   const isConsumer = user?.role === 'consumer';
   const availablePresetIds = isConsumer ? CONSUMER_PRESETS : ANALYST_PRESETS;
+  // Presets the deployment has switched off never appear here either — the
+  // header hides their tabs, and a card that applies a hidden tab is a trap.
   const availablePresets = availablePresetIds
+    .filter(isPresetEnabled)
     .map(id => PRESETS[id])
     .filter(Boolean);
 
@@ -161,7 +165,8 @@ export function CustomizePanel() {
                 </button>
               ))}
 
-              {/* Custom option for all users */}
+              {/* Custom layouts are an analyst tool; the public desk ships its presets as designed. */}
+              {!IS_PUBLIC_ONLY && (
               <button
                 onClick={() => {
                   if (!isCustomConfig) {
@@ -182,6 +187,7 @@ export function CustomizePanel() {
                   Build your own layout
                 </div>
               </button>
+              )}
             </div>
           </div>
 

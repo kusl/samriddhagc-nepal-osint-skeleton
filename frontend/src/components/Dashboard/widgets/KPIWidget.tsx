@@ -1,10 +1,13 @@
 import { memo, useEffect, useMemo } from 'react';
 import { Activity, RefreshCw } from 'lucide-react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import apiClient from '../../../api/client';
+import { dtgDay } from '../../flood/milspec';
 import { Widget } from '../Widget';
 import { Sparkline } from '../Sparkline';
 import { useKPISnapshot, useHourlyTrends, useLatestBrief, kpiKeys } from '../../../api/hooks';
 import { useSettingsStore } from '../../../store/slices/settingsSlice';
+import { useAuthStore } from '../../../store/slices/authSlice';
 import { WidgetSkeleton, WidgetError } from './shared';
 
 // Threat level styling
@@ -27,6 +30,29 @@ export const KPIWidget = memo(function KPIWidget() {
   const { data: kpi, isLoading, error, refetch } = useKPISnapshot(24, districts);
   const { data: hourlyTrends } = useHourlyTrends(24, districts);
   const { data: latestBrief } = useLatestBrief();
+  // The flood toll the desk publishes — same official series the Flood tab
+  // runs on, read here so the News page carries the headline figures too.
+  // /flood/official needs a bearer token, and the anonymous bootstrap is
+  // deliberately deferred so it does not block first paint. Firing before it
+  // lands 401s, and with a 10-minute refetch the toll cell would sit empty
+  // until the next tick — so wait for the token.
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { data: floodToll } = useQuery<{ latest: { as_of: string; authority: string; deaths: number | null; missing: number | null; rescued: number | null; source_url?: string | null } | null } | null>({
+    queryKey: ['flood', 'official', 'kpi'],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      try {
+        const r = await apiClient.get('/flood/official');
+        const latest = r.data?.official?.latest ?? null;
+        return { latest };
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+    refetchInterval: 10 * 60 * 1000,
+  });
+  const toll = floodToll?.latest ?? null;
 
   const sparklineData = useMemo(() => {
     if (!hourlyTrends?.length) return [];
@@ -131,7 +157,7 @@ export const KPIWidget = memo(function KPIWidget() {
         {/* Row 1: Primary Metrics */}
         <div className="kpi-row kpi-primary">
           {/* Threat Level */}
-          <div className="kpi-cell kpi-threat" title="Overall security assessment based on active alerts, severity, and trends" style={{ borderLeftColor: threatStyle.border }}>
+          <div className="kpi-cell kpi-threat" title="Overall security assessment based on active alerts, severity, and trends">
             <div className="kpi-label">THREAT LEVEL</div>
             <div className="kpi-value-lg" style={{ color: threatStyle.indicator }}>
               {kpi.threat_level.level}
@@ -198,21 +224,30 @@ export const KPIWidget = memo(function KPIWidget() {
 
         {/* Row 2: Intelligence Focus */}
         <div className="kpi-row kpi-secondary">
-          {/* Key Areas to Watch */}
+          {/* Key Areas to Watch, with the primary driver on the same cell so
+              the second row keeps the first row's four columns. */}
           <div className="kpi-cell kpi-watchlist">
-            <div className="kpi-label">KEY AREAS</div>
-            <div className="kpi-areas">
+            <div className="kpi-label">KEY AREAS · PRIMARY DRIVER</div>
+            <div className="kpi-areas" style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               {keyAreas.map((area, i) => (
                 <span key={i} className="kpi-area-tag">{area}</span>
               ))}
+              <span className="kpi-value-md" style={{ marginLeft: 4 }}>{kpi.threat_level.primary_driver || '―'}</span>
             </div>
           </div>
 
-          {/* Primary Driver */}
-          <div className="kpi-cell">
-            <div className="kpi-label">PRIMARY DRIVER</div>
-            <div className="kpi-value-md">{kpi.threat_level.primary_driver || '―'}</div>
-          </div>
+          {/* Trishuli flood toll — the desk's official series, not a 24 h count */}
+          {toll && (
+            <div className="kpi-cell" title={`${toll.authority} · as of ${toll.as_of}`}>
+              <div className="kpi-label">TRISHULI FLOOD · {toll.authority}</div>
+              <div className="kpi-value-md kpi-casualties" style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+                <span style={{ color: 'var(--status-critical)' }}>{(toll.deaths ?? 0).toLocaleString('en-IN')} dead</span>
+                <span style={{ color: 'var(--status-high)' }}>{(toll.missing ?? 0).toLocaleString('en-IN')} missing</span>
+                <span style={{ color: 'var(--status-low)' }}>{(toll.rescued ?? 0).toLocaleString('en-IN')} rescued</span>
+              </div>
+              <div className="kpi-sub">AS OF {dtgDay(toll.as_of)} · SEE FLOOD TAB</div>
+            </div>
+          )}
 
           {/* Casualties (if any) or Sources */}
           {hasCasualties ? (
@@ -266,7 +301,10 @@ export const KPIWidget = memo(function KPIWidget() {
         }
 
         .kpi-row {
-          display: flex;
+          /* Both rows share one four-column grid so the hairlines between
+             cells fall on the same x in each row. */
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           align-items: stretch;
           gap: 1px;
           background: var(--border-color);
@@ -287,7 +325,6 @@ export const KPIWidget = memo(function KPIWidget() {
         }
 
         .kpi-threat {
-          border-left: 3px solid;
           flex: 0.9;
         }
 

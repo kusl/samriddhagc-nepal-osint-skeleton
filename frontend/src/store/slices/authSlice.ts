@@ -2,7 +2,21 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type UserRole = 'consumer' | 'analyst' | 'dev'
-export type AuthProvider = 'local' | 'google' | 'guest'
+// 'public' is the anonymous auto-login the dashboard bootstraps with
+// (POST /auth/public -> AuthService.build_public_consumer_user). The backend has
+// sent it all along; leaving it out of this union is what made isGuest false for
+// every anonymous visitor.
+export type AuthProvider = 'local' | 'google' | 'guest' | 'public'
+
+// The public consumer is a synthetic identity: its UUID is derived, not a row in
+// `users`, so anything keyed to user_id fails with a foreign-key violation. Both
+// anonymous providers must be treated as guests — that is what gates the
+// notification bell and the preference sync.
+const ANONYMOUS_PROVIDERS: ReadonlySet<AuthProvider> = new Set(['guest', 'public'])
+
+export function isAnonymousProvider(provider: AuthProvider | undefined | null): boolean {
+  return !!provider && ANONYMOUS_PROVIDERS.has(provider)
+}
 
 export interface User {
   id: string
@@ -30,7 +44,7 @@ interface AuthState {
 /** Safely check if username is needed (handles undefined authProvider from old state) */
 function computeNeedsUsername(user: User | Partial<User>): boolean {
   if (!user.authProvider) return false // old state or unknown provider — don't redirect
-  if (user.authProvider === 'guest') return false
+  if (isAnonymousProvider(user.authProvider)) return false
   return !user.username
 }
 
@@ -50,7 +64,7 @@ export const useAuthStore = create<AuthState>()(
           refreshToken,
           user,
           isAuthenticated: true,
-          isGuest: user.authProvider === 'guest',
+          isGuest: isAnonymousProvider(user.authProvider),
           needsUsername: computeNeedsUsername(user),
         })
       },

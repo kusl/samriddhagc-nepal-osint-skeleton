@@ -8,6 +8,7 @@ import { FeedbackPanel } from './FeedbackPanel';
 import { AlertTicker } from './AlertTicker';
 import { useDashboardStore, PRESETS, WIDGET_META } from '../../stores/dashboardStore';
 import { useAuthStore, UserRole } from '../../store/slices/authSlice';
+import { DesktopOnlyGate, FORCE_DESKTOP_KEY, readForceDesktop } from '../common/DesktopOnlyGate';
 import { useUserPreferencesStore } from '../../store/slices/userPreferencesSlice';
 import { DashboardTour, WelcomeModal, getDashboardTourSteps } from '../onboarding';
 import { CustomizePanel } from './CustomizePanel';
@@ -88,6 +89,25 @@ const WIDGET_LOADERS: Record<string, WidgetLoader> = {
   'province-monitor': () => import('./widgets/ProvinceMonitorWidget').then((m) => ({ default: m.ProvinceMonitorWidget })),
   'narrative-tracker': () => import('./widgets/NarrativeTrackerWidget').then((m) => ({ default: m.NarrativeTrackerWidget })),
   'fact-check': () => import('./widgets/FactCheckWidget').then((m) => ({ default: m.FactCheckWidget })),
+  'flood-situation-command': () => import('./widgets/FloodSituationCommandWidget').then((m) => ({ default: m.FloodSituationCommandWidget })),
+  'flood-district-map': () => import('./widgets/FloodDistrictMapWidget').then((m) => ({ default: m.FloodDistrictMapWidget })),
+  'flood-operational-picture': () => import('./widgets/FloodOperationalPictureWidget').then((m) => ({ default: m.FloodOperationalPictureWidget })),
+  'flood-district-toll': () => import('./widgets/FloodDistrictTollWidget').then((m) => ({ default: m.FloodDistrictTollWidget })),
+  'flood-missing-ledger': () => import('./widgets/FloodMissingLedgerWidget').then((m) => ({ default: m.FloodMissingLedgerWidget })),
+  'flood-rescue-ops': () => import('./widgets/FloodRescueOpsWidget').then((m) => ({ default: m.FloodRescueOpsWidget })),
+  'flood-damage-aid': () => import('./widgets/FloodDamageAidWidget').then((m) => ({ default: m.FloodDamageAidWidget })),
+  'flood-tunnel-rescue': () => import('./widgets/FloodTunnelRescueWidget').then((m) => ({ default: m.FloodTunnelRescueWidget })),
+  'flood-river-gauges': () => import('./widgets/FloodRiverGaugesWidget').then((m) => ({ default: m.FloodRiverGaugesWidget })),
+  'flood-satellite-intel': () => import('./widgets/FloodSatelliteIntelWidget').then((m) => ({ default: m.FloodSatelliteIntelWidget })),
+  'flood-satellite-map': () => import('./widgets/FloodSatelliteMapWidget').then((m) => ({ default: m.FloodSatelliteMapWidget })),
+  'flood-chronology': () => import('./widgets/FloodChronologyWidget').then((m) => ({ default: m.FloodChronologyWidget })),
+  'flood-damage-explorer': () => import('./widgets/FloodDamageExplorerWidget').then((m) => ({ default: m.FloodDamageExplorerWidget })),
+  'flood-cited-reporting': () => import('./widgets/FloodCitedReportingWidget').then((m) => ({ default: m.FloodCitedReportingWidget })),
+  'flood-assessment': () => import('./widgets/FloodAssessmentWidget').then((m) => ({ default: m.FloodAssessmentWidget })),
+  'flood-gov-services': () => import('./widgets/FloodGovServicesWidget').then((m) => ({ default: m.FloodGovServicesWidget })),
+  'flood-source-matrix': () => import('./widgets/FloodSourceMatrixWidget').then((m) => ({ default: m.FloodSourceMatrixWidget })),
+  'flood-sitrep-log': () => import('./widgets/FloodSitrepLogWidget').then((m) => ({ default: m.FloodSitrepLogWidget })),
+  'flood-ground-imagery': () => import('./widgets/FloodGroundImageryWidget').then((m) => ({ default: m.FloodGroundImageryWidget })),
 };
 
 export const WIDGET_COMPONENTS: Record<string, LazyExoticComponent<ComponentType<any>>> = Object.fromEntries(
@@ -110,6 +130,7 @@ const MOBILE_WIDGETS_BY_PRESET: Record<string, string[]> = {
   economy: ['economic-news', 'market', 'trade-customs', 'fiscal-position', 'external-sector', 'monetary-conditions', 'prices-cost-pressure', 'govt-loan-tracker', 'govt-contracts', 'debt-tracker'],
   parliament: ['promise-tracker', 'bill-tracker', 'parliament-activity', 'govt-decisions', 'neta', 'parliament-session'],
   disaster: ['map', 'disasters', 'weather', 'newsfeed', 'govt'],
+  flood: ['flood-situation-command', 'flood-assessment', 'flood-gov-services', 'flood-district-map', 'flood-district-toll', 'flood-chronology', 'flood-river-gauges', 'flood-missing-ledger', 'flood-cited-reporting'],
 };
 
 // Mobile detection hook
@@ -288,7 +309,11 @@ export function Dashboard() {
     tourReplayRequested,
   } = useUserPreferencesStore();
   const initializedForRole = useRef<UserRole | null>(null);
-  const isMobile = useIsMobile();
+  const isMobileViewport = useIsMobile();
+  // Phones get the desktop-only page unless this device has asked for the
+  // full desk (remembered per device). A forced desk is laid out as desktop.
+  const [forceDesktop, setForceDesktop] = useState<boolean>(() => readForceDesktop());
+  const isMobile = isMobileViewport && !forceDesktop;
   const navigate = useNavigate();
 
   // Analyst mode state
@@ -326,7 +351,8 @@ export function Dashboard() {
     initializedForRole.current = user.role;
   }, [user?.role, applyPreset, activePreset, isMobile]);
 
-  // Keyboard shortcuts: N → News, E → Economy, A → Accountability, I → Intelligence
+  // Keyboard shortcuts: N → News, E → Economy, I → Intelligence.
+  // A → Accountability went with the tab; the preset is archived, not deleted.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -338,9 +364,6 @@ export function Dashboard() {
       } else if (key === 'e') {
         e.preventDefault();
         applyPreset('economy');
-      } else if (key === 'a') {
-        e.preventDefault();
-        applyPreset('parliament');
       } else if (key === 'i' && (user?.role === 'analyst' || user?.role === 'dev')) {
         e.preventDefault();
         applyPreset('intelligence');
@@ -493,6 +516,23 @@ export function Dashboard() {
     if (step.presetId && activePreset !== step.presetId) {
       applyPreset(step.presetId)
     }
+  }
+
+  if (isMobileViewport && !forceDesktop) {
+    return (
+      <DesktopOnlyGate
+        onForceDesktop={() => {
+          try {
+            localStorage.setItem(FORCE_DESKTOP_KEY, '1');
+          } catch {
+            /* private mode: the choice lasts for this page only */
+          }
+          const meta = document.querySelector('meta[name="viewport"]');
+          if (meta) meta.setAttribute('content', 'width=1280');
+          setForceDesktop(true);
+        }}
+      />
+    );
   }
 
   return (

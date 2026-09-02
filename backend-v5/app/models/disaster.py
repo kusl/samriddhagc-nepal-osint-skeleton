@@ -119,6 +119,27 @@ class DisasterIncident(Base):
         comment="Loss in NPR",
     )
 
+    # Detailed loss, reconciled from BIPAD's /api/v1/loss/{id}/ record. The
+    # incident payload only carries a loss *id*, so these stay 0 until
+    # LossSyncService fills them in (see loss_synced_at).
+    people_affected: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    families_relocated: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    families_evacuated: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    houses_destroyed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    houses_affected: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    roads_destroyed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    bridges_destroyed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    livestock_destroyed: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    infrastructure_loss_npr: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    agriculture_loss_npr: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+
+    bipad_loss_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    loss_synced_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="When loss figures were last reconciled with BIPAD; NULL = never",
+    )
+
     # Status
     verified: Mapped[bool] = mapped_column(Boolean, default=False)
     severity: Mapped[Optional[str]] = mapped_column(

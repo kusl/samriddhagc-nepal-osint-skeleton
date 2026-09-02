@@ -10,7 +10,7 @@ CONSUMER_MODE = os.getenv("CONSUMER_MODE", "false").lower() == "true"
 # ── Always-loaded modules (consumer + dev) ──
 from app.api.v1 import (
     stories, analytics, ingest, analysis, embeddings,
-    disasters, disaster_alerts, map, kpi, weather, river,
+    disasters, disaster_alerts, map, kpi, weather, river, flood,
     announcements, market, infrastructure, seismic, curfew, debt_clock, economy,
     twitter, elections, energy, auth,
     dashboard,
@@ -110,6 +110,8 @@ router.include_router(map.router, dependencies=any_auth)
 router.include_router(kpi.router, dependencies=any_auth)
 router.include_router(weather.router, dependencies=any_auth)
 router.include_router(river.router, dependencies=any_auth)
+router.include_router(flood.router, dependencies=any_auth)
+router.include_router(flood.public_router)  # image proxies: <img> cannot send a bearer
 router.include_router(announcements.router, dependencies=any_auth)
 router.include_router(market.router, dependencies=any_auth)
 router.include_router(debt_clock.router, dependencies=any_auth)

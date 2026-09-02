@@ -728,6 +728,8 @@ export interface ConsolidatedStory {
   last_updated_at?: string
   districts_affected: string[]
   provinces_affected: string[]
+  // Derived server-side from districts/provinces (app/schemas/analytics.py).
+  display_location?: string
   key_entities: Array<{
     name: string
     name_ne?: string

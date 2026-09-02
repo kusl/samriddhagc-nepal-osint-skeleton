@@ -60,7 +60,6 @@ function FactCheckCard({ result }: { result: FactCheckResult }) {
       style={{
         padding: '10px 12px', cursor: 'pointer',
         borderBottom: '1px solid var(--border-subtle)',
-        borderLeft: `3px solid ${config.color}`,
       }}
       onClick={() => setExpanded(v => !v)}
     >
@@ -92,8 +91,7 @@ function FactCheckCard({ result }: { result: FactCheckResult }) {
           )}
           {result.key_finding && (
             <div style={{
-              fontSize: '10px', padding: '6px 8px',
-              borderLeft: `2px solid ${config.color}`, background: config.bg,
+              fontSize: '10px', padding: '6px 8px', background: config.bg,
               color: 'var(--text-secondary)', lineHeight: 1.4, borderRadius: '4px',
               marginBottom: '6px',
             }}>
@@ -137,7 +135,6 @@ function StatementCard({ stmt }: { stmt: StatementFactCheck }) {
       style={{
         padding: '10px 12px', cursor: 'pointer',
         borderBottom: '1px solid var(--border-subtle)',
-        borderLeft: `3px solid ${isPending ? '#738091' : config?.color || '#738091'}`,
       }}
       onClick={() => setExpanded(v => !v)}
     >
@@ -183,8 +180,7 @@ function StatementCard({ stmt }: { stmt: StatementFactCheck }) {
           </div>
           {stmt.key_finding && (
             <div style={{
-              fontSize: '10px', padding: '6px 8px', marginTop: '6px',
-              borderLeft: `2px solid ${config?.color || '#738091'}`, background: config?.bg || 'rgba(115,128,145,0.08)',
+              fontSize: '10px', padding: '6px 8px', marginTop: '6px', background: config?.bg || 'rgba(115,128,145,0.08)',
               color: 'var(--text-secondary)', lineHeight: 1.4, borderRadius: '4px',
             }}>
               {stmt.key_finding}
@@ -202,7 +198,6 @@ function PendingStoryCard({ req }: { req: PendingStoryRequest }) {
       style={{
         padding: '10px 12px',
         borderBottom: '1px solid var(--border-subtle)',
-        borderLeft: '3px solid #738091',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px' }}>

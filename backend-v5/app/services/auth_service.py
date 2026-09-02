@@ -101,6 +101,16 @@ class AuthService:
         )
 
     @staticmethod
+    def is_public_consumer(user) -> bool:
+        """True for the synthetic anonymous identity minted by /auth/public.
+
+        Its id is a derived UUID5, not a row in `users`, so any write keyed to
+        user_id raises ForeignKeyViolationError. Callers that persist per-user
+        state must reject it rather than let that surface as a 500.
+        """
+        return user is not None and getattr(user, "id", None) == PUBLIC_CONSUMER_ID
+
+    @staticmethod
     def build_public_consumer_user() -> User:
         """Build a synthetic public consumer user without touching the database."""
         return User(

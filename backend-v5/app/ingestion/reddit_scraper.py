@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 import aiohttp
+import xml.etree.ElementTree as ET
 
 from app.ingestion.nitter_scraper import ScrapedTweet
 
@@ -201,10 +202,12 @@ class RedditScraper:
                     return None
 
                 if resp.status == 403:
-                    logger.warning(
-                        "Reddit returned 403 Forbidden for %s (possibly blocked)", url
-                    )
-                    return None
+                    # Reddit stopped serving its listing JSON to unauthenticated
+                    # clients from this network in 2026, but the Atom feed of the
+                    # same listing still answers. Re-shape it into the listing
+                    # dict the parser already understands.
+                    logger.info("Reddit JSON 403 for %s; falling back to the RSS feed", url)
+                    return await self._fetch_rss_as_listing(url)
 
                 if resp.status == 404:
                     logger.warning("Reddit returned 404 for %s", url)
@@ -224,6 +227,92 @@ class RedditScraper:
         except Exception as e:
             logger.warning("Unexpected error fetching %s: %s", url, e)
             return None
+
+    _ATOM = "{http://www.w3.org/2005/Atom}"
+
+    async def _fetch_rss_as_listing(self, json_url: str) -> Optional[dict]:
+        """The Atom feed for a listing URL, as a Reddit-style listing dict.
+
+        `/r/<sub>/<sort>.json?...` → `/r/<sub>/<sort>.rss`; search URLs map to
+        the subreddit's search feed. Votes and comment counts are not in the
+        feed and are reported as 0, never invented.
+        """
+        m = re.search(r"/r/([^/]+)/([a-z]+)\.json", json_url)
+        if not m:
+            return None
+        sub, sort = m.group(1), m.group(2)
+        rss_url = f"{self.BASE_URL}/r/{sub}/{sort}.rss" if sort != "search" else f"{self.BASE_URL}/r/{sub}/.rss"
+        # The feed endpoint rate-limits bursts hard (429 on the second call
+        # within a second or two), so every feed call is spaced out and a 429
+        # gets exactly one retry after the server's own back-off.
+        text = None
+        for attempt in range(2):
+            await asyncio.sleep(2.5)
+            try:
+                async with self._session.get(rss_url) as resp:
+                    if resp.status == 200:
+                        text = await resp.text()
+                        break
+                    if resp.status == 429 and attempt == 0:
+                        wait = min(int(resp.headers.get("Retry-After", "8") or 8), 30)
+                        logger.info("Reddit RSS %s rate limited; retrying in %ds", rss_url, wait)
+                        await asyncio.sleep(wait)
+                        continue
+                    logger.warning("Reddit RSS %s answered %d", rss_url, resp.status)
+                    return None
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Reddit RSS fetch failed for %s: %s", rss_url, e)
+                return None
+        if text is None:
+            return None
+        try:
+            root = ET.fromstring(text)
+        except ET.ParseError as e:
+            logger.warning("Reddit RSS parse failed for %s: %s", rss_url, e)
+            return None
+        A = self._ATOM
+        children = []
+        for entry in root.findall(f"{A}entry"):
+            raw_id = (entry.findtext(f"{A}id") or "").strip()
+            post_id = raw_id.split("_", 1)[1] if raw_id.startswith("t3_") else raw_id
+            author_el = entry.find(f"{A}author/{A}name")
+            author = (author_el.text or "").strip().replace("/u/", "") if author_el is not None else "[deleted]"
+            title = (entry.findtext(f"{A}title") or "").strip()
+            link_el = entry.find(f"{A}link")
+            link = link_el.get("href") if link_el is not None else ""
+            updated = entry.findtext(f"{A}updated") or entry.findtext(f"{A}published") or ""
+            try:
+                created = datetime.fromisoformat(updated.replace("Z", "+00:00")).timestamp()
+            except ValueError:
+                created = time.time()
+            content = entry.findtext(f"{A}content") or ""
+            # The feed's content is HTML; keep plain text only.
+            selftext = re.sub(r"<[^>]+>", " ", content)
+            selftext = re.sub(r"\s+", " ", selftext).replace("submitted by", "").strip()
+            permalink = link.replace(self.BASE_URL, "") if link.startswith(self.BASE_URL) else link
+            children.append({
+                "kind": "t3",
+                "data": {
+                    "id": post_id,
+                    "author": author,
+                    "title": title,
+                    "selftext": selftext[:1500],
+                    "is_self": True,
+                    "permalink": permalink,
+                    "url": link,
+                    "ups": 0,
+                    "score": 0,
+                    "num_comments": 0,
+                    "created_utc": created,
+                    "subreddit": sub,
+                    "link_flair_text": None,
+                    "over_18": False,
+                    "stickied": False,
+                    "via": "rss",
+                },
+            })
+        logger.info("Reddit RSS fallback for r/%s: %d entries", sub, len(children))
+        return {"kind": "Listing", "data": {"children": children, "after": None}}
 
     async def scrape_subreddit(
         self,

@@ -11,13 +11,23 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <script type="module" src="/assets/index-vcus2qje.js"></script>
-    <link rel="modulepreload" href="/assets/vendor-react-BAwrfoKo.js">
-    <link rel="modulepreload" href="/assets/vendor-data-C8z63LJj.js">
-    <link rel="modulepreload" href="/assets/vendor-geo-RQg9U7v8.js">
-    <link rel="stylesheet" href="/assets/vendor-geo-BTrKGrB8.css">
-    <link rel="stylesheet" href="/assets/index-BKsDKbUB.css">
-    <link rel="stylesheet" href="/assets/vendor-blueprint-n9414vPG.css">
+      <script>
+      // Evict any previous NepalOSINT installation on this device. Earlier
+      // deployments on this origin registered a service worker that keeps
+      // serving its own cached app to phones; the desk has none and wants none.
+      (function () {
+        try {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function (rs) {
+              var had = rs.length > 0;
+              rs.forEach(function (r) { r.unregister(); });
+              if (window.caches) caches.keys().then(function (ks) { ks.forEach(function (k) { caches.delete(k); }); });
+              if (had) setTimeout(function () { location.reload(); }, 300);
+            });
+          }
+        } catch (e) { /* nothing to evict */ }
+      })();
+    </script>
   </head>
   <body class="bp6-dark bg-bp-bg text-bp-text font-sans antialiased">
     <div id="root">
@@ -41,5 +51,6 @@
         d.textContent += 'REJECT: ' + (e.reason && e.reason.message ? e.reason.message : e.reason) + '\n';
       });
     </script>
+      <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

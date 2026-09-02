@@ -1,0 +1,136 @@
+{
+  "service": "https://di-disasterresponse.img.arcgis.com/arcgis/rest/services/drp_imagery/ImageServer",
+  "event": "Nepal-Flooding-Aug-2026",
+  "verified_on": "2026-09-01",
+  "note": "Catalog query response of 2026-09-01, kept verbatim so the desk can still name what the mosaic renders when Esri is unreachable. lowps is the service's own lowest pixel size in metres and decides which raster the esriMosaicAttribute rule paints on top.",
+  "rasters": [
+    {
+      "objectid": 2595,
+      "name": "NepalFloodingAug2026_10300100FCB83600_20240529",
+      "image_type": "pre",
+      "lowps": 0.57949,
+      "platform": "WV02",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2596,
+      "name": "NepalFloodingAug2026_10500100364E8400_20230917",
+      "image_type": "pre",
+      "lowps": 0.415911,
+      "platform": "GE01",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2597,
+      "name": "NepalFloodingAug2026_B040001100881710_20260827",
+      "image_type": "post",
+      "lowps": 0.346768,
+      "platform": "WV03",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2598,
+      "name": "NepalFloodingAug2026_10300100C86CED00_20211016",
+      "image_type": "pre",
+      "lowps": 0.518191,
+      "platform": "WV02",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2599,
+      "name": "NepalFloodingAug2026_B040001100881410_20260827",
+      "image_type": "post",
+      "lowps": 0.331773,
+      "platform": "WV03",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2600,
+      "name": "NepalFloodingAug2026_B040001100881610_20260827",
+      "image_type": "post",
+      "lowps": 0.308869,
+      "platform": "WV03",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2601,
+      "name": "NepalFloodingAug2026_B040001100882F10_20260827",
+      "image_type": "post",
+      "lowps": 0.305186,
+      "platform": "WV03",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2605,
+      "name": "NepalFloodingAug2026_B030001100CF1110_20260828",
+      "image_type": "post",
+      "lowps": 0.514709,
+      "platform": "WV02",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2606,
+      "name": "NepalFloodingAug2026_B030001100CF1210_20260828",
+      "image_type": "post",
+      "lowps": 0.481967,
+      "platform": "WV02",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2607,
+      "name": "NepalFloodingAug2026_B030001100CF1310_20260828",
+      "image_type": "post",
+      "lowps": 0.497031,
+      "platform": "WV02",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2608,
+      "name": "NepalFloodingAug2026_B030001100CF1610_20260828",
+      "image_type": "post",
+      "lowps": 0.469699,
+      "platform": "WV02",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2610,
+      "name": "NepalFloodingAug2026_B110001101165110_20260828",
+      "image_type": "post",
+      "lowps": 0.357907,
+      "platform": "LG01",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2616,
+      "name": "NepalFloodingAug2026_B160001100CDB210_20260205",
+      "image_type": "pre",
+      "lowps": 0.344927,
+      "platform": "LG06",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2617,
+      "name": "NepalFloodingAug2026_B130001101153A10_20260831",
+      "image_type": "post",
+      "lowps": 0.532974,
+      "platform": "LG03",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2618,
+      "name": "NepalFloodingAug2026_B1400011010A2910_20260901",
+      "image_type": "post",
+      "lowps": 0.371468,
+      "platform": "LG04",
+      "provider": "Vantor"
+    },
+    {
+      "objectid": 2619,
+      "name": "NepalFloodingAug2026_B1400011010A2E10_20260901",
+      "image_type": "post",
+      "lowps": 0.463552,
+      "platform": "LG04",
+      "provider": "Vantor"
+    }
+  ]
+}

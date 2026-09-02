@@ -151,7 +151,6 @@ export const WeatherWidget = memo(function WeatherWidget() {
       {weather.special_notice && (
         <div style={{
           background: 'rgba(239, 68, 68, 0.1)',
-          borderLeft: '3px solid var(--status-critical)',
           padding: '8px 12px',
           fontSize: '11px',
           color: 'var(--status-critical)',

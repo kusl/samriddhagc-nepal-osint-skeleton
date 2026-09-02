@@ -17,7 +17,61 @@ settings = get_settings()
 
 
 # BIPAD API base URL
+from app.data.district_geo import district_at
+
 BIPAD_BASE_URL = "https://bipadportal.gov.np/api/v1"
+
+
+def _int(record: dict, *keys: str) -> int:
+    """First non-null integer among `keys`, else 0 (BIPAD sends nulls freely)."""
+    for key in keys:
+        value = record.get(key)
+        if value is not None:
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                continue
+    return 0
+
+
+def _float(record: dict, *keys: str) -> float:
+    for key in keys:
+        value = record.get(key)
+        if value is not None:
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                continue
+    return 0.0
+
+
+def parse_loss_record(record: dict) -> dict:
+    """Normalise a BIPAD /loss/{id}/ record into our column names.
+
+    BIPAD disaggregates casualties by gender and disability; we keep the totals
+    and the damage counts the flood desk reports. `estimatedLoss` is frequently
+    null even when the infrastructure/agriculture components are populated, so
+    callers should treat the components as the fallback for headline damage.
+    """
+    if not isinstance(record, dict):
+        return {}
+    return {
+        "deaths": _int(record, "peopleDeathCount", "death"),
+        "injured": _int(record, "peopleInjuredCount", "injured"),
+        "missing": _int(record, "peopleMissingCount", "missing"),
+        "affected_families": _int(record, "familyAffectedCount", "affected_family"),
+        "people_affected": _int(record, "peopleAffectedCount"),
+        "families_relocated": _int(record, "familyRelocatedCount"),
+        "families_evacuated": _int(record, "familyEvacuatedCount"),
+        "houses_destroyed": _int(record, "infrastructureDestroyedHouseCount"),
+        "houses_affected": _int(record, "infrastructureAffectedHouseCount"),
+        "roads_destroyed": _int(record, "infrastructureDestroyedRoadCount"),
+        "bridges_destroyed": _int(record, "infrastructureDestroyedBridgeCount"),
+        "livestock_destroyed": _int(record, "livestockDestroyedCount"),
+        "infrastructure_loss_npr": _float(record, "infrastructureEconomicLoss"),
+        "agriculture_loss_npr": _float(record, "agricultureEconomicLoss"),
+        "estimated_loss": _float(record, "estimatedLoss", "estimated_loss"),
+    }
 
 
 @dataclass
@@ -39,6 +93,19 @@ class FetchedIncident:
     missing: int = 0
     affected_families: int = 0
     estimated_loss: float = 0.0
+    # Detail from /api/v1/loss/{id}/ — only populated once a loss record is
+    # fetched, which is a separate request (see fetch_loss_details).
+    people_affected: int = 0
+    families_relocated: int = 0
+    families_evacuated: int = 0
+    houses_destroyed: int = 0
+    houses_affected: int = 0
+    roads_destroyed: int = 0
+    bridges_destroyed: int = 0
+    livestock_destroyed: int = 0
+    infrastructure_loss_npr: float = 0.0
+    agriculture_loss_npr: float = 0.0
+    bipad_loss_id: Optional[int] = None
     verified: bool = False
     incident_on: Optional[datetime] = None
     raw_data: Optional[dict] = None
@@ -505,6 +572,30 @@ class BIPADFetcher:
 
         return await asyncio.gather(*tasks)
 
+    async def fetch_loss_details(self, loss_ids: list[int]) -> dict[int, dict]:
+        """Fetch and normalise many /loss/{id}/ records concurrently.
+
+        One request per id — BIPAD exposes no bulk loss endpoint. The shared
+        semaphore caps concurrency so a large backfill stays polite; failures
+        are skipped rather than raised, since a single missing loss record must
+        not abort a sync of hundreds.
+        """
+        async def one(loss_id: int) -> tuple[int, Optional[dict]]:
+            async with self._semaphore:
+                try:
+                    url = f"{BIPAD_BASE_URL}/loss/{loss_id}/"
+                    async with self._session.get(url) as response:
+                        if response.status != 200:
+                            logger.debug("loss %s -> HTTP %s", loss_id, response.status)
+                            return loss_id, None
+                        return loss_id, parse_loss_record(await response.json())
+                except Exception as exc:  # network hiccup, malformed body
+                    logger.debug("loss %s failed: %s", loss_id, exc)
+                    return loss_id, None
+
+        pairs = await asyncio.gather(*(one(i) for i in loss_ids))
+        return {loss_id: fields for loss_id, fields in pairs if fields is not None}
+
     def _parse_incident(self, data: dict) -> Optional[FetchedIncident]:
         """Parse BIPAD incident response into FetchedIncident."""
         try:
@@ -531,35 +622,31 @@ class BIPADFetcher:
                 if len(coords) >= 2:
                     longitude, latitude = coords[0], coords[1]
 
-            # Note: BIPAD incident API returns loss as an ID reference, not the actual data
-            # The loss details would need a separate API call to /api/v1/loss/{id}/
-            # For now, we set these to 0 - the background task can fetch loss details later
-            loss_id = data.get("loss")
-            deaths = 0
-            injured = 0
-            missing = 0
-            affected_families = 0
-            estimated_loss = 0.0
-
-            # If loss is a dict (in case API changes), try to extract data
-            if isinstance(loss_id, dict):
-                deaths = loss_id.get("peopleDeathCount", 0) or loss_id.get("death", 0) or 0
-                injured = loss_id.get("peopleInjuredCount", 0) or loss_id.get("injured", 0) or 0
-                missing = loss_id.get("peopleMissingCount", 0) or loss_id.get("missing", 0) or 0
-                affected_families = loss_id.get("familyAffectedCount", 0) or loss_id.get("affected_family", 0) or 0
-                estimated_loss = float(loss_id.get("estimatedLoss", 0) or loss_id.get("estimated_loss", 0) or 0)
+            # BIPAD returns `loss` as an *id* pointing at /api/v1/loss/{id}/,
+            # not the figures themselves. Keep the id so LossSyncService can
+            # reconcile the real casualty and damage numbers; if a future API
+            # version inlines the object, parse it directly.
+            raw_loss = data.get("loss")
+            loss_fields = parse_loss_record(raw_loss) if isinstance(raw_loss, dict) else {}
+            bipad_loss_id = raw_loss if isinstance(raw_loss, int) else (
+                raw_loss.get("id") if isinstance(raw_loss, dict) else None
+            )
+            deaths = loss_fields.get("deaths", 0)
+            injured = loss_fields.get("injured", 0)
+            missing = loss_fields.get("missing", 0)
+            affected_families = loss_fields.get("affected_families", 0)
+            estimated_loss = loss_fields.get("estimated_loss", 0.0)
 
             # Parse location - streetAddress in BIPAD format
             street_address = data.get("streetAddress") or data.get("street_address")
             ward_ids = data.get("wards") or data.get("ward_ids")
 
-            # District and province are integer IDs in BIPAD, not objects
-            district = None
+            # District and province are integer IDs in BIPAD, not objects.
+            # Previously `district` was set to `street_address` (e.g. "Jalbire"),
+            # which made every district rollup meaningless. BIPAD incidents carry
+            # a native GPS point, so resolve the real district from geometry.
+            district = district_at(longitude, latitude)
             province = None
-
-            # Try to extract district name from title or streetAddress
-            if street_address:
-                district = street_address
 
             if data.get("district"):
                 if isinstance(data["district"], dict):
@@ -595,6 +682,17 @@ class BIPADFetcher:
                 missing=missing,
                 affected_families=affected_families,
                 estimated_loss=estimated_loss,
+                people_affected=loss_fields.get("people_affected", 0),
+                families_relocated=loss_fields.get("families_relocated", 0),
+                families_evacuated=loss_fields.get("families_evacuated", 0),
+                houses_destroyed=loss_fields.get("houses_destroyed", 0),
+                houses_affected=loss_fields.get("houses_affected", 0),
+                roads_destroyed=loss_fields.get("roads_destroyed", 0),
+                bridges_destroyed=loss_fields.get("bridges_destroyed", 0),
+                livestock_destroyed=loss_fields.get("livestock_destroyed", 0),
+                infrastructure_loss_npr=loss_fields.get("infrastructure_loss_npr", 0.0),
+                agriculture_loss_npr=loss_fields.get("agriculture_loss_npr", 0.0),
+                bipad_loss_id=bipad_loss_id,
                 verified=data.get("verified", False),
                 incident_on=incident_on,
                 raw_data=data,

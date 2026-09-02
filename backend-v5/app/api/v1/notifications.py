@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import get_current_user, get_db, require_dev
+from app.api.deps import get_current_user, get_db, require_dev, require_persistent_user
 from app.models.user import User
 from app.schemas.notifications import (
     MarkReadResponse,
@@ -58,7 +58,7 @@ async def get_notification_preferences(
 @router.put("/preferences", response_model=NotificationPreferencesResponse)
 async def update_notification_preferences(
     payload: NotificationPreferencesUpdate,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_persistent_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Update server-side notification preferences."""
@@ -69,7 +69,7 @@ async def update_notification_preferences(
 @router.post("/{notification_id}/read", response_model=MarkReadResponse)
 async def mark_notification_read(
     notification_id: UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_persistent_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark a single notification as read."""
@@ -79,7 +79,7 @@ async def mark_notification_read(
 
 @router.post("/read-all", response_model=MarkReadResponse)
 async def mark_all_read(
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_persistent_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Mark all notifications as read."""
@@ -90,7 +90,7 @@ async def mark_all_read(
 @router.post("/{notification_id}/mute", response_model=NotificationFollowSimilarResponse)
 async def mute_notification_scope(
     notification_id: UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_persistent_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Mute the scope implied by a notification."""
@@ -101,7 +101,7 @@ async def mute_notification_scope(
 @router.post("/{notification_id}/follow-similar", response_model=NotificationFollowSimilarResponse)
 async def follow_similar_from_notification(
     notification_id: UUID,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_persistent_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Follow a notification's place or topic for future alerts."""

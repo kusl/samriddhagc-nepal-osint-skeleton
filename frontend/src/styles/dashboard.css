@@ -1294,20 +1294,15 @@ body.widget-resizing * {
 ::-webkit-scrollbar-thumb { background: var(--bg-active); }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-emphasis); }
 
-/* ── Ultrawide: auto-fill for monitors >1600px ── */
+/* ── Ultrawide: taller rows for monitors >1600px ──
+   The column count deliberately stays at 12. Every widget size in widgetGrid.ts
+   is expressed in twelfths (`span 6`, `span 8`, ...), so switching this to
+   auto-fill produced ~5-6 tracks and every paired widget overflowed into
+   zero-width implicit tracks — a `span 6` widget rendered ~40px wide on any
+   1600px+ monitor, which is most of them. Only the row height changes here. */
 @media (min-width: 1600px) {
     .widget-grid {
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
         grid-auto-rows: minmax(60px, auto);
-    }
-
-    /* Full-width widgets still span all columns */
-    .widget-full,
-    .widget-brief,
-    .widget-hero,
-    .widget-command,
-    .widget-situation {
-        grid-column: 1 / -1;
     }
 }
 
@@ -1559,7 +1554,6 @@ body.widget-resizing * {
 .developing-card {
     padding: 12px 14px;
     border-bottom: 1px solid var(--border-subtle);
-    border-left: 3px solid var(--text-muted);
     background: var(--bg-surface);
     transition: background 0.15s;
 }
@@ -1570,7 +1564,6 @@ body.widget-resizing * {
 
 .developing-timeline {
     padding-left: 8px;
-    border-left: 2px solid var(--border-default);
     display: flex;
     flex-direction: column;
     gap: 0;
@@ -1619,7 +1612,6 @@ body.widget-resizing * {
 .factcheck-card {
     padding: 14px 16px;
     border-bottom: 1px solid var(--border-subtle);
-    border-left: 3px solid var(--text-muted);
     background: var(--bg-surface);
     transition: background 0.15s, border-color 0.15s;
     font-family: var(--font-widget-sans);
@@ -1977,3 +1969,13 @@ body.widget-resizing * {
     stroke-dasharray: 8, 4;
     stroke-linecap: round;
 }
+
+
+/* ========== NO SIDE RAILS (founder rule, 2026-09-02) ==========
+   Severity is carried by the badge text, never by a coloured bar down the
+   left edge; the resize-corner brackets show only on hover. */
+.feed-indicator { display: none !important; }
+.widget-resize-corner::after,
+.widget-resize-corner-top-left::after { opacity: 0; }
+.widget-resize-corner:hover::after,
+.widget-resize-corner-top-left:hover::after { opacity: 0.8; }
