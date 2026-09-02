@@ -250,6 +250,16 @@ async def sites(db: AsyncSession, event: str) -> dict[str, Any]:
     for s in base:
         s["notes"] = sorted(s["notes"], key=lambda n: n.get("t_npt") or "", reverse=True)[:8]
     all_sites = base + tunnels + auto_sites
+    # When each site first entered the record, so a replay can show the map as
+    # it was known at any moment: the earliest dated figure, note, photograph or
+    # press mention. Tunnels were hit the morning of the collapse.
+    for s in all_sites:
+        stamps = [f.get("as_of") for f in s.get("figures", [])] + [n.get("t_npt") for n in s.get("notes", [])] \
+            + [e.get("published_at") for e in s.get("evidence", [])] + [p.get("published_at") for p in s.get("photos", [])]
+        stamps = [str(x) for x in stamps if x]
+        if s["kind"].startswith("tunnel"):
+            stamps.append("2026-08-26T08:44:00+05:45")
+        s["first_reported"] = min(stamps) if stamps else None
     kinds = truth.get("kinds", {})
     kinds.update({
         "auto": "Auto-extracted from a press sentence by the desk's extractor; unreviewed",

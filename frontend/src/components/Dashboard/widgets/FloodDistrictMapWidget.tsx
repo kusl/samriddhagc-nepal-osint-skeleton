@@ -125,7 +125,7 @@ import {
 } from '../../flood/districtGeo';
 import { isViewable, useFloodMedia, type FloodMediaItem } from '../../flood/floodMedia';
 import { useStationPhotos, type StationPhoto } from '../../flood/stationPhotos';
-import { siteChip, useFloodSites, type ResponseSite } from '../../flood/floodSites';
+import { siteAt, siteChip, useFloodSites, type ResponseSite } from '../../flood/floodSites';
 import {
   dayCloseMs,
   useFloodChronology,
@@ -921,7 +921,7 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
   const photos = useStationPhotos();
   const damage = useDamageSites();
   const sitesQ = useFloodSites();
-  const places = useMemo<ResponseSite[]>(() => sitesQ.data?.sites ?? [], [sitesQ.data]);
+  const allPlaces = useMemo<ResponseSite[]>(() => sitesQ.data?.sites ?? [], [sitesQ.data]);
   const kindText = useMemo<Record<string, string>>(() => sitesQ.data?.kinds ?? {}, [sitesQ.data]);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1070,6 +1070,16 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
     });
     return byName;
   }, [features, replay.isLive, replay.snapshot]);
+
+  // The response sites as they were known at the replay clock: a burial ground
+  // reported on 2 Sep is not on the map on 29 Aug, and a site that is on the
+  // map carries only the figures, notes and photographs dated by then. Live
+  // shows everything. Nothing here is typed — every gate is a stamp the
+  // backend read from a document.
+  const places = useMemo<ResponseSite[]>(() => {
+    if (replay.isLive) return allPlaces;
+    return allPlaces.map((p) => siteAt(p, replay.t)).filter((p): p is ResponseSite => p !== null);
+  }, [allPlaces, replay.isLive, replay.t]);
 
   // Leaflet callbacks outlive the render that bound them, so they read the
   // current view through a ref rather than a captured one.
@@ -2274,8 +2284,10 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
     sites.length > 0
       ? `${sites.length} damage sites · click a blue chip for the same-frame pre/post pair`
       : null,
-    places.length > 0
-      ? `${places.length} response sites · ${sitesQ.data?.counts.burial ?? 0} burial grounds · ${sitesQ.data?.counts.photos ?? 0} photographs by caption match${(sitesQ.data?.counts.auto_figures ?? 0) > 0 ? ` · ${sitesQ.data?.counts.auto_figures} auto-extracted figures unreviewed` : ''}`
+    allPlaces.length > 0
+      ? replay.isLive
+        ? `${allPlaces.length} response sites · ${sitesQ.data?.counts.burial ?? 0} burial grounds · ${sitesQ.data?.counts.photos ?? 0} photographs by caption match${(sitesQ.data?.counts.auto_figures ?? 0) > 0 ? ` · ${sitesQ.data?.counts.auto_figures} auto-extracted figures unreviewed` : ''}`
+        : `${places.length} of ${allPlaces.length} response sites reported by this time · figures and photographs as known then`
       : null,
     corridor.some((w) => w.kind === 'channel') ? 'river: openstreetmap channel, odbl' : null,
     'boundaries: survey department reference',
@@ -2324,12 +2336,12 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
               <Layers size={11} />
             </button>
           )}
-          {places.length > 0 && (
+          {allPlaces.length > 0 && (
             <button
               type="button"
               className="widget-action"
               onClick={() => setShowSites((on) => !on)}
-              title={`${showSites ? 'Hide' : 'Show'} response sites (${places.length}: burials, DNA hubs, transfer points, tunnels)`}
+              title={`${showSites ? 'Hide' : 'Show'} response sites (${allPlaces.length}: burials, DNA hubs, transfer points, tunnels)`}
               aria-label="Toggle response sites"
               aria-pressed={showSites}
               style={showSites ? { color: 'var(--status-info)' } : undefined}

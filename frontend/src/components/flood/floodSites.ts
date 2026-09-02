@@ -68,6 +68,8 @@ export interface ResponseSite {
   photos: SitePhoto[];
   evidence: SiteEvidence[];
   auto: boolean;
+  /** Earliest dated figure, note, photograph or press mention — when the site entered the record. */
+  first_reported?: string | null;
 }
 export interface SitesPayload {
   event_key: string;
@@ -116,4 +118,31 @@ export function siteChip(site: ResponseSite): { label: string; tone: 'critical' 
     case 'tunnel_unreported': return { label: 'TUNNEL · N/P', tone: 'muted' };
     default: return { label: site.kind.toUpperCase(), tone: 'muted' };
   }
+}
+
+/** Day-close of a date-only stamp, or the instant of a full timestamp, in ms. A
+ *  figure dated "2026-09-02" is not known until that day is over. */
+export function siteStampMs(stamp: string | null | undefined): number | null {
+  if (!stamp) return null;
+  if (stamp.length <= 10) {
+    const d = new Date(`${stamp}T23:59:59+05:45`);
+    return Number.isNaN(d.getTime()) ? null : d.getTime();
+  }
+  const d = new Date(stamp);
+  return Number.isNaN(d.getTime()) ? null : d.getTime();
+}
+
+/** The site as it was known at time t: only figures, notes, photographs and
+ *  mentions dated at or before t. Null when nothing about it was known yet. */
+export function siteAt(site: ResponseSite, t: number): ResponseSite | null {
+  const first = siteStampMs(site.first_reported);
+  if (first != null && first > t) return null;
+  const keep = (stamp: string | null | undefined) => { const ms = siteStampMs(stamp); return ms == null || ms <= t; };
+  return {
+    ...site,
+    figures: site.figures.filter((f) => keep(f.as_of)),
+    notes: site.notes.filter((n) => keep(n.t_npt)),
+    photos: site.photos.filter((p) => keep(p.published_at)),
+    evidence: site.evidence.filter((e) => keep(e.published_at)),
+  };
 }
