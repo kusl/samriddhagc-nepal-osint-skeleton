@@ -124,9 +124,47 @@ def parse_english_sitrep(text: str) -> dict:
     extracted: dict[str, object] = {}
 
     def put(key: str, value: Optional[int]) -> None:
-        if value is not None:
+        # A figure read from the casualty box (below) is not overwritten by a
+        # looser prose pattern that would read "Deaths 12044,216" as 12,044.
+        if value is not None and key not in extracted:
             extracted[key] = value
 
+    # The 2 Sep 2026 English layout prints the casualty box as
+    # "Deaths 12044,216 approx." — the death toll and the missing figure run
+    # together. Every split of that run is tried and the one whose deaths
+    # equal the district bar-chart sum wins; the chart is on the same page.
+    box = re.search(r"Deaths\s*(\d{4,9}(?:,\d{3})?)\s*approx", flat, re.I)
+    chart = re.search(
+        r"((?:\d{1,4}\s+){7}\d{1,4})\s+0\s+\d+(?:\s+\d+)*\s*"
+        r"(Chitwan|Nawalparasi|Nuwakot|Gorkha|Dhading|Tanahun|Rasuwa)", flat)
+    district_tolls: dict[str, int] = {}
+    if chart:
+        values = [int(v) for v in chart.group(1).split()]
+        names_m = re.search(r"Chitwan.*?Rasuwa", flat[chart.end() - 20: chart.end() + 200])
+        names = re.findall(r"Chitwan|Nawalparasi East|Nawalparasi West|Nuwakot|Gorkha|Dhading|Ta\s?na\s?hun|Rasuwa",
+                           names_m.group(0) if names_m else "")
+        canon = {"NawalparasiEast": "Nawalparasi East", "NawalparasiWest": "Nawalparasi West"}
+        names = [canon.get(re.sub(r"\s+", "", n), re.sub(r"\s+", "", n)) for n in names]
+        if len(names) == len(values) == 8:
+            district_tolls = dict(zip(names, values))
+    if box:
+        run = box.group(1).replace(",", "")
+        target = sum(district_tolls.values()) if district_tolls else None
+        best = None
+        for cut in range(3, min(5, len(run) - 3) + 1):
+            d, m = int(run[:cut]), int(run[cut:])
+            if run[cut] == "0":
+                continue
+            if target is not None and d == target:
+                best = (d, m)
+                break
+            if target is None and 100 <= d <= 20000 and 100 <= m <= 50000 and best is None:
+                best = (d, m)
+        if best:
+            extracted["deaths"], extracted["missing"] = best
+            extracted["missing_approx"] = True
+    if district_tolls:
+        extracted["district_tolls"] = district_tolls
     put("deaths", _first(
         flat,
         r"deceased\s+bodies?\s+([\d,]+)",
@@ -145,7 +183,12 @@ def parse_english_sitrep(text: str) -> dict:
         r"injured\s+([\d,]+)",
         r"([\d,]+)\s+injured",
     ))
+    put("personnel", _first(
+        r"security\s+personnel\s+deployed\s+([\d,]+)",
+        r"([\d,]+)\s+security\s+personnel",
+    ))
     put("rescued", _first(
+        r"total\s+rescued\s+([\d,]+)",
         flat,
         r"([\d,]+)\s+(?:individuals?|persons?|people)\s+have\s+been\s+rescued",
         r"rescued\s+([\d,]+)\s+(?:individuals?|persons?|people)",
@@ -226,6 +269,10 @@ def sitrep_number_from_title(title: str) -> Optional[int]:
     Nepali updates are published without one and must not be given a sequence
     position they were never assigned.
     """
+    # NDRRMA's 2 Sep 2026 file-style titles: "Rasuwa Flood SitRep_Temp_ENG_02_02092026".
+    m_file = re.search(r"sitrep[_\s-]*(?:temp[_\s-]*)?(?:eng|nep)[_\s-]*(\d{1,2})(?:_\d{6,8})?", title, re.I)
+    if m_file:
+        return int(m_file.group(1))
     if not title:
         return None
     ascii_title = _to_ascii_digits(title)

@@ -116,15 +116,46 @@ async def fetch_pdf(url: str) -> Optional[bytes]:
 # ---------------------------------------------------------------------------
 
 
+SITREP_PUB_TYPE = "Situation Report"
+
+
 async def fetch_ndrrma_sitreps(limit: int = 50) -> Optional[list[dict]]:
-    """The Rasuwa situation-report publication list, newest id first."""
+    """The Rasuwa situation reports, newest id first, from BOTH lists NDRRMA
+    has used: the dedicated `rasuwa-sitrep` list (reports #01–#11) and, from
+    2 Sep 2026, the general `publications` list filtered to the Situation
+    Report type (Nepali #12, English SitRep 02 …). Merged by id."""
     data = await _get_json(
         f"{NDRRMA_API}/publication/rasuwa-sitrep/?limit={limit}&offset=0",
         "ndrrma_sitreps")
-    if not isinstance(data, dict):
+    merged: dict[int, dict] = {}
+    if isinstance(data, dict) and isinstance(data.get("results"), list):
+        for item in data["results"]:
+            if item.get("id") is not None:
+                merged[int(item["id"])] = item
+    general = await _get_json(
+        f"{NDRRMA_API}/publication/publications/?limit={limit}&ordering=-id",
+        "ndrrma_publications")
+    if isinstance(general, dict) and isinstance(general.get("results"), list):
+        for item in general["results"]:
+            ptype = item.get("publication_type") or {}
+            if (ptype.get("pub_type") if isinstance(ptype, dict) else ptype) != SITREP_PUB_TYPE:
+                continue
+            title = (item.get("title") or "") + " " + (item.get("title_ne") or "")
+            if not re.search(r"rasuwa|रसुवा|bhote|भोटे|sitrep", title, re.I):
+                continue
+            # The general list re-lists the older reports under new ids; the
+            # same PDF must not become two sitreps, so the file name decides.
+            pdf = (item.get("pdffile") or "").rsplit("/", 1)[-1].lower()
+            known = {(x.get("pdffile") or "").rsplit("/", 1)[-1].lower() for x in merged.values()}
+            norm = lambda t: re.sub(r"[\s#:;,\-_()]+", "", (t or "").lower())  # noqa: E731
+            known_titles = {norm(x.get("title")) for x in merged.values()} | {norm(x.get("title_ne")) for x in merged.values()}
+            if (pdf and pdf in known) or (norm(item.get("title")) in known_titles and norm(item.get("title"))):
+                continue
+            if item.get("id") is not None:
+                merged.setdefault(int(item["id"]), item)
+    if not merged:
         return None
-    results = data.get("results")
-    return results if isinstance(results, list) else None
+    return [merged[k] for k in sorted(merged, reverse=True)]
 
 
 async def fetch_ndrrma_rescue_stats() -> Optional[dict]:
@@ -231,8 +262,12 @@ async def fetch_opmcm_government_efforts(limit: int = 30) -> Optional[list[dict]
 # ---------------------------------------------------------------------------
 
 # The KPI strip. Each tile is a button carrying the figure in a <strong class="num">.
+# The window used to be 400 chars; on 2 Sep 2026 the bulletin put an inline
+# SVG icon inside each KPI button, which is longer than that, and the desk
+# stopped reading its own toll. The figure is the first <strong class="num">
+# after the id, however much icon sits between them.
 _KPI_RE = re.compile(
-    r'id="kpi-(dead|injured|miss|air|deploy)"[\s\S]{0,400}?'
+    r'id="kpi-(dead|injured|miss|air|deploy)"[\s\S]{0,2400}?'
     r'<strong class="num">([^<]*)</strong>')
 
 # The death-by-district pane. Scoped to the ov-pane element, because the same
