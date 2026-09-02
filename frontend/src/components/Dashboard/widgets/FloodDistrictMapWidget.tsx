@@ -1861,7 +1861,7 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
           const label = `${c.members.length} RESP SITES`;
           const cw = label.length * 5.6 + 10;
           const marker = L.marker([lat, lng], {
-            icon: L.divIcon({ className: '', html: chipHtml(label, worst), iconSize: [cw, CHIP_H], iconAnchor: [cw + 6, -5] }),
+            icon: L.divIcon({ className: '', html: chipHtml(label, worst), iconSize: [cw, CHIP_H], iconAnchor: [cw + 8, -14] }),
             keyboard: false,
             title: c.members.map((m) => m.s.name).join(' · '),
           }).addTo(group);
