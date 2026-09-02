@@ -1,8 +1,8 @@
 """API dependencies for dependency injection."""
-from typing import AsyncGenerator, Callable, List
+from typing import Optional, AsyncGenerator, Callable, List
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, Request, Query, status
+from fastapi import Header, Depends, HTTPException, Request, Query, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -235,3 +235,17 @@ async def require_dev(
             detail="Requires dev role",
         )
     return user
+
+
+async def require_review_key(
+    x_review_key: Optional[str] = Header(default=None, alias="X-Review-Key"),
+) -> str:
+    """The verification desk's gate on a public deployment with no login: a
+    shared secret in the X-Review-Key header, compared in constant time. Unset
+    on the server means the desk is closed, not open."""
+    import hmac
+    from app.config import get_settings
+    key = get_settings().review_key
+    if not key or not x_review_key or not hmac.compare_digest(key, x_review_key):
+        raise HTTPException(status_code=403, detail="Review desk closed: invalid or missing review key")
+    return "owner"

@@ -301,7 +301,8 @@ async def hydropower(days: int = 12) -> dict[str, Any]:
             seen_q.add(qk)
             auto_notes.setdefault(f["subject_code"], []).append({
                 "t_npt": f["published_at"] or "", "text": f["quote"][:300],
-                "source": f"{f['outlet'] or 'press'} (auto-extracted)", "url": f["url"], "auto": True,
+                "source": f"{f['outlet'] or 'press'} ({'verified by the desk' if f['status'] == 'verified' else 'auto-extracted'})",
+                "url": f["url"], "auto": f["status"] != "verified",
                 "figure": f["figure"], "unit": f["unit"],
             })
     except Exception as e:  # noqa: BLE001

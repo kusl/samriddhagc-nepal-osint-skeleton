@@ -19,6 +19,7 @@ const Analysis = lazy(() => import('./pages/Analysis'))
 const Indices = lazy(() => import('./pages/Indices'))
 const ActivityLogs = lazy(() => import('./pages/ActivityLogs'))
 const ReviewQueue = lazy(() => import('./pages/ReviewQueue'))
+const ReviewDesk = lazy(() => import('./pages/ReviewDesk'))
 const DisasterAlerts = lazy(() => import('./pages/DisasterAlerts'))
 const Login = lazy(() => import('./pages/Login'))
 const ChooseUsername = lazy(() => import('./pages/ChooseUsername'))
@@ -250,6 +251,8 @@ function App() {
               element={IS_PUBLIC_ONLY ? <Navigate to="/" replace /> : withRouteSuspense(<Login />)}
             />
             <Route path="/disasters" element={withRouteSuspense(<DisasterAlerts />)} />
+            {/* Owner-only verification desk for the extractor's facts; gated by the review key, not by login. */}
+            <Route path="/review" element={withRouteSuspense(<ReviewDesk />)} />
             {/* Flood is a dashboard preset now; keep circulated /flood links working. */}
             <Route path="/flood" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />

@@ -16,6 +16,9 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Optional
 
 import httpx
+from pydantic import BaseModel
+from uuid import UUID
+from app.api.deps import require_review_key
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy import select
@@ -28,8 +31,9 @@ from app.models.flood_event import (FloodLiveSnapshot, FloodMediaItem,
 from app.models.river import RiverStation
 from app.models.story import Story
 from app.services import (dhm_photo_service, drp_service, flood_assistance_service,
-                          flood_fact_extractor, flood_hydropower_service,
-                          flood_replay_service, flood_sites_service, nepalgov_service)
+                          flood_change_service, flood_fact_extractor,
+                          flood_hydropower_service, flood_replay_service,
+                          flood_review_service, flood_sites_service, nepalgov_service)
 from app.services.flood_intel_service import (CHARTER_ACTIVATION,
                                               CITE_TIER_NOTE,
                                               CITED_REPORTING,
@@ -1580,6 +1584,62 @@ async def flood_press(
 # one assembled copy is served to everyone who asks within that minute.
 _REPLAY_TTL_SECONDS = 60
 _replay_cache: dict[str, Any] = {}
+
+
+@router.get("/changes")
+async def flood_changes(
+    hours: int = Query(default=24, ge=1, le=24 * 14),
+    db: AsyncSession = Depends(get_db),
+):
+    """What moved: differences between two published states the desk holds
+    (toll, tunnels, countries, sites, the review queue), newest first, with
+    whether and how the owner was told."""
+    return await flood_change_service.recent(db, hours=hours)
+
+
+@router.get("/review/queue")
+async def flood_review_queue(
+    status: str = Query(default="auto", pattern="^(auto|verified|rejected)$"),
+    fact_type: Optional[str] = Query(default=None),
+    limit: int = Query(default=60, ge=1, le=200),
+    reviewer: str = Depends(require_review_key),
+    db: AsyncSession = Depends(get_db),
+):
+    """The verification desk's queue. Owner-only (X-Review-Key)."""
+    return await flood_review_service.queue(db, ACTIVE_EVENT_KEY, status=status, limit=limit, fact_type=fact_type)
+
+
+@router.get("/review/stats")
+async def flood_review_stats(
+    reviewer: str = Depends(require_review_key),
+    db: AsyncSession = Depends(get_db),
+):
+    return await flood_review_service.stats(db, ACTIVE_EVENT_KEY)
+
+
+class ReviewDecision(BaseModel):
+    action: str
+    note: Optional[str] = None
+    reason: Optional[str] = None
+    corrections: Optional[dict] = None
+
+
+@router.post("/review/{fact_id}")
+async def flood_review_decide(
+    fact_id: UUID,
+    body: ReviewDecision,
+    reviewer: str = Depends(require_review_key),
+    db: AsyncSession = Depends(get_db),
+):
+    """Confirm (with optional corrections), reject (with a reason) or reopen one
+    fact. The original machine reading is kept on the row."""
+    try:
+        return await flood_review_service.decide(db, fact_id, body.action, reviewer, note=body.note,
+                                                 reason=body.reason, corrections=body.corrections)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="fact not found")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get("/facts")

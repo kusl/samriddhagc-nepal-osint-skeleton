@@ -397,6 +397,12 @@ class FloodFact(Base):
     dedupe_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
                                                  default=lambda: datetime.now(timezone.utc))
+    # Review trail (083): who looked, when, what they said, and the row as extracted.
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    reviewer: Mapped[Optional[str]] = mapped_column(String(64))
+    review_note: Mapped[Optional[str]] = mapped_column(Text)
+    review_reason: Mapped[Optional[str]] = mapped_column(String(32))
+    original: Mapped[Optional[dict]] = mapped_column(JSONB)
 
 
 class GeocodeCache(Base):
@@ -423,3 +429,38 @@ class FloodExtractionRun(Base):
     facts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
                                              default=lambda: datetime.now(timezone.utc))
+
+
+class FloodStateSnapshot(Base):
+    """The last known value of one watched key (toll, a tunnel, a country…)."""
+
+    __tablename__ = "flood_state_snapshots"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    event_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    key: Mapped[str] = mapped_column(String(128), nullable=False)
+    value: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    taken_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
+                                               default=lambda: datetime.now(timezone.utc))
+
+
+class FloodChange(Base):
+    """One detected movement of a watched key, with before/after and who was told."""
+
+    __tablename__ = "flood_changes"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    event_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    kind: Mapped[str] = mapped_column(String(24), nullable=False)
+    key: Mapped[str] = mapped_column(String(128), nullable=False)
+    severity: Mapped[str] = mapped_column(String(12), nullable=False, default="info")
+    summary: Mapped[str] = mapped_column(Text, nullable=False)
+    before: Mapped[Optional[dict]] = mapped_column(JSONB)
+    after: Mapped[Optional[dict]] = mapped_column(JSONB)
+    source: Mapped[Optional[str]] = mapped_column(Text)
+    url: Mapped[Optional[str]] = mapped_column(Text)
+    detected_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True,
+                                                  default=lambda: datetime.now(timezone.utc))
+    notified_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    channels: Mapped[Optional[str]] = mapped_column(String(64))

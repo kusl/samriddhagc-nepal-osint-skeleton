@@ -375,6 +375,19 @@ async def extract_flood_facts():
         logger.error("Flood fact extraction failed: %s", exc, exc_info=True)
 
 
+async def detect_flood_changes():
+    """Compare every watched key to its last snapshot (every 10 min, offset
+    from the feed sync) and alert the owner on the configured channels."""
+    try:
+        from app.services import flood_change_service
+        async with AsyncSessionLocal() as db:
+            out = await flood_change_service.detect(db)
+        if out.get("changes"):
+            logger.info("Flood changes: %s", out)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Flood change detection failed: %s", exc, exc_info=True)
+
+
 async def sync_flood_live():
     """Mirror the official flood feeds for the active event (every 10 min).
 
@@ -1639,6 +1652,15 @@ def start_scheduler():
         name="Extract Flood Facts From Stories",
         replace_existing=True,
         next_run_time=now + timedelta(minutes=2),
+    )
+
+    scheduler.add_job(
+        detect_flood_changes,
+        trigger=IntervalTrigger(minutes=10),
+        id="detect_flood_changes",
+        name="Detect Flood Changes And Alert",
+        replace_existing=True,
+        next_run_time=now + timedelta(minutes=4),
     )
 
     scheduler.add_job(

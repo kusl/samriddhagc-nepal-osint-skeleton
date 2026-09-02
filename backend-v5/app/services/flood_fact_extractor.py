@@ -497,6 +497,13 @@ async def run(db: AsyncSession, event_key: str = EVENT_KEY, days: int = 3, limit
             exists = await db.execute(select(FloodFact.id).where(FloodFact.dedupe_key == key))
             if exists.first():
                 continue
+            # A reviewer's rejection teaches the extractor: the same reading (type,
+            # place, figure) from any outlet's reprint is not stored again.
+            rejected = await db.execute(select(FloodFact.id).where(
+                FloodFact.status == "rejected", FloodFact.fact_type == f["fact_type"],
+                FloodFact.figure == f.get("figure"), FloodFact.place_text == f.get("place_text")))
+            if rejected.first():
+                continue
             lat = lng = None
             conf = None
             if f.get("place_en"):
@@ -538,6 +545,8 @@ async def facts(db: AsyncSession, event_key: str = EVENT_KEY, days: int = 14,
             "language": r.language, "outlet": r.outlet, "url": r.story_url,
             "published_at": r.published_at.isoformat() if r.published_at else None,
             "extractor": r.extractor, "confidence": r.confidence, "status": r.status,
+            "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None, "reviewer": r.reviewer,
+            "review_note": r.review_note, "review_reason": r.review_reason,
         }
         for r in rows
     ]

@@ -217,9 +217,11 @@ async def sites(db: AsyncSession, event: str) -> dict[str, Any]:
         fs = [f for f in all_facts
               if f["fact_type"] in ("burial", "recovery", "forensic", "mortuary", "transfer") and f["lat"] is not None]
         for f in fs:
+            verified = f["status"] == "verified"
             fig = {"kind": f["fact_type"] if f["unit"] != "identified" else "identified", "value": f["figure"],
-                   "as_of": (f["published_at"] or "")[:10], "source": f"{f['outlet'] or 'press'} (auto-extracted)",
-                   "url": f["url"], "note": f["quote"][:240], "auto": True, "confidence": f["confidence"], "fact_id": f["id"]}
+                   "as_of": (f["published_at"] or "")[:10],
+                   "source": f"{f['outlet'] or 'press'} ({'verified by the desk' if verified else 'auto-extracted'})",
+                   "url": f["url"], "note": f["quote"][:240], "auto": not verified, "confidence": f["confidence"], "fact_id": f["id"]}
             host = None
             for site in base:
                 if _km(site["lat"], site["lng"], f["lat"], f["lng"]) <= 3.0 and _compatible(site["kind"], f["fact_type"]):
@@ -236,11 +238,11 @@ async def sites(db: AsyncSession, event: str) -> dict[str, Any]:
                 existing["figures"].append(fig)
                 continue
             auto_sites.append({
-                "key": key, "kind": f["fact_type"], "name": f"{f['place_text']} · auto-extracted",
+                "key": key, "kind": f["fact_type"], "name": f"{f['place_text']} · {'verified' if verified else 'auto-extracted'}",
                 "district": f["district"], "lat": f["lat"], "lng": f["lng"],
-                "coord_confidence": "auto", "figures": [fig], "notes": [], "photos": [],
+                "coord_confidence": "verified" if verified else "auto", "figures": [fig], "notes": [], "photos": [],
                 "evidence": [{"title": f["quote"][:160], "outlet": f["outlet"], "url": f["url"], "published_at": f["published_at"]}],
-                "auto": True, "extractor": f["extractor"], "status": f["status"],
+                "auto": not verified, "extractor": f["extractor"], "status": f["status"],
             })
     except Exception as e:  # noqa: BLE001
         logger.warning("sites: auto fact layer failed: %s", e)

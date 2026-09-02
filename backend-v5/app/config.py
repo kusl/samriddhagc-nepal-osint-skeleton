@@ -205,6 +205,14 @@ class Settings(BaseSettings):
     resend_api_key: Optional[str] = None
     resend_from_email: str = "NepalOSINT <noreply@narada.dev>"
 
+    # Flood OSINT desk: the review key gates the verification desk on a public
+    # deployment that has no login; the alert channels switch on when set.
+    review_key: Optional[str] = None
+    telegram_bot_token: Optional[str] = None
+    telegram_chat_id: Optional[str] = None
+    alert_email_to: Optional[str] = None
+    public_base_url: str = "https://nepalosint.com"
+
     # Haiku relevance filter — legacy Anthropic path, disabled in favor of OpenAI-only workflows
     haiku_relevance_filter_enabled: bool = False
     haiku_relevance_model: str = "claude-3-haiku-20240307"

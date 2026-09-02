@@ -128,6 +128,7 @@ export const WIDGET_META: Record<string, {
   'flood-damage-aid': { name: 'Damage & Relief', category: 'flood', consumerName: 'Damage & Relief Funds' },
   'flood-tunnel-rescue': { name: 'Tunnel Rescue', category: 'flood', consumerName: 'Hydropower Tunnel Rescue' },
   'flood-assistance': { name: 'International Assistance', category: 'flood', consumerName: 'Who Sent What' },
+  'flood-changes': { name: 'Change Log', category: 'flood', consumerName: 'What Moved Since Yesterday' },
   'flood-river-gauges': { name: 'Hydrology · Gauge Net', category: 'flood', consumerName: 'River Gauges' },
   'flood-satellite-intel': { name: 'Published Imagery Record', category: 'flood', consumerName: 'Imagery Sources' },
   'flood-satellite-map': { name: 'Live Flood Extent', category: 'flood', consumerName: 'Live Flood Extent' },
@@ -492,6 +493,7 @@ export const PRESETS: Record<string, Preset> = {
     order: [
       // TIER 1 — the picture: numbers, the 3D replay, the written read.
       'flood-situation-command',
+      'flood-changes',
       'flood-operational-picture',
       'flood-assessment',
       // TIER 2 — the evidence: the district choropleth, the ledgers, rescue, hydrology.
@@ -505,7 +507,7 @@ export const PRESETS: Record<string, Preset> = {
       'flood-source-matrix',
     ],
     visibility: {
-      'flood-situation-command': true, 'flood-assessment': true,
+      'flood-situation-command': true, 'flood-changes': true, 'flood-assessment': true,
       'flood-district-map': true,
       'flood-operational-picture': true,
       'flood-district-toll': true, 'flood-missing-ledger': true,
@@ -544,6 +546,7 @@ export const PRESETS: Record<string, Preset> = {
     },
     sizes: {
       'flood-situation-command': 'band',      // Row 1: 12 cols, 6 rows — header line + figures + trajectory + source check
+      'flood-changes': 'full',                // Row 1b: 12 cols, 4 rows — what moved in 24 h, and whether the owner was told
       'flood-assessment': 'situation',        // Row 2: 12 cols, 8 rows — numbered SITREP
       'flood-district-map': 'command',        // Row 3: 12 cols, 10 rows — operational picture
       'flood-operational-picture': 'command',  // Row 3b: 12 cols, 10 rows — 3D replay of the flood front
@@ -838,7 +841,7 @@ export const useDashboardStore = create<DashboardState>()(
     }),
     {
       name: 'rta-dashboard-v14',  // v72: public cut — ground imagery, damage/relief, market, social archived
-      version: 75,
+      version: 76,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as DashboardState;
@@ -875,8 +878,8 @@ export const useDashboardStore = create<DashboardState>()(
           };
         }
 
-        if (version < 75 && state.activePreset === 'flood') {
-          // v75 tightens Situation Command to a band; v74 adds the international-assistance board; v73 made the tunnel ledger a hero row and rescue ops full width.
+        if (version < 76 && state.activePreset === 'flood') {
+          // v76 adds the 24 h change log under Situation Command; v75 tightens Situation Command to a band; v74 adds the international-assistance board; v73 made the tunnel ledger a hero row and rescue ops full width.
           // v69 adds the 3D operational picture under the district map. As with every flood
           // revision since v62, a flood user takes the new desk wholesale.
           const preset = PRESETS.flood;
