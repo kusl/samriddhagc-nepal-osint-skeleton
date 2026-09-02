@@ -123,34 +123,47 @@ const figureOf = (p: Project, kind: string): Figure | null => p.figures.find((f)
 
 const clip: CSSProperties = { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
 
-/** Plants on the channel as ticks on a km strip; off-channel plants sit in a side bay. */
+/** Plants on the channel as ticks on a km strip; off-channel plants sit in a side bay.
+ *  Plants that share a km (two projects snapped to the same named place) become
+ *  ONE tick with a joint label, and ticks closer than ~4% of the strip stagger. */
 function CorridorStrip({ projects, maxKm }: { projects: Project[]; maxKm: number }) {
   const onLine = [...projects.filter((p) => typeof p.km === 'number')].sort((a, b) => (a.km as number) - (b.km as number));
   const offLine = projects.filter((p) => typeof p.km !== 'number');
-  // Labels closer than ~4% of the strip take the lower row so neither hides the other.
+  const groups: { key: string; km: number; members: Project[] }[] = [];
+  for (const p of onLine) {
+    const last = groups[groups.length - 1];
+    if (last && Math.abs((p.km as number) - last.km) / maxKm < 0.012) last.members.push(p);
+    else groups.push({ key: p.key, km: p.km as number, members: [p] });
+  }
   const rowOf: Record<string, 0 | 1> = {};
   let lastX = -100;
   let lastRow: 0 | 1 = 1;
-  for (const p of onLine) {
-    const x = ((p.km as number) / maxKm) * 100;
+  for (const g of groups) {
+    const x = (g.km / maxKm) * 100;
     const row: 0 | 1 = x - lastX < 4 ? (lastRow === 0 ? 1 : 0) : 0;
-    rowOf[p.key] = row;
+    rowOf[g.key] = row;
     lastX = x;
     lastRow = row;
   }
+  const rank: Record<string, number> = { suspended: 0, active: 1, unreported: 2 };
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 14, margin: '6px 0 2px' }}>
       <span style={{ ...LABEL_XS, whiteSpace: 'nowrap' }}>RASUWAGADHI · KM 0</span>
       <div style={{ position: 'relative', flex: 1, height: 27 }}>
         <div style={{ position: 'absolute', left: 0, right: 0, top: 13, height: 1, background: MS.rule }} />
-        {onLine.map((p) => {
-          const x = Math.max(0, Math.min(100, ((p.km as number) / maxKm) * 100));
-          const t = STATUS_TONE[p.status] ?? 'muted';
+        {groups.map((g) => {
+          const x = Math.max(0, Math.min(100, (g.km / maxKm) * 100));
+          const lead = [...g.members].sort((a, b) => (rank[a.status] ?? 9) - (rank[b.status] ?? 9))[0];
+          const t = STATUS_TONE[lead.status] ?? 'muted';
+          const label = g.members.map((m) => m.short).join(' · ');
+          const title = g.members.map((m) => `${m.name} · km ${m.km} · ${m.coord_confidence}`).join('\n');
+          const approx = g.members.some((m) => m.coord_confidence !== 'published');
+          const labelStyle = { ...LABEL_XS, color: MS[t], whiteSpace: 'nowrap' as const, height: 10, lineHeight: '10px' };
           return (
-            <div key={p.key} title={`${p.name} · km ${p.km} · ${p.coord_confidence}`} style={{ position: 'absolute', left: `${x}%`, top: 0, transform: 'translateX(-50%)', textAlign: 'center' }}>
-              <div style={{ ...LABEL_XS, color: MS[t], whiteSpace: 'nowrap', height: 10, lineHeight: '10px', visibility: rowOf[p.key] === 1 ? 'visible' : 'hidden' }}>{p.short}</div>
-              <div style={{ width: 7, height: 7, margin: '0 auto', background: p.status === 'suspended' ? 'transparent' : MS[t], border: `1.5px solid ${MS[t]}`, borderRadius: p.coord_confidence === 'published' ? 0 : '50%' }} />
-              <div style={{ ...LABEL_XS, color: MS[t], whiteSpace: 'nowrap', height: 10, lineHeight: '10px', visibility: rowOf[p.key] === 0 ? 'visible' : 'hidden' }}>{p.short}</div>
+            <div key={g.key} title={title} style={{ position: 'absolute', left: `${x}%`, top: 0, transform: 'translateX(-50%)', textAlign: 'center' }}>
+              <div style={{ ...labelStyle, visibility: rowOf[g.key] === 1 ? 'visible' : 'hidden' }}>{label}</div>
+              <div style={{ width: g.members.length > 1 ? 9 : 7, height: 7, margin: '0 auto', background: lead.status === 'suspended' ? 'transparent' : MS[t], border: `1.5px solid ${MS[t]}`, borderRadius: approx ? '50%' : 0 }} />
+              <div style={{ ...labelStyle, visibility: rowOf[g.key] === 0 ? 'visible' : 'hidden' }}>{label}</div>
             </div>
           );
         })}
