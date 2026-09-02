@@ -174,7 +174,7 @@ function materialsLine(c: AssistCountry): string {
   const parts: string[] = [];
   if (t > 0) parts.push(`${cum ? '≥' : ''}${t % 1 ? t.toFixed(1) : t} t`);
   const flights = c.flights.length ? Math.max(...c.flights.map((f) => f.n)) : 0;
-  if (flights) parts.push(`${flights} ${flights === 1 ? 'flight' : 'flights'}`);
+  if (flights) parts.push(`${flights} flt`);
   const items = c.materials.length - (t > 0 ? c.materials.filter((m) => m.unit === 't').length : 0);
   if (!parts.length && items > 0) parts.push(`${items} ${items === 1 ? 'consignment' : 'consignments'}`);
   return parts.join(' · ') || '—';
@@ -188,13 +188,32 @@ function bestGrade(c: AssistCountry) {
 
 // ------------------------------------------------------------------ arc board
 
-const LON0 = -100;
-const LON1 = 160;
-const LAT0 = -45;
-const LAT1 = 65;
+const LON0 = -110;
+const LON1 = 165;
+const LAT0 = -48;
+const LAT1 = 72;
+
+interface WorldLite {
+  source: string;
+  countries: { iso: string; name: string; rings: number[][][] }[];
+}
+
+/** Natural Earth 1:110m outlines, simplified and vendored under /data — no tiles,
+ *  no keys, drawn in the desk's own palette. */
+function useWorld() {
+  return useQuery<WorldLite | null>({
+    queryKey: ['world-lite'],
+    queryFn: async () => {
+      const r = await fetch('/data/world_lite.json');
+      return r.ok ? ((await r.json()) as WorldLite) : null;
+    },
+    staleTime: Infinity,
+  });
+}
 
 function ArcBoard({ data, active, onPick }: { data: AssistancePayload; active: string | null; onPick: (c: string) => void }) {
-  const W = 600;
+  const world = useWorld().data ?? null;
+  const W = 660;
   const H = 300;
   const px = (lng: number) => ((lng - LON0) / (LON1 - LON0)) * W;
   const py = (lat: number) => ((LAT1 - lat) / (LAT1 - LAT0)) * H;
@@ -203,60 +222,90 @@ function ArcBoard({ data, active, onPick }: { data: AssistancePayload; active: s
   const ky = py(ktm.lat);
   const nodes = data.countries.filter((c) => typeof c.lat === 'number' && typeof c.lng === 'number');
   const maxP = Math.max(1, ...nodes.map((c) => c.personnel_total));
+  const onBoard: Record<string, string> = {};
+  for (const c of nodes) onBoard[c.code] = c.kinds.includes('tunnel') ? MS.critical : c.teams.length ? MS.info : MS.sub;
   const grat: number[] = [];
   for (let lon = -90; lon <= 150; lon += 30) grat.push(lon);
   const lats = [-30, 0, 30, 60];
+
+  // Labels go on the side away from Kathmandu so no arc runs through its own
+  // caption; where two would still overlap, the later one (by latitude) drops a line.
+  const placed: { x0: number; x1: number; y: number }[] = [{ x0: kx + 9, x1: kx + 70, y: ky - 5 }];
+  const labelPos: Record<string, { x: number; y: number; anchor: 'start' | 'end' }> = {};
+  for (const c of [...nodes].sort((a, b) => (b.lat as number) - (a.lat as number))) {
+    const nx = px(c.lng as number);
+    const west = nx < kx;
+    const text = `${iso3(c.code)}${c.personnel_total ? ` ${c.personnel_total}` : ''}`;
+    const wpx = text.length * 5.2;
+    const x = west ? nx - 6 : nx + 6;
+    const x0 = west ? x - wpx : x;
+    const x1 = west ? x : x + wpx;
+    let y = py(c.lat as number) + 3;
+    for (let guard = 0; guard < 6; guard++) {
+      const hit = placed.some((p) => x0 < p.x1 + 4 && x1 > p.x0 - 4 && Math.abs(p.y - y) < 9);
+      if (!hit) break;
+      y += 9;
+    }
+    placed.push({ x0, x1, y });
+    labelPos[c.code] = { x, y, anchor: west ? 'end' : 'start' };
+  }
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid meet" style={{ width: '100%', height: '100%', display: 'block' }}>
-      {grat.map((lon) => (
-        <line key={`g${lon}`} x1={px(lon)} x2={px(lon)} y1={0} y2={H} stroke={MS.hairline} strokeWidth={0.6} />
-      ))}
-      {lats.map((lat) => (
-        <line key={`l${lat}`} x1={0} x2={W} y1={py(lat)} y2={py(lat)} stroke={lat === 0 ? MS.rule : MS.hairline} strokeWidth={lat === 0 ? 0.8 : 0.6} />
-      ))}
-      {grat.filter((_, i) => i % 2 === 0).map((lon) => (
-        <text key={`t${lon}`} x={px(lon) + 2} y={H - 3} fill={MS.muted} fontSize={7} fontFamily={MS.mono}>{lon < 0 ? `${-lon}W` : `${lon}E`}</text>
-      ))}
-      {(() => {
-        // Labels sit right of their node; where two would overlap, the later
-        // one (by latitude) is pushed down a line so both stay legible.
-        const placed: { x: number; y: number }[] = [{ x: kx + 9, y: ky - 5 }];
-        const sorted = [...nodes].sort((a, b) => (b.lat as number) - (a.lat as number));
-        const labelY: Record<string, number> = {};
-        for (const c of sorted) {
-          const x = px(c.lng as number) + 5;
-          let y = py(c.lat as number) + 3;
-          for (let guard = 0; guard < 6; guard++) {
-            const hit = placed.some((p) => Math.abs(p.x - x) < 46 && Math.abs(p.y - y) < 9);
-            if (!hit) break;
-            y += 9;
-          }
-          placed.push({ x, y });
-          labelY[c.code] = y;
-        }
-        return nodes.map((c) => {
-        const x = px(c.lng as number);
-        const y = py(c.lat as number);
-        const mx = (x + kx) / 2;
-        const my = Math.min(y, ky) - Math.abs(x - kx) * 0.22 - 8;
-        const w = 0.6 + 2.2 * Math.sqrt(c.personnel_total / maxP);
-        const teams = c.teams.length > 0;
-        const tone = c.kinds.includes('tunnel') ? MS.critical : teams ? MS.info : MS.sub;
-        const dim = active && active !== c.code;
-        return (
-          <g key={c.code} opacity={dim ? 0.25 : 1} style={{ cursor: 'pointer' }} onClick={() => onPick(c.code)}>
-            <path d={`M${x},${y} Q${mx},${my} ${kx},${ky}`} fill="none" stroke={tone} strokeWidth={w} strokeOpacity={teams ? 0.85 : 0.45} strokeDasharray={teams ? undefined : '3 3'} />
-            <circle cx={x} cy={y} r={teams ? 3 : 2.2} fill={teams ? tone : 'transparent'} stroke={tone} strokeWidth={1} />
-            <text x={x + 5} y={labelY[c.code]} fill={tone} fontSize={8} fontFamily={MS.mono} letterSpacing={0.5}>
-              {iso3(c.code)}{c.personnel_total ? ` ${c.personnel_total}` : ''}
-            </text>
-          </g>
-        );
-        });
-      })()}
-      <circle cx={kx} cy={ky} r={6} fill="none" stroke={MS.text} strokeWidth={1} />
-      <circle cx={kx} cy={ky} r={2} fill={MS.text} />
-      <text x={kx + 9} y={ky - 5} fill={MS.text} fontSize={8} fontFamily={MS.mono} fontWeight={700} letterSpacing={0.5}>KATHMANDU</text>
+      <defs>
+        <clipPath id="arc-clip"><rect x={0} y={0} width={W} height={H} /></clipPath>
+      </defs>
+      <g clipPath="url(#arc-clip)">
+        {world?.countries.map((c) => {
+          const hl = onBoard[c.iso];
+          const d = c.rings.map((r) => r.map(([lng, lat], i) => `${i ? 'L' : 'M'}${px(lng).toFixed(1)},${py(lat).toFixed(1)}`).join('') + 'Z').join('');
+          return (
+            <path
+              key={c.iso + c.name}
+              d={d}
+              fill={hl ?? MS.rule}
+              fillOpacity={hl ? (hl === MS.sub ? 0.16 : 0.22) : 0.28}
+              stroke={hl ?? MS.rule}
+              strokeOpacity={hl ? 0.8 : 0.55}
+              strokeWidth={hl ? 0.7 : 0.45}
+              style={{ cursor: hl ? 'pointer' : 'default' }}
+              onClick={hl ? () => onPick(c.iso) : undefined}
+            />
+          );
+        })}
+        {grat.map((lon) => (
+          <line key={`g${lon}`} x1={px(lon)} x2={px(lon)} y1={0} y2={H} stroke={MS.rule} strokeOpacity={0.35} strokeWidth={0.5} />
+        ))}
+        {lats.map((lat) => (
+          <line key={`l${lat}`} x1={0} x2={W} y1={py(lat)} y2={py(lat)} stroke={MS.rule} strokeOpacity={lat === 0 ? 0.6 : 0.35} strokeWidth={0.5} />
+        ))}
+        {nodes.map((c) => {
+          const x = px(c.lng as number);
+          const y = py(c.lat as number);
+          const mx = (x + kx) / 2;
+          const my = Math.min(y, ky) - Math.abs(x - kx) * 0.22 - 8;
+          const w = 0.6 + 2.2 * Math.sqrt(c.personnel_total / maxP);
+          const teams = c.teams.length > 0;
+          const tone = onBoard[c.code];
+          const dim = active && active !== c.code;
+          const lp = labelPos[c.code];
+          return (
+            <g key={c.code} opacity={dim ? 0.25 : 1} style={{ cursor: 'pointer' }} onClick={() => onPick(c.code)}>
+              <path d={`M${x},${y} Q${mx},${my} ${kx},${ky}`} fill="none" stroke={tone} strokeWidth={w} strokeOpacity={teams ? 0.85 : 0.5} strokeDasharray={teams ? undefined : '3 3'} />
+              <circle cx={x} cy={y} r={teams ? 3 : 2.2} fill={teams ? tone : MS.surface} stroke={tone} strokeWidth={1} />
+              <text x={lp.x} y={lp.y} textAnchor={lp.anchor} fill={tone} fontSize={8} fontFamily={MS.mono} letterSpacing={0.5} style={{ paintOrder: 'stroke', stroke: MS.surface, strokeWidth: 2.5 }}>
+                {iso3(c.code)}{c.personnel_total ? ` ${c.personnel_total}` : ''}
+              </text>
+            </g>
+          );
+        })}
+        <circle cx={kx} cy={ky} r={6} fill="none" stroke={MS.text} strokeWidth={1} />
+        <circle cx={kx} cy={ky} r={2} fill={MS.text} />
+        <text x={kx + 9} y={ky - 5} fill={MS.text} fontSize={8} fontFamily={MS.mono} fontWeight={700} letterSpacing={0.5} style={{ paintOrder: 'stroke', stroke: MS.surface, strokeWidth: 2.5 }}>KATHMANDU</text>
+        {grat.filter((_, i) => i % 2 === 0).map((lon) => (
+          <text key={`t${lon}`} x={px(lon) + 2} y={H - 3} fill={MS.muted} fontSize={7} fontFamily={MS.mono}>{lon < 0 ? `${-lon}W` : `${lon}E`}</text>
+        ))}
+      </g>
     </svg>
   );
 }
@@ -319,13 +368,13 @@ export const FloodAssistanceWidget = memo(function FloodAssistanceWidget() {
           />
         </StatRow>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '38% minmax(0, 1fr)', gap: 18, flex: 1, minHeight: 0, marginTop: 4 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '46% minmax(0, 1fr)', gap: 22, flex: 1, minHeight: 0, marginTop: 4 }}>
           <div style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', ...LABEL_XS, paddingBottom: 3, borderBottom: `1px solid ${MS.rule}` }}>
               <span style={{ color: MS.text }}>ARC BOARD</span>
               <span style={{ color: MS.critical }}>■ TUNNEL</span>
               <span style={{ color: MS.info }}>■ TEAMS</span>
-              <span style={{ color: MS.sub }}>┄ MATERIEL / MONEY ONLY</span>
+              <span style={{ color: MS.sub }}>┄ MATERIEL / MONEY</span>
               <span style={{ marginLeft: 'auto' }}>STROKE = STATED PERSONNEL</span>
             </div>
             <div style={{ flex: 1, minHeight: 0 }}>
@@ -336,7 +385,7 @@ export const FloodAssistanceWidget = memo(function FloodAssistanceWidget() {
           <div style={{ minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', gap: 10, padding: '0 0 3px', borderBottom: `1px solid ${MS.rule}` }}>
               {[
-                ['COUNTRY', '16%'], ['TEAMS IN NEPAL', ''], ['MATERIEL', '13%'], ['MONEY', '13%'], ['LATEST', '8%', 'right'], ['SRC', '4%', 'right'],
+                ['COUNTRY', '17%'], ['TEAMS IN NEPAL', ''], ['MATERIEL', '15%'], ['MONEY', '14%'], ['LATEST', '9%', 'right'], ['SRC', '4%', 'right'],
               ].map(([l, w, a]) => (
                 <span key={l} style={{ ...LABEL_XS, flex: w ? `0 0 ${w}` : 1, minWidth: 0, textAlign: (a as 'left' | 'right') ?? 'left' }}>{l}</span>
               ))}
@@ -351,7 +400,7 @@ export const FloodAssistanceWidget = memo(function FloodAssistanceWidget() {
                   title="Open the country's documents"
                   style={{ display: 'flex', gap: 10, alignItems: 'baseline', padding: '1px 0', lineHeight: 1.25, borderBottom: HAIRLINE, cursor: 'pointer', background: hover === c.code ? MS.hairline : 'transparent' }}
                 >
-                  <span style={{ flex: '0 0 16%', minWidth: 0, display: 'flex', gap: 6, alignItems: 'baseline' }}>
+                  <span style={{ flex: '0 0 17%', minWidth: 0, display: 'flex', gap: 6, alignItems: 'baseline' }}>
                     <span style={{ ...CELL, color: MS.text, fontWeight: 600, whiteSpace: 'nowrap' }}>{iso3(c.code)}</span>
                     <span style={{ ...LABEL_XS, ...clip, flex: 1 }}>{c.name}</span>
                   </span>
@@ -362,11 +411,11 @@ export const FloodAssistanceWidget = memo(function FloodAssistanceWidget() {
                       </Tag>
                     )) : <span style={LABEL_XS}>—</span>}
                   </span>
-                  <span style={{ ...CELL, flex: '0 0 13%', color: MS.sub, ...clip }} title={c.materials.map((m) => m.item).join(' · ')}>{materialsLine(c)}</span>
-                  <span style={{ ...CELL, flex: '0 0 13%', color: c.money.length ? MS.low : MS.muted, ...clip }} title={c.money.map((m) => `${money(m)} · ${m.channel ?? ''}`).join(' · ')}>
+                  <span style={{ ...CELL, flex: '0 0 15%', color: MS.sub, ...clip }} title={c.materials.map((m) => m.item).join(' · ')}>{materialsLine(c)}</span>
+                  <span style={{ ...CELL, flex: '0 0 14%', color: c.money.length ? MS.low : MS.muted, ...clip }} title={c.money.map((m) => `${money(m)} · ${m.channel ?? ''}`).join(' · ')}>
                     {c.money.length ? c.money.map(money).join(' · ') : '—'}
                   </span>
-                  <span style={{ ...LABEL_XS, flex: '0 0 8%', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.latest ? dtgDay(c.latest) : '—'}</span>
+                  <span style={{ ...LABEL_XS, flex: '0 0 9%', textAlign: 'right', whiteSpace: 'nowrap' }}>{c.latest ? dtgDay(c.latest) : '—'}</span>
                   <span style={{ flex: '0 0 4%', textAlign: 'right' }}><Grade code={bestGrade(c)} /></span>
                 </div>
               ))}
@@ -375,9 +424,9 @@ export const FloodAssistanceWidget = memo(function FloodAssistanceWidget() {
         </div>
 
         <Note>
-          {data.requested_by_nepal ? `NEPAL HAS ASKED FOR: ${data.requested_by_nepal.replace(/^We have also requested the supply of\s*/i, '')} ` : ''}
-          {data.announced_only.length ? `Announced, not yet reported arrived: ${data.announced_only.join(', ')}. ` : ''}
-          ·A = matched automatically from the MoFA briefing or IFRC GO. Money in the donor's currency, never summed.
+          {data.requested_by_nepal ? `NEPAL HAS ASKED FOR ${data.requested_by_nepal.replace(/^We have also requested the supply of\s*/i, '').replace(/\s*and other items\.?$/i, '.')} ` : ''}
+          {data.announced_only.length ? `Announced, not yet arrived: ${data.announced_only.join(', ')}. ` : ''}
+          ·A = matched automatically. Money in the donor's currency, never summed.
         </Note>
         <SourceLine
           source={data.briefing ? `${data.briefing.source} · IFRC GO` : 'IFRC GO · press'}
