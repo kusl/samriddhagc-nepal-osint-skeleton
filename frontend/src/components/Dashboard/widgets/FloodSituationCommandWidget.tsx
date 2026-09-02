@@ -1,20 +1,20 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react';
 
 import { Widget } from '../Widget';
 import apiClient from '../../../api/client';
 import { floodKeys, useOfficialSituation } from '../../../api/hooks/useFlood';
+import type { SituationPanel } from '../../../api/flood';
 import { WidgetSkeleton, WidgetError, WidgetEmpty } from './shared';
 import {
   Body,
-  ControlStrip,
   FIGURE,
   Grade,
   LABEL_XS,
   MS,
   Note,
-  Scroll,
+  PROSE,
   Section,
   SourceLine,
   Stat,
@@ -236,14 +236,23 @@ function TollTrajectory({ points }: { points: BulletinPoint[] }) {
             }}
           >
             <div style={{ ...FIGURE, fontSize: 12, color: MS.critical }}>{fmt(p.deaths)}</div>
-            <div style={{ ...LABEL_XS, marginTop: 2 }}>
-              {dtgDay(p.as_of)} · {fmt(p.missing)} MISSING
+            <div style={{ ...LABEL_XS, marginTop: 1 }}>
+              {dtgDay(p.as_of)}{isNum(p.missing) && <span style={{ color: MS.high }}> · {fmt(p.missing)}</span>}
             </div>
           </div>
         ))}
       </div>
     </div>
   );
+}
+
+/** First panel row whose label matches, read as a number; null when absent. */
+function panelRow(panels: SituationPanel[] | undefined, key: string, re: RegExp): { value: number; label: string } | null {
+  const panel = panels?.find((p) => p.key === key);
+  const row = panel?.rows.find((r) => re.test(r.label));
+  if (!row) return null;
+  const m = row.value.replace(/,/g, '').match(/\d+(\.\d+)?/);
+  return m ? { value: Number(m[0]), label: row.label } : null;
 }
 
 export const FloodSituationCommandWidget = memo(function FloodSituationCommandWidget() {
@@ -286,13 +295,54 @@ export const FloodSituationCommandWidget = memo(function FloodSituationCommandWi
     );
   }
 
+  const panels = official.panels;
   const authority = toll.authority.toUpperCase();
   const deadDelta = bulletinDelta(official.trajectory, 'deaths');
   const missingDelta = bulletinDelta(official.trajectory, 'missing');
   const conflictNote = official.conflicting_reports.find((r) => r.note)?.note ?? null;
   const advisory = advisoryTitleOf(live);
-  const outOfReach = outOfReachOf(live);
-  const syncStamp = live ? ` · FEEDS SYNCED ${live.synced_at ? dtgZ(live.synced_at) : '—'}` : '';
+  const outOfReach = outOfReachOf(live) ?? panelRow(panels, 'operations', /out of reach/i)?.value ?? null;
+
+  // The head-line figures come from the toll; their second lines come from the
+  // situation panels, so each cell says one thing more than its number.
+  const foreignPanel = panels?.find((p) => p.key === 'foreign');
+  const damagePanel = panels?.find((p) => p.key === 'damage');
+  const missingForeign = panelRow(panels, 'missing', /foreign nationals/i);
+  const missingHydro = panelRow(panels, 'missing', /hydropower/i);
+  const rescuedForeign = panelRow(panels, 'rescued', /of these, foreign/i);
+  const intensive = panelRow(panels, 'medical', /intensive/i);
+  const foreignMissing = isNum(toll.foreign_nationals_missing)
+    ? { value: fmt(toll.foreign_nationals_missing), sub: undefined as string | undefined }
+    : foreignPanel?.headline_value
+      ? { value: foreignPanel.headline_value, sub: foreignPanel.source ?? undefined }
+      : null;
+  const damage = isNum(toll.damage_npr)
+    ? { value: fmtMoney(toll.damage_npr, 'NPR'), sub: isNum(toll.damage_usd) ? fmtMoney(toll.damage_usd, 'USD') : undefined }
+    : damagePanel?.headline_value
+      ? { value: damagePanel.headline_value.replace(/^preliminary damage estimate\s*/i, ''), sub: panelRow(panels, 'damage', /off the grid/i) ? `${fmt(panelRow(panels, 'damage', /off the grid/i)?.value)} MW off the grid` : damagePanel.source ?? undefined }
+      : null;
+
+  const cells: { label: string; value: ReactNode; tone: Tone; sub?: string; delta?: string; deltaTone?: Tone }[] = [
+    { label: 'Confirmed dead', value: fmt(toll.deaths), tone: 'critical', delta: deltaChip(deadDelta), deltaTone: deltaTone(deadDelta) },
+    {
+      label: 'Missing',
+      value: fmt(toll.missing),
+      tone: 'high',
+      delta: deltaChip(missingDelta),
+      deltaTone: deltaTone(missingDelta),
+      sub: missingHydro ? `${fmt(missingHydro.value)} linked to hydropower projects` : undefined,
+    },
+    { label: 'Rescued', value: fmt(toll.rescued), tone: 'low', sub: rescuedForeign ? `${fmt(rescuedForeign.value)} foreign nationals among them` : undefined },
+    { label: 'Hospitalised', value: fmt(toll.injured), tone: 'medium', sub: intensive ? `${fmt(intensive.value)} still in intensive care` : undefined },
+  ];
+  if (foreignMissing) cells.push({ label: 'Foreign nationals missing', value: foreignMissing.value, tone: 'text', sub: foreignMissing.sub ?? (missingForeign ? `${authority} count ${fmt(missingForeign.value)}` : undefined) });
+  if (damage) cells.push({ label: 'Preliminary damage', value: damage.value, tone: 'high', sub: damage.sub });
+
+  const stamps = [
+    `PICTURE ${dtgNow()}`,
+    `BULLETIN ${dtgDay(toll.as_of)}`,
+    live ? `FEEDS ${live.synced_at ? dtgZ(live.synced_at) : '—'}` : null,
+  ].filter(Boolean).join(' · ');
 
   return (
     <Widget
@@ -306,144 +356,103 @@ export const FloodSituationCommandWidget = memo(function FloodSituationCommandWi
         </button>
       }
     >
-      <Body>
-        <ControlStrip
-          left={`OPEN SOURCE INTELLIGENCE // ${event.name.toUpperCase()} // PUBLISHED SOURCES ONLY // DESK ASSESSMENT — NOT AN OFFICIAL PRODUCT`}
-          right={`PICTURE AS OF ${dtgNow()} · LATEST BULLETIN ${dtgDay(toll.as_of)}${syncStamp}`}
-        />
+      <Body style={{ overflow: 'hidden' }}>
+        {/* One header line: what, since when, where — and on the right, when this picture was taken. */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, padding: '2px 0 6px', borderBottom: `1px solid ${MS.rule}`, marginBottom: 8 }}>
+          <span style={{ fontFamily: MS.mono, fontSize: 14, fontWeight: 700, color: MS.text, letterSpacing: '-0.01em', whiteSpace: 'nowrap' }}>
+            {event.name}
+          </span>
+          <span style={{ ...LABEL_XS, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            SINCE {dtgDay(event.started_on)} · {event.rivers.join(' / ')} · {event.districts.length} DISTRICTS
+            {outOfReach !== null && <> · <span style={{ color: MS.high }}>{fmt(outOfReach)} SETTLEMENTS STILL OUT OF REACH</span></>}
+          </span>
+          <span style={{ ...LABEL_XS, marginLeft: 'auto', whiteSpace: 'nowrap', color: MS.muted }}>{stamps}</span>
+        </div>
 
-        <Scroll>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginBottom: 7 }}>
-            <span style={{ fontFamily: MS.mono, fontSize: 13, fontWeight: 700, color: MS.text, letterSpacing: '-0.01em' }}>
-              {event.name}
-            </span>
-            <span style={LABEL_XS}>
-              SINCE {dtgDay(event.started_on)} · {event.rivers.join(' / ')} · {event.districts.length} DISTRICTS · STATUS{' '}
-              {event.status.toUpperCase()}
-              {outOfReach !== null && <> · {fmt(outOfReach)} STILL OUT OF REACH</>}
-            </span>
+        <StatRow columns={cells.length}>
+          {cells.map((c) => (
+            <Stat key={c.label} label={c.label} value={c.value} tone={c.tone} sub={c.sub} delta={c.delta} deltaTone={c.deltaTone} size={24} />
+          ))}
+        </StatRow>
+
+        <Section n={1} title="TOLL TRAJECTORY" meta={`${authority} BULLETINS · DEATHS, WITH MISSING BENEATH`} />
+        <TollTrajectory points={official.trajectory} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: advisory ? 'minmax(0, 3fr) minmax(0, 2fr)' : '1fr', gap: 24, flex: 1, minHeight: 0, overflow: 'hidden' }}>
+          <div style={{ minWidth: 0 }}>
+            {/* Authorities disagreeing is information; the desk shows both and reconciles neither.
+                With only the baseline on file, that is said in one row rather than an empty table. */}
+            <Section n={2} title="SOURCE CHECK" meta={official.conflicting_reports.length ? `${official.conflicting_reports.length} CONFLICTING` : 'NO CONFLICTING AUTHORITY ON FILE'} />
+            <TableHead
+              cols={[
+                { label: 'AUTHORITY' },
+                { label: 'DEAD', width: '64px', align: 'right' },
+                { label: 'MISSING', width: '70px', align: 'right' },
+                { label: `Δ VS ${authority}`, width: '96px', align: 'right' },
+                { label: 'GRADE', width: '42px' },
+                { label: 'SOURCE', width: '64px' },
+              ]}
+            />
+            <TableRow
+              cells={[
+                { node: (<>{toll.authority}<span style={{ ...LABEL_XS, marginLeft: 8 }}>{dtgDay(toll.as_of)}</span></>) },
+                { node: fmt(toll.deaths), width: '64px', align: 'right', tone: 'critical' },
+                { node: fmt(toll.missing), width: '70px', align: 'right', tone: 'high' },
+                { node: 'BASELINE', width: '96px', align: 'right', tone: 'muted' },
+                { node: <Grade code={gradeFor(toll.authority).code} />, width: '42px' },
+                { node: <SourceRef url={toll.source_url} />, width: '64px' },
+              ]}
+            />
+            {official.conflicting_reports.map((report) => {
+              const gap = isNum(report.deaths) && isNum(toll.deaths) ? report.deaths - toll.deaths : null;
+              return (
+                <TableRow
+                  key={`${report.authority}-${report.as_of}`}
+                  cells={[
+                    { node: (<>{report.authority}<span style={{ ...LABEL_XS, marginLeft: 8 }}>{dtgDay(report.as_of)}</span></>) },
+                    { node: fmt(report.deaths), width: '64px', align: 'right', tone: 'critical' },
+                    { node: fmt(report.missing), width: '70px', align: 'right', tone: 'high' },
+                    { node: gap === null ? '—' : fmtDelta(gap), width: '96px', align: 'right', tone: gap === null || gap === 0 ? 'muted' : 'medium' },
+                    { node: <Grade code={gradeFor(report.authority).code} />, width: '42px' },
+                    { node: <SourceRef url={report.source_url} />, width: '64px' },
+                  ]}
+                />
+              );
+            })}
+            {bipad && (
+              <TableRow
+                cells={[
+                  { node: (<>BIPAD routine incident feed<span style={{ ...LABEL_XS, marginLeft: 8 }}>{fmt(bipad.window_days)}-DAY WINDOW</span></>) },
+                  { node: fmt(bipad.deaths), width: '64px', align: 'right', tone: 'muted' },
+                  { node: '—', width: '70px', align: 'right', tone: 'muted' },
+                  { node: 'EVENT ABSENT', width: '96px', align: 'right', tone: 'medium' },
+                  { node: <Grade code={gradeFor('BIPAD').code} />, width: '42px' },
+                  { node: <span style={{ ...LABEL_XS, color: MS.muted }}>{fmt(bipad.incidents)} INC.</span>, width: '64px' },
+                ]}
+              />
+            )}
+            {conflictNote && <Note>{conflictNote}</Note>}
+            {toll.note && <Note>{toll.note}</Note>}
           </div>
 
           {/* The advisory is carried verbatim in the authority's own Nepali — translating
               an instruction to the public would make the desk its author. */}
           {advisory && (
-            <Note>
-              <span
-                title={`NDRRMA ADVISORY · ${advisory}`}
-                style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-              >
-                NDRRMA ADVISORY · {advisory}
-              </span>
-            </Note>
+            <div style={{ minWidth: 0 }}>
+              <Section n={3} title="STANDING ADVISORY" meta="NDRRMA · VERBATIM" />
+              <div style={{ ...PROSE, color: MS.sub, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }} title={advisory}>
+                {advisory}
+              </div>
+            </div>
           )}
-
-          {/* One attribution for the whole band, in the source footer: the authority and
-              as-of date are identical across every cell. */}
-          <StatRow columns={6}>
-            <Stat
-              label="Confirmed dead"
-              value={fmt(toll.deaths)}
-              tone="critical"
-              delta={deltaChip(deadDelta)}
-              deltaTone={deltaTone(deadDelta)}
-            />
-            <Stat
-              label="Missing"
-              value={fmt(toll.missing)}
-              tone="high"
-              delta={deltaChip(missingDelta)}
-              deltaTone={deltaTone(missingDelta)}
-            />
-            <Stat label="Rescued" value={fmt(toll.rescued)} tone="low" />
-            <Stat label="Hospitalised" value={fmt(toll.injured)} tone="medium" />
-            <Stat label="Foreign nationals missing" value={fmt(toll.foreign_nationals_missing)} tone="text" />
-            <Stat
-              label="Preliminary damage"
-              value={fmtMoney(toll.damage_npr, 'NPR')}
-              tone="high"
-              sub={isNum(toll.damage_usd) ? fmtMoney(toll.damage_usd, 'USD') : undefined}
-            />
-          </StatRow>
-
-          <Section n={1} title="TOLL TRAJECTORY" meta={`${authority} BULLETINS`} />
-          <TollTrajectory points={official.trajectory} />
-
-          {/* Authorities disagreeing is information; the desk shows both and reconciles neither. */}
-          <Section n={2} title="SOURCE DISAGREEMENT" />
-          <TableHead
-            cols={[
-              { label: 'AUTHORITY' },
-              { label: 'DEAD', width: '72px', align: 'right' },
-              { label: 'MISSING', width: '78px', align: 'right' },
-              { label: `Δ VS ${authority}`, width: '104px', align: 'right' },
-              { label: 'GRADE', width: '46px' },
-              { label: 'SOURCE', width: '70px' },
-            ]}
-          />
-          <TableRow
-            cells={[
-              {
-                node: (
-                  <>
-                    {toll.authority}
-                    <span style={{ ...LABEL_XS, marginLeft: 8 }}>{dtgDay(toll.as_of)}</span>
-                  </>
-                ),
-              },
-              { node: fmt(toll.deaths), width: '72px', align: 'right', tone: 'critical' },
-              { node: fmt(toll.missing), width: '78px', align: 'right', tone: 'high' },
-              { node: 'BASELINE', width: '104px', align: 'right', tone: 'muted' },
-              { node: <Grade code={gradeFor(toll.authority).code} />, width: '46px' },
-              { node: <SourceRef url={toll.source_url} />, width: '70px' },
-            ]}
-          />
-          {official.conflicting_reports.map((report) => {
-            const gap = isNum(report.deaths) && isNum(toll.deaths) ? report.deaths - toll.deaths : null;
-            return (
-              <TableRow
-                key={`${report.authority}-${report.as_of}`}
-                cells={[
-                  {
-                    node: (
-                      <>
-                        {report.authority}
-                        <span style={{ ...LABEL_XS, marginLeft: 8 }}>{dtgDay(report.as_of)}</span>
-                      </>
-                    ),
-                  },
-                  { node: fmt(report.deaths), width: '72px', align: 'right', tone: 'critical' },
-                  { node: fmt(report.missing), width: '78px', align: 'right', tone: 'high' },
-                  {
-                    node: gap === null ? '—' : fmtDelta(gap),
-                    width: '104px',
-                    align: 'right',
-                    tone: gap === null || gap === 0 ? 'muted' : 'medium',
-                  },
-                  { node: <Grade code={gradeFor(report.authority).code} />, width: '46px' },
-                  { node: <SourceRef url={report.source_url} />, width: '70px' },
-                ]}
-              />
-            );
-          })}
-          {conflictNote && <Note>{conflictNote}</Note>}
-
-          {toll.note && <Note>{toll.note}</Note>}
-
-          {/* Counts read from the cross-check object, never typed: the incident feed
-              carried none of this event, and that absence is the finding. */}
-          {bipad && (
-            <Note>
-              BIPAD routine feed: {fmt(bipad.deaths)} deaths, {fmt(bipad.incidents)} incidents in {fmt(bipad.window_days)} days
-              — this event absent.
-            </Note>
-          )}
-        </Scroll>
+        </div>
 
         <SourceLine
           source={toll.source_title ?? toll.authority}
           asOf={dtgDay(toll.as_of)}
           url={toll.source_url}
           grade={gradeFor(toll.authority).code}
+          right={<span style={{ whiteSpace: 'nowrap' }}>PUBLISHED SOURCES ONLY · DESK ASSESSMENT, NOT AN OFFICIAL PRODUCT</span>}
         />
       </Body>
     </Widget>

@@ -543,7 +543,7 @@ export const PRESETS: Record<string, Preset> = {
       'entity-watchlist': false, 'analyst-notes': false, 'analyst-leaderboard': false,
     },
     sizes: {
-      'flood-situation-command': 'hero',      // Row 1: 12 cols, 7 rows — control strip + figures + trajectory
+      'flood-situation-command': 'band',      // Row 1: 12 cols, 6 rows — header line + figures + trajectory + source check
       'flood-assessment': 'situation',        // Row 2: 12 cols, 8 rows — numbered SITREP
       'flood-district-map': 'command',        // Row 3: 12 cols, 10 rows — operational picture
       'flood-operational-picture': 'command',  // Row 3b: 12 cols, 10 rows — 3D replay of the flood front
@@ -838,7 +838,7 @@ export const useDashboardStore = create<DashboardState>()(
     }),
     {
       name: 'rta-dashboard-v14',  // v72: public cut — ground imagery, damage/relief, market, social archived
-      version: 74,
+      version: 75,
       migrate: (persistedState: unknown, version: number) => {
         if (!persistedState || typeof persistedState !== 'object') {
           return persistedState as DashboardState;
@@ -875,8 +875,8 @@ export const useDashboardStore = create<DashboardState>()(
           };
         }
 
-        if (version < 74 && state.activePreset === 'flood') {
-          // v74 adds the international-assistance board; v73 made the tunnel ledger a hero row and rescue ops full width.
+        if (version < 75 && state.activePreset === 'flood') {
+          // v75 tightens Situation Command to a band; v74 adds the international-assistance board; v73 made the tunnel ledger a hero row and rescue ops full width.
           // v69 adds the 3D operational picture under the district map. As with every flood
           // revision since v62, a flood user takes the new desk wholesale.
           const preset = PRESETS.flood;
