@@ -41,6 +41,23 @@ _lock = threading.Lock()
 STATUS_TO_TUNNEL_KIND = {"active": "tunnel_active", "suspended": "tunnel_suspended", "unreported": "tunnel_unreported"}
 
 
+def _km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
+    import math
+    p = math.pi / 180
+    a = 0.5 - math.cos((lat2 - lat1) * p) / 2 + math.cos(lat1 * p) * math.cos(lat2 * p) * (1 - math.cos((lng2 - lng1) * p)) / 2
+    return 12742 * math.asin(math.sqrt(a))
+
+
+_COMPAT = {
+    "burial": {"burial"}, "recovery": {"recovery", "collection", "transfer", "burial"}, "forensic": {"forensic", "mortuary", "burial"},
+    "mortuary": {"mortuary", "forensic", "collection", "burial"}, "transfer": {"transfer", "collection"},
+}
+
+
+def _compatible(site_kind: str, fact_type: str) -> bool:
+    return site_kind in _COMPAT.get(fact_type, set())
+
+
 def load_truth() -> dict[str, Any]:
     import json
     with TRUTH_PATH.open(encoding="utf-8") as fh:
@@ -159,6 +176,7 @@ async def sites(db: AsyncSession, event: str) -> dict[str, Any]:
     base = [dict(s) for s in truth.get("sites", [])]
     photos = await _photos_by_terms(db, event, base)
     evidence = await _evidence(base)
+    alias_of = {s["key"]: [a for a in (s.get("aliases") or []) if len(a) >= 4] for s in base}
     for s in base:
         s["photos"] = photos.get(s["key"], [])
         s["evidence"] = evidence.get(s["key"], [])
@@ -174,9 +192,65 @@ async def sites(db: AsyncSession, event: str) -> dict[str, Any]:
     except Exception as e:  # noqa: BLE001
         logger.warning("sites: tunnel layer failed: %s", e)
 
-    all_sites = base + tunnels
+    # AUTO layer: facts the extractor read from the press, placed. A fact within
+    # 3 km of a seed site of a compatible kind becomes an auto figure on that
+    # site; anything else becomes its own auto site, marked unreviewed.
+    auto_sites: list[dict[str, Any]] = []
+    try:
+        from app.services import flood_fact_extractor as fx
+        all_facts = await fx.facts(db, days=21)
+        # Road facts rarely geocode (a cut is a stretch, not a point): they attach
+        # to the road_cut seed whose alias the sentence names, as auto notes.
+        for f in all_facts:
+            if f["fact_type"] != "road":
+                continue
+            low = f["quote"].lower()
+            for site in base:
+                if site["kind"] == "road_cut" and any(a.lower() in low for a in alias_of.get(site["key"], [])):
+                    if any(n.get("fact_id") == f["id"] for n in site["notes"]):
+                        break
+                    site["notes"].append({"t_npt": f["published_at"] or "", "text": f["quote"][:300],
+                                          "source": f"{f['outlet'] or 'press'} (auto-extracted) · {f['unit']}",
+                                          "url": f["url"], "auto": True, "fact_id": f["id"]})
+                    site["auto_figures"] = site.get("auto_figures", 0) + 1
+                    break
+        fs = [f for f in all_facts
+              if f["fact_type"] in ("burial", "recovery", "forensic", "mortuary", "transfer") and f["lat"] is not None]
+        for f in fs:
+            fig = {"kind": f["fact_type"] if f["unit"] != "identified" else "identified", "value": f["figure"],
+                   "as_of": (f["published_at"] or "")[:10], "source": f"{f['outlet'] or 'press'} (auto-extracted)",
+                   "url": f["url"], "note": f["quote"][:240], "auto": True, "confidence": f["confidence"], "fact_id": f["id"]}
+            host = None
+            for site in base:
+                if _km(site["lat"], site["lng"], f["lat"], f["lng"]) <= 3.0 and _compatible(site["kind"], f["fact_type"]):
+                    host = site
+                    break
+            if host is not None:
+                if not any(x.get("fact_id") == f["id"] for x in host["figures"]):
+                    host["figures"].append(fig)
+                    host["auto_figures"] = host.get("auto_figures", 0) + 1
+                continue
+            key = f"auto_{f['id'][:8]}"
+            existing = next((a for a in auto_sites if _km(a["lat"], a["lng"], f["lat"], f["lng"]) <= 1.0 and a["kind"] == f["fact_type"]), None)
+            if existing:
+                existing["figures"].append(fig)
+                continue
+            auto_sites.append({
+                "key": key, "kind": f["fact_type"], "name": f"{f['place_text']} · auto-extracted",
+                "district": f["district"], "lat": f["lat"], "lng": f["lng"],
+                "coord_confidence": "auto", "figures": [fig], "notes": [], "photos": [],
+                "evidence": [{"title": f["quote"][:160], "outlet": f["outlet"], "url": f["url"], "published_at": f["published_at"]}],
+                "auto": True, "extractor": f["extractor"], "status": f["status"],
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.warning("sites: auto fact layer failed: %s", e)
+
+    for s in base:
+        s["notes"] = sorted(s["notes"], key=lambda n: n.get("t_npt") or "", reverse=True)[:8]
+    all_sites = base + tunnels + auto_sites
     kinds = truth.get("kinds", {})
     kinds.update({
+        "auto": "Auto-extracted from a press sentence by the desk's extractor; unreviewed",
         "tunnel_active": "Flooded hydropower tunnel with a team digging",
         "tunnel_suspended": "Flooded tunnel where the search is suspended",
         "tunnel_unreported": "Affected hydropower project with no tunnel figures published",
@@ -193,6 +267,8 @@ async def sites(db: AsyncSession, event: str) -> dict[str, Any]:
             "with_photos": sum(1 for s in all_sites if s.get("photos")),
             "photos": sum(len(s.get("photos") or []) for s in all_sites),
             "tunnels": len(tunnels),
+            "auto_sites": len(auto_sites),
+            "auto_figures": sum(s.get("auto_figures", 0) for s in base) + sum(len(a["figures"]) for a in auto_sites),
             "buried_published": sum(
                 f["value"] for s in all_sites if s["kind"] == "burial"
                 for f in s.get("figures", []) if f.get("kind") == "buried"),

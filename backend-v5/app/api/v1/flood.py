@@ -28,8 +28,8 @@ from app.models.flood_event import (FloodLiveSnapshot, FloodMediaItem,
 from app.models.river import RiverStation
 from app.models.story import Story
 from app.services import (dhm_photo_service, drp_service, flood_assistance_service,
-                          flood_hydropower_service, flood_replay_service,
-                          flood_sites_service, nepalgov_service)
+                          flood_fact_extractor, flood_hydropower_service,
+                          flood_replay_service, flood_sites_service, nepalgov_service)
 from app.services.flood_intel_service import (CHARTER_ACTIVATION,
                                               CITE_TIER_NOTE,
                                               CITED_REPORTING,
@@ -1580,6 +1580,22 @@ async def flood_press(
 # one assembled copy is served to everyone who asks within that minute.
 _REPLAY_TTL_SECONDS = 60
 _replay_cache: dict[str, Any] = {}
+
+
+@router.get("/facts")
+async def flood_facts(
+    fact_type: Optional[str] = Query(default=None, description="burial|recovery|forensic|mortuary|transfer|team|aid|money|tunnel|road"),
+    days: int = Query(default=14, ge=1, le=60),
+    status: str = Query(default="auto,verified"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Automatically extracted facts: one sentence of one story each, typed,
+    with figure, place (geocoded when the gazetteer names it) and the sentence
+    verbatim. `status` auto = machine-read and unreviewed; verified = a person
+    checked it. Nothing here overrides a verified seed on the boards.
+    """
+    rows = await flood_fact_extractor.facts(db, days=days, fact_type=fact_type, status=status)
+    return {"count": len(rows), "facts": rows}
 
 
 @router.get("/sites")

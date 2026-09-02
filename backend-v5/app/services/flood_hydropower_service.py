@@ -286,6 +286,27 @@ async def hydropower(days: int = 12) -> dict[str, Any]:
 
     auto_teams = _teams_from_briefing(briefing, projects, aliases) if briefing else {}
 
+    # AUTO layer: press sentences the extractor tied to a project by alias.
+    auto_notes: dict[str, list[dict[str, Any]]] = {}
+    try:
+        from app.core.database import AsyncSessionLocal
+        from app.services import flood_fact_extractor as fx
+        async with AsyncSessionLocal() as db:
+            fs = [f for f in await fx.facts(db, days=21) if f["fact_type"] == "tunnel" and f["subject_code"]]
+        seen_q: set[str] = set()
+        for f in fs:
+            qk = f["quote"][:80]
+            if qk in seen_q:
+                continue
+            seen_q.add(qk)
+            auto_notes.setdefault(f["subject_code"], []).append({
+                "t_npt": f["published_at"] or "", "text": f["quote"][:300],
+                "source": f"{f['outlet'] or 'press'} (auto-extracted)", "url": f["url"], "auto": True,
+                "figure": f["figure"], "unit": f["unit"],
+            })
+    except Exception as e:  # noqa: BLE001
+        logger.warning("hydropower: auto fact layer failed: %s", e)
+
     out_projects = []
     for p in projects:
         teams = list(p.get("teams") or [])
@@ -297,7 +318,7 @@ async def hydropower(days: int = 12) -> dict[str, Any]:
                 teams.append(t)
                 have.add(t["country"])
         figs = _latest_by_kind(p.get("figures") or [])
-        notes = sorted(p.get("notes") or [], key=lambda n: n.get("t_npt") or "", reverse=True)
+        notes = sorted((p.get("notes") or []) + auto_notes.get(p["key"], [])[:6], key=lambda n: n.get("t_npt") or "", reverse=True)
         status = p.get("status") or ("active" if teams else "unreported")
         status_line = p.get("status_line") or ""
         status_source = "truth file"

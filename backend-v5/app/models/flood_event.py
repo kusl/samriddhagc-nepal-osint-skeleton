@@ -15,7 +15,7 @@ this event ran 165 -> 579 -> 626 -> 903 -> 1,003 over five days, and that
 trajectory is itself the story. Every row carries the authority that issued it
 and a source URL, so no number on the desk is unattributable.
 """
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 from uuid import UUID, uuid4
 
@@ -358,3 +358,68 @@ class FloodLiveSnapshot(Base):
 
     def __repr__(self) -> str:
         return f"<FloodLiveSnapshot {self.event_key}/{self.feed} ok={self.ok}>"
+
+
+class FloodFact(Base):
+    """One sentence of one published story, turned into a typed fact.
+
+    The boards (sites, assistance, tunnel ledger) read these as `auto` rows
+    beside their hand-verified seeds. The sentence is kept verbatim so a
+    reader can always see what was actually written; the figure and place
+    are the desk's reading of it, and `status` says whether a person has
+    looked ('auto' | 'verified' | 'rejected').
+    """
+
+    __tablename__ = "flood_facts"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    event_key: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    story_id: Mapped[Optional[UUID]] = mapped_column(PGUUID(as_uuid=True), index=True)
+    story_url: Mapped[Optional[str]] = mapped_column(Text)
+    outlet: Mapped[Optional[str]] = mapped_column(Text)
+    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    # burial | recovery | mortuary | forensic | transfer | team | aid | money | tunnel | road | toll
+    fact_type: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
+    subject: Mapped[Optional[str]] = mapped_column(Text)
+    subject_code: Mapped[Optional[str]] = mapped_column(String(32))
+    place_text: Mapped[Optional[str]] = mapped_column(Text)
+    district: Mapped[Optional[str]] = mapped_column(String(64))
+    place_lat: Mapped[Optional[float]] = mapped_column(Float)
+    place_lng: Mapped[Optional[float]] = mapped_column(Float)
+    place_confidence: Mapped[Optional[str]] = mapped_column(String(24))
+    figure: Mapped[Optional[float]] = mapped_column(Float)
+    unit: Mapped[Optional[str]] = mapped_column(String(24))
+    quote: Mapped[str] = mapped_column(Text, nullable=False)
+    language: Mapped[Optional[str]] = mapped_column(String(8))
+    extractor: Mapped[str] = mapped_column(String(48), nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    status: Mapped[str] = mapped_column(String(16), nullable=False, default="auto", index=True)
+    dedupe_key: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
+                                                 default=lambda: datetime.now(timezone.utc))
+
+
+class GeocodeCache(Base):
+    __tablename__ = "geocode_cache"
+
+    query: Mapped[str] = mapped_column(Text, primary_key=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float)
+    lng: Mapped[Optional[float]] = mapped_column(Float)
+    display_name: Mapped[Optional[str]] = mapped_column(Text)
+    osm_type: Mapped[Optional[str]] = mapped_column(String(24))
+    osm_class: Mapped[Optional[str]] = mapped_column(String(48))
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
+                                                 default=lambda: datetime.now(timezone.utc))
+
+
+class FloodExtractionRun(Base):
+    """One row per story the extractor has read, so a story is read once."""
+
+    __tablename__ = "flood_extraction_runs"
+
+    story_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    event_key: Mapped[str] = mapped_column(String(64), nullable=False)
+    extractor: Mapped[str] = mapped_column(String(48), nullable=False)
+    facts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    run_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False,
+                                             default=lambda: datetime.now(timezone.utc))

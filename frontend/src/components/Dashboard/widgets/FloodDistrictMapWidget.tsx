@@ -350,10 +350,10 @@ const dhmPinHtml = (detail: boolean): string =>
  *  the whole visual grammar: grey is ground media, and blue is the satellite
  *  colour this map already uses for the corridor, the footprints and the DRP
  *  banner — so a reader learns "blue chip = orbital" once and it holds. */
-const chipHtml = (label: string, border = 'var(--text-secondary)'): string => `
+const chipHtml = (label: string, border = 'var(--text-secondary)', dashed = false): string => `
   <div style="display:inline-block;font-family:var(--font-mono);font-size:8px;letter-spacing:.06em;
-              padding:1px 4px;background:var(--bg-elevated);border:1px solid ${border};
-              color:var(--text-primary);white-space:nowrap">${esc(label)}</div>`;
+              padding:1px 4px;background:var(--bg-elevated);border:1px ${dashed ? 'dashed' : 'solid'} ${border};
+              color:${dashed ? 'var(--text-secondary)' : 'var(--text-primary)'};white-space:nowrap">${esc(label)}</div>`;
 
 /**
  * Position along the corridor by cumulative kilometre. The kilometres are the
@@ -679,14 +679,20 @@ const ReadoutBody = (props: ReadoutPanelProps) => {
       const sources = Array.from(new Set([...site.figures, ...site.notes].map((x) => x.source.split(',')[0]))).slice(0, 2);
       const conf = site.coord_confidence === 'published' ? 'FACILITY LOCATED'
         : site.coord_confidence === 'place' ? 'LOCALITY LOCATED · PLOT NOT PUBLISHED'
-          : site.coord_confidence === 'municipality' ? 'MUNICIPALITY CENTRE · WARD ONLY PUBLISHED' : 'APPROXIMATE PLACEMENT';
+          : site.coord_confidence === 'municipality' ? 'MUNICIPALITY CENTRE · WARD ONLY PUBLISHED'
+            : site.coord_confidence === 'auto' ? 'AUTO-EXTRACTED FROM A PRESS SENTENCE · GEOCODED · UNREVIEWED' : 'APPROXIMATE PLACEMENT';
+      const isAutoSite = Boolean(site.auto) && !site.kind.startsWith('tunnel');
+      const autoFigs = site.figures.filter((f) => f.auto).length;
       return (
         <>
           <div style={RO_TITLE}>{site.name}</div>
           <div style={{ ...RO_MONO, color: tone, marginTop: 2 }}>
             {chip.label}{site.district ? ` · ${site.district.toUpperCase()}` : ''}{site.teams && site.teams.length ? ` · ${site.teams.join(' + ')}` : ''}
           </div>
-          <div style={{ ...RO_MONO, fontSize: 8, marginTop: 1 }}>{conf}</div>
+          <div style={{ ...RO_MONO, fontSize: 8, marginTop: 1, color: isAutoSite ? 'var(--status-high)' : undefined }}>{conf}</div>
+          {!isAutoSite && autoFigs > 0 && (
+            <div style={{ ...RO_MONO, fontSize: 8, color: 'var(--status-high)' }}>+{autoFigs} AUTO-EXTRACTED FIGURE{autoFigs === 1 ? '' : 'S'} · UNREVIEWED</div>
+          )}
           {figures.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 5 }}>
               {figures.map((f) => (
@@ -877,7 +883,7 @@ const ReadoutBody = (props: ReadoutPanelProps) => {
       )}
       {props.places.length > 0 && (
         <div style={{ ...LABEL_XS, marginTop: 3 }}>
-          <span style={{ color: 'var(--status-critical)' }}>■ BURIAL</span> · <span style={{ color: 'var(--status-high)' }}>■ DNA / MORTUARY / ROAD CUT</span> · <span style={{ color: 'var(--status-info)' }}>■ LIFT / RECOVERY / AIRHEAD</span> · <span style={{ color: 'var(--status-low)' }}>■ TUNNEL DIGGING</span>
+          <span style={{ color: 'var(--status-critical)' }}>■ BURIAL</span> · <span style={{ color: 'var(--status-high)' }}>■ DNA / MORTUARY / ROAD CUT</span> · <span style={{ color: 'var(--status-info)' }}>■ LIFT / RECOVERY / AIRHEAD</span> · <span style={{ color: 'var(--status-low)' }}>■ TUNNEL DIGGING</span> · DASHED = AUTO-EXTRACTED
         </div>
       )}
     </>
@@ -1840,10 +1846,12 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
             color, weight: 1.2, fillColor: color,
             fillOpacity: site.coord_confidence === 'published' || site.coord_confidence === 'place' ? 0.95 : 0.35,
           }).addTo(group);
-          const label = `${chip.label}${site.photos.length ? ` · IMG ${site.photos.length}` : ''}`;
+          const isAuto = Boolean(site.auto) && !site.kind.startsWith('tunnel');
+          const label = `${isAuto ? 'AUTO · ' : ''}${chip.label}${site.photos.length ? ` · IMG ${site.photos.length}` : ''}`;
           const w = Math.max(CHIP_W, label.length * 5.6 + 10);
           const marker = L.marker([site.lat, site.lng], {
-            icon: L.divIcon({ className: '', html: chipHtml(label, color), iconSize: [w, CHIP_H], iconAnchor: [-6, -5] }),
+            // Dashed = read by the extractor from a press sentence and not yet reviewed.
+            icon: L.divIcon({ className: '', html: chipHtml(label, color, isAuto), iconSize: [w, CHIP_H], iconAnchor: [-6, -5] }),
             keyboard: false,
             title: site.name,
           }).addTo(group);
@@ -2267,7 +2275,7 @@ export const FloodDistrictMapWidget = memo(function FloodDistrictMapWidget() {
       ? `${sites.length} damage sites · click a blue chip for the same-frame pre/post pair`
       : null,
     places.length > 0
-      ? `${places.length} response sites · ${sitesQ.data?.counts.burial ?? 0} burial grounds · ${sitesQ.data?.counts.photos ?? 0} photographs by caption match`
+      ? `${places.length} response sites · ${sitesQ.data?.counts.burial ?? 0} burial grounds · ${sitesQ.data?.counts.photos ?? 0} photographs by caption match${(sitesQ.data?.counts.auto_figures ?? 0) > 0 ? ` · ${sitesQ.data?.counts.auto_figures} auto-extracted figures unreviewed` : ''}`
       : null,
     corridor.some((w) => w.kind === 'channel') ? 'river: openstreetmap channel, odbl' : null,
     'boundaries: survey department reference',

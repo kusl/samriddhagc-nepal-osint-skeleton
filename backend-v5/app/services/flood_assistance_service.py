@@ -281,7 +281,23 @@ async def assistance(days: int = 10) -> dict[str, Any]:
         m = _REQUESTED_RE.search(full)
         requested = m.group(0).strip() if m else None
 
+    # AUTO layer: press sentences the extractor typed as team / aid / money with a
+    # sending country. Appended as auto rows; a seed row is never overwritten.
+    auto_rows: dict[str, list[dict[str, Any]]] = {}
+    try:
+        from app.core.database import AsyncSessionLocal
+        from app.services import flood_fact_extractor as fx
+        async with AsyncSessionLocal() as db:
+            fs = [f for f in await fx.facts(db, days=21) if f["fact_type"] in ("team", "aid", "money") and f["subject_code"]]
+        for f in fs:
+            auto_rows.setdefault(f["subject_code"], []).append(f)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("assistance: auto fact layer failed: %s", e)
+
     codes: list[str] = list(truth_by.keys())
+    for c in auto_rows:
+        if c not in codes and c != "NP":
+            codes.append(c)
     for c in list(auto_teams.keys()) + [p["code"] for p in ifrc.get("personnel", [])] + list(evidence.keys()):
         if c not in codes and c != "NP":
             codes.append(c)
@@ -301,6 +317,26 @@ async def assistance(days: int = 10) -> dict[str, Any]:
                     same["sites"] = t["sites"]
             else:
                 row["teams"].append(t)
+        for f in auto_rows.get(code, []):
+            src = f"{f['outlet'] or 'press'} (auto-extracted)"
+            day = (f["published_at"] or "")[:10] or None
+            if f["fact_type"] == "team":
+                if any((t.get("personnel") == f["figure"]) for t in row["teams"]):
+                    continue  # the seed (or an earlier auto row) already carries this team size
+                kind = "forensic" if re.search(r"forensic|dna|डीएनए", f["quote"], re.I) else "tunnel" if re.search(r"tunnel|सुरुङ", f["quote"], re.I) else "sar"
+                row["teams"].append({"kind": kind, "personnel": int(f["figure"]) if f["figure"] else None, "sites": [], "since": day,
+                                     "source": src, "url": f["url"], "note": f["quote"][:220], "auto": True})
+            elif f["fact_type"] == "aid":
+                # Five outlets reprint one shipment: one row per (country, tonnage).
+                if any((m.get("qty") == f["figure"] and m.get("unit") == "t") for m in row["materials"]):
+                    continue
+                row["materials"].append({"item": (f.get("subject") or "relief supplies")[:80], "qty": f["figure"], "unit": "t", "date": day,
+                                         "source": src, "url": f["url"], "note": f["quote"][:220], "auto": True})
+            elif f["fact_type"] == "money" and f["figure"]:
+                if any(abs((m.get("amount") or 0) - f["figure"]) < 1 and m.get("currency") == f["unit"] for m in row["money"]):
+                    continue
+                row["money"].append({"amount": f["figure"], "currency": f["unit"] or "NPR", "channel": "as reported", "date": day,
+                                     "source": src, "url": f["url"], "note": f["quote"][:220], "auto": True})
         ifrc_row = next((p for p in ifrc.get("personnel", []) if p["code"] == code), None)
         if ifrc_row:
             row["teams"].append({
@@ -347,6 +383,7 @@ async def assistance(days: int = 10) -> dict[str, Any]:
             "forensic_countries": sorted(c["code"] for c in countries if {"forensic", "dvi"} & set(c["kinds"])),
             "personnel_stated": sum(c["personnel_total"] for c in countries),
             "evidence": sum(len(v) for v in evidence.values()),
+            "auto_rows": sum(len(v) for v in auto_rows.values()),
         },
         "note": truth.get("note"),
     }

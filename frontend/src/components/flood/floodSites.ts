@@ -22,6 +22,9 @@ export interface SiteFigure {
   source: string;
   url?: string | null;
   note?: string | null;
+  /** Read by the extractor from a press sentence; unreviewed. */
+  auto?: boolean;
+  confidence?: number;
 }
 export interface SiteNote {
   t_npt: string;
@@ -72,7 +75,7 @@ export interface SitesPayload {
   truth_verified_on: string | null;
   kinds: Record<string, string>;
   sites: ResponseSite[];
-  counts: { sites: number; burial: number; with_photos: number; photos: number; tunnels: number; buried_published: number };
+  counts: { sites: number; burial: number; with_photos: number; photos: number; tunnels: number; buried_published: number; auto_sites?: number; auto_figures?: number };
   note: string | null;
 }
 
@@ -98,14 +101,14 @@ export function siteChip(site: ResponseSite): { label: string; tone: 'critical' 
   const fig = (k: string) => site.figures.find((f) => f.kind === k)?.value;
   switch (site.kind) {
     case 'burial': {
-      const n = fig('buried') ?? fig('managed_unidentified') ?? fig('buried_shared');
+      const n = fig('buried') ?? fig('managed_unidentified') ?? fig('buried_shared') ?? fig('burial');
       return { label: n != null ? `BURIED ${n}` : 'BURIAL', tone: 'critical' };
     }
-    case 'forensic': return { label: 'DNA HUB', tone: 'high' };
-    case 'mortuary': { const n = fig('received'); return { label: n != null ? `MORTUARY ${n}` : 'MORTUARY', tone: 'high' }; }
+    case 'forensic': { const n = fig('identified'); return { label: n != null ? `IDENTIFIED ${n}` : 'DNA HUB', tone: 'high' }; }
+    case 'mortuary': { const n = fig('received') ?? fig('mortuary'); return { label: n != null ? `MORTUARY ${n}` : 'MORTUARY', tone: 'high' }; }
     case 'transfer': return { label: 'HELI LIFT', tone: 'info' };
     case 'collection': { const n = fig('collected'); return { label: n != null ? `COLLECTED ${n}` : 'COLLECTION', tone: 'info' }; }
-    case 'recovery': { const n = fig('recovered'); return { label: n != null ? `RECOVERED ${n}` : 'RECOVERY', tone: 'info' }; }
+    case 'recovery': { const n = fig('recovered') ?? fig('recovery'); return { label: n != null ? `RECOVERED ${n}` : 'RECOVERY', tone: 'info' }; }
     case 'road_cut': return { label: 'ROAD CUT', tone: 'high' };
     case 'airhead': return { label: 'AIRHEAD', tone: 'info' };
     case 'tunnel_active': return { label: 'TUNNEL · DIGGING', tone: 'low' };

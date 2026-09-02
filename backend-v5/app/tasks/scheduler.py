@@ -360,6 +360,21 @@ async def poll_bipad_disasters():
         logger.exception(f"Error polling BIPAD: {e}")
 
 
+async def extract_flood_facts():
+    """Read every new flood story into typed, sourced, geocoded facts (every 20 min).
+
+    Rules always run; the LLM pass joins when an API key is configured. Facts
+    land with status `auto` and the boards show them beside verified seeds.
+    """
+    try:
+        from app.services import flood_fact_extractor
+        async with AsyncSessionLocal() as db:
+            out = await flood_fact_extractor.run(db)
+        logger.info("Flood facts: %s", out)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Flood fact extraction failed: %s", exc, exc_info=True)
+
+
 async def sync_flood_live():
     """Mirror the official flood feeds for the active event (every 10 min).
 
@@ -1617,6 +1632,15 @@ def start_scheduler():
     # The official flood feeds move on their own cadence — NDRRMA revises the
     # situation board a few times a day — so this polls faster than the BIPAD
     # incident job but writes only when a revision passes the service's guards.
+    scheduler.add_job(
+        extract_flood_facts,
+        trigger=IntervalTrigger(minutes=20),
+        id="extract_flood_facts",
+        name="Extract Flood Facts From Stories",
+        replace_existing=True,
+        next_run_time=now + timedelta(minutes=2),
+    )
+
     scheduler.add_job(
         sync_flood_live,
         trigger=IntervalTrigger(seconds=FLOOD_LIVE_INTERVAL),

@@ -65,6 +65,7 @@ interface Team extends Sourced {
 interface ProjectNote extends Sourced {
   t_npt: string;
   text: string;
+  auto?: boolean;
 }
 interface Evidence {
   title: string;
@@ -350,6 +351,7 @@ export const FloodTunnelRescueWidget = memo(function FloodTunnelRescueWidget() {
                   <div key={i} style={{ padding: '3px 0', borderBottom: HAIRLINE }}>
                     <div style={{ ...LABEL_XS, display: 'flex', gap: 8 }}>
                       <span>{dtgNpt(n.t_npt)}</span>
+                      {n.auto && <span style={{ color: MS.high }}>AUTO · UNREVIEWED</span>}
                       <span style={{ ...clip, flex: 1 }}>{n.source}</span>
                       <Grade code={gradeFor(n.source).code} />
                       {n.url && <a href={n.url} target="_blank" rel="noreferrer noopener" style={{ color: MS.info, textDecoration: 'none' }}>SOURCE</a>}

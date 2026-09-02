@@ -262,11 +262,11 @@ export const KPIWidget = memo(function KPIWidget() {
           ) : (
             <div className="kpi-cell">
               <div className="kpi-label">INGESTION</div>
-              <div className="kpi-value-md" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span
-                  className={`kpi-health-dot ${isIngestionHealthy ? 'healthy' : 'unhealthy'}`}
-                  title={isIngestionHealthy ? 'Ingestion running normally' : 'Ingestion may be stalled'}
-                />
+              <div
+                className="kpi-value-md"
+                title={isIngestionHealthy ? 'Ingestion running normally' : 'Ingestion may be stalled'}
+                style={{ color: isIngestionHealthy ? 'var(--status-low)' : 'var(--status-high)' }}
+              >
                 {kpi.source_coverage.active_sources}/{kpi.source_coverage.total_sources}
               </div>
               <div className="kpi-sub">

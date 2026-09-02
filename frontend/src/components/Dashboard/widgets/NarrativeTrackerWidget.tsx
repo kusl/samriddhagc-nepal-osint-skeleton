@@ -93,11 +93,6 @@ function StoryRow({ narrative, rank }: { narrative: StoryTrackerEntry; rank: num
         {/* Headline + meta */}
         <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginBottom: '2px' }}>
-            {/* Severity dot */}
-            <div style={{
-              width: '6px', height: '6px', borderRadius: '50%', flexShrink: 0,
-              background: catColor,
-            }} />
             <span style={{
               fontSize: '11px', fontWeight: 500, color: 'var(--text-primary)',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -196,7 +191,6 @@ function StoryRow({ narrative, rank }: { narrative: StoryTrackerEntry; rank: num
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '3px 0', fontSize: '10px',
             }}>
-              <span style={{ width: '3px', height: '3px', borderRadius: '50%', background: 'var(--text-muted)', flexShrink: 0 }} />
               <span style={{ color: 'var(--text-muted)', minWidth: '26px', flexShrink: 0 }}>
                 {cluster.last_updated ? formatTimeAgo(cluster.last_updated) : '--'}
               </span>
