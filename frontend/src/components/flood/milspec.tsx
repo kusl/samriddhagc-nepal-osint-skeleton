@@ -331,9 +331,18 @@ export function Section({
   );
 }
 
+/** Inner gutter of a <Stat>, and the distance <StatRow> bleeds to line up with <Body>. */
+const STAT_GUTTER = 12;
+const STAT_SUB_LINES = 2;
+
 /**
- * Stat cell. Label above, figure, optional sub-line and delta.
- * Never has its own border — <StatRow> draws hairlines between cells.
+ * Stat cell. Label row (label left, change chip right), figure, optional sub-line.
+ *
+ * Three fixed bands so a row of cells reads as one instrument panel: every label
+ * sits on one line, every figure on one baseline, every sub-line in a reserved
+ * two-line band. Nothing wraps and nothing is ragged — a figure or label too wide
+ * for its column is clipped with an ellipsis and carries the full text as a title.
+ * Never has its own border — <StatRow> draws the hairlines between cells.
  */
 export function Stat({
   label,
@@ -342,6 +351,7 @@ export function Stat({
   sub,
   delta,
   deltaTone,
+  deltaTitle,
   size = 26,
   align = 'left',
 }: {
@@ -351,19 +361,74 @@ export function Stat({
   sub?: ReactNode;
   delta?: string;
   deltaTone?: Tone;
+  deltaTitle?: string;
   size?: number;
   align?: 'left' | 'right';
 }) {
   return (
-    <div style={{ background: MS.surface, padding: '6px 12px 6px 0', minWidth: 0, textAlign: align }}>
-      <div style={LABEL}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, justifyContent: align === 'right' ? 'flex-end' : 'flex-start', marginTop: 3 }}>
-        <span style={{ ...FIGURE, fontSize: size, color: tone(t) }}>{value}</span>
+    <div
+      style={{
+        background: MS.surface,
+        // Symmetric gutters: content never touches the hairline either side of it.
+        padding: `8px ${STAT_GUTTER}px 9px`,
+        minWidth: 0,
+        textAlign: align,
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 8,
+          flexDirection: align === 'right' ? 'row-reverse' : 'row',
+        }}
+      >
+        <span
+          style={{ ...LABEL, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+          title={label}
+        >
+          {label}
+        </span>
         {delta && (
-          <span style={{ ...FIGURE, fontSize: 11, fontWeight: 500, color: tone(deltaTone ?? 'muted') }}>{delta}</span>
+          <span
+            title={deltaTitle}
+            style={{ ...FIGURE, fontSize: 10, letterSpacing: '0.02em', color: tone(deltaTone ?? 'muted'), whiteSpace: 'nowrap' }}
+          >
+            {delta}
+          </span>
         )}
       </div>
-      {sub && <div style={{ ...LABEL_XS, marginTop: 3, textTransform: 'none', letterSpacing: '0.02em' }}>{sub}</div>}
+
+      <div
+        style={{ ...FIGURE, fontSize: size, color: tone(t), marginTop: 5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+        title={typeof value === 'string' ? value : undefined}
+      >
+        {value}
+      </div>
+
+      {sub && (
+        <div
+          style={{
+            ...LABEL_XS,
+            textTransform: 'none',
+            letterSpacing: '0.02em',
+            lineHeight: 1.4,
+            marginTop: 6,
+            // Reserved two-line band: a one-line sub and a two-line sub leave the
+            // row the same height, so the hairlines stay square.
+            minHeight: STAT_SUB_LINES * 9 * 1.4,
+            display: '-webkit-box',
+            WebkitLineClamp: STAT_SUB_LINES,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+          }}
+          title={typeof sub === 'string' ? sub : undefined}
+        >
+          {sub}
+        </div>
+      )}
     </div>
   );
 }
@@ -371,17 +436,34 @@ export function Stat({
 /**
  * Hairline grid for <Stat> cells: the container paints the hairline colour and
  * the 1px gap between cells reveals it. No borders on cells, so nothing doubles.
+ *
+ * The row bleeds `bleed` px past <Body>'s padding on both sides so its rules run
+ * the full width of the widget, while each cell's own gutter puts the first
+ * label back exactly on the document's left margin. Pass `bleed={0}` where the
+ * row is not a direct child of <Body>.
  */
-export function StatRow({ children, columns, style }: { children: ReactNode; columns?: number; style?: CSSProperties }) {
+export function StatRow({
+  children,
+  columns,
+  bleed = STAT_GUTTER,
+  style,
+}: {
+  children: ReactNode;
+  columns?: number;
+  bleed?: number;
+  style?: CSSProperties;
+}) {
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: columns ? `repeat(${columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(120px, 1fr))',
+        gridTemplateColumns: columns ? `repeat(${columns}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(140px, 1fr))',
         gap: 1,
         background: MS.hairline,
         borderTop: HAIRLINE,
         borderBottom: HAIRLINE,
+        marginLeft: -bleed,
+        marginRight: -bleed,
         ...style,
       }}
     >

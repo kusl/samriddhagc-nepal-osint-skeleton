@@ -86,9 +86,16 @@ function bulletinDelta(points: BulletinPoint[], field: 'deaths' | 'missing') {
   return { change: last - (prev[field] as number), since: prev.as_of };
 }
 
-/** Delta chip text for a <Stat>: "+84 SINCE 31 AUG 26". */
+/**
+ * Change chip for a <Stat>: a bare "+84" on the label row, with the bulletin it
+ * is measured from carried in the tooltip rather than across the figure line.
+ */
 const deltaChip = (d: { change: number; since: string } | null): string | undefined =>
-  d ? `${fmtDelta(d.change)} SINCE ${dtgDay(d.since)}` : undefined;
+  d ? fmtDelta(d.change) : undefined;
+
+/** Tooltip for that chip: "+84 since the 31 AUG 26 bulletin". */
+const deltaTitle = (d: { change: number; since: string } | null): string | undefined =>
+  d ? `${fmtDelta(d.change)} since the ${dtgDay(d.since)} bulletin` : undefined;
 
 /** A rising toll is severity; a falling one is a revision, not relief. */
 const deltaTone = (d: { change: number } | null): Tone => (d && d.change > 0 ? 'high' : 'muted');
@@ -322,14 +329,23 @@ export const FloodSituationCommandWidget = memo(function FloodSituationCommandWi
       ? { value: damagePanel.headline_value.replace(/^preliminary damage estimate\s*/i, ''), sub: panelRow(panels, 'damage', /off the grid/i) ? `${fmt(panelRow(panels, 'damage', /off the grid/i)?.value)} MW off the grid` : damagePanel.source ?? undefined }
       : null;
 
-  const cells: { label: string; value: ReactNode; tone: Tone; sub?: string; delta?: string; deltaTone?: Tone }[] = [
-    { label: 'Confirmed dead', value: fmt(toll.deaths), tone: 'critical', delta: deltaChip(deadDelta), deltaTone: deltaTone(deadDelta) },
+  const cells: { label: string; value: ReactNode; tone: Tone; sub?: string; delta?: string; deltaTone?: Tone; deltaTitle?: string }[] = [
+    {
+      label: 'Confirmed dead',
+      value: fmt(toll.deaths),
+      tone: 'critical',
+      delta: deltaChip(deadDelta),
+      deltaTone: deltaTone(deadDelta),
+      deltaTitle: deltaTitle(deadDelta),
+      sub: `${toll.authority} bulletin of ${dtgDay(toll.as_of)}`,
+    },
     {
       label: 'Missing',
       value: fmt(toll.missing),
       tone: 'high',
       delta: deltaChip(missingDelta),
       deltaTone: deltaTone(missingDelta),
+      deltaTitle: deltaTitle(missingDelta),
       sub: missingHydro ? `${fmt(missingHydro.value)} linked to hydropower projects` : undefined,
     },
     { label: 'Rescued', value: fmt(toll.rescued), tone: 'low', sub: rescuedForeign ? `${fmt(rescuedForeign.value)} foreign nationals among them` : undefined },
@@ -371,7 +387,17 @@ export const FloodSituationCommandWidget = memo(function FloodSituationCommandWi
 
         <StatRow columns={cells.length}>
           {cells.map((c) => (
-            <Stat key={c.label} label={c.label} value={c.value} tone={c.tone} sub={c.sub} delta={c.delta} deltaTone={c.deltaTone} size={24} />
+            <Stat
+              key={c.label}
+              label={c.label}
+              value={c.value}
+              tone={c.tone}
+              sub={c.sub}
+              delta={c.delta}
+              deltaTone={c.deltaTone}
+              deltaTitle={c.deltaTitle}
+              size={24}
+            />
           ))}
         </StatRow>
 
