@@ -131,6 +131,15 @@ class NitterScraper:
     # Devanagari Unicode range for language detection
     DEVANAGARI_RE = re.compile(r"[\u0900-\u097F]")
 
+    # A real Nitter page always renders one of these containers. Instances that
+    # have been retired often keep answering 200 with a parking/notice page
+    # (e.g. xcancel.com's cease-and-desist notice), which parses to zero tweets
+    # and would otherwise be reported as a successful empty scrape.
+    NITTER_PAGE_RE = re.compile(
+        r'class="(?:timeline|profile-card|error-panel|timeline-item|show-more)',
+        re.IGNORECASE,
+    )
+
     def __init__(
         self,
         instance_manager: NitterInstanceManager,
@@ -185,6 +194,14 @@ class NitterScraper:
             return match.group(1)
         return None
 
+    def _is_nitter_page(self, html: str) -> bool:
+        """True if the body actually looks like a Nitter-rendered page.
+
+        Guards against retired instances that still answer 200 with a static
+        notice, which would otherwise be parsed as "0 tweets, scrape succeeded".
+        """
+        return bool(html) and bool(self.NITTER_PAGE_RE.search(html))
+
     # Sentinel for 404 (account not found) — not an instance failure
     _NOT_FOUND = "__NOT_FOUND__"
 
@@ -204,8 +221,16 @@ class NitterScraper:
         try:
             async with self._session.get(url) as resp:
                 if resp.status == 200:
+                    html = await resp.text()
+                    if not self._is_nitter_page(html):
+                        logger.warning(
+                            f"{instance.url} returned 200 but the body is not a Nitter page "
+                            f"(instance retired or replaced by a notice page)"
+                        )
+                        instance.record_failure()
+                        return None
                     instance.record_success()
-                    return await resp.text()
+                    return html
 
                 if resp.status == 404:
                     # Account doesn't exist — NOT an instance failure
@@ -251,8 +276,15 @@ class NitterScraper:
 
                     async with self._session.get(url) as retry_resp:
                         if retry_resp.status == 200:
+                            retry_html = await retry_resp.text()
+                            if not self._is_nitter_page(retry_html):
+                                logger.warning(
+                                    f"{instance.url} solved PoW but returned a non-Nitter page"
+                                )
+                                instance.record_failure()
+                                return None
                             instance.record_success()
-                            return await retry_resp.text()
+                            return retry_html
                         else:
                             logger.warning(
                                 f"PoW retry failed: {retry_resp.status} from {instance.url}"

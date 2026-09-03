@@ -103,12 +103,22 @@ class TwitterRepository:
         if is_relevant is not None:
             query = query.where(Tweet.is_relevant == is_relevant)
         if source == "accounts":
+            # Account timelines across every platform, excluding hashtag searches.
             query = query.where(
-                Tweet.source_query.like("nitter:%"),
-                ~Tweet.source_query.like("nitter:#%"),
+                or_(
+                    and_(
+                        Tweet.source_query.like("nitter:%"),
+                        ~Tweet.source_query.like("nitter:#%"),
+                    ),
+                    Tweet.source_query.like("bluesky:%"),
+                ),
             )
         elif source == "hashtags":
             query = query.where(Tweet.source_query.like("nitter:#%"))
+        elif source == "reddit":
+            query = query.where(Tweet.source_query.like("reddit:%"))
+        elif source == "bluesky":
+            query = query.where(Tweet.source_query.like("bluesky:%"))
         if author:
             query = query.where(Tweet.author_username.ilike(author))
         if hashtag:
@@ -151,12 +161,22 @@ class TwitterRepository:
         if is_relevant is not None:
             query = query.where(Tweet.is_relevant == is_relevant)
         if source == "accounts":
+            # Account timelines across every platform, excluding hashtag searches.
             query = query.where(
-                Tweet.source_query.like("nitter:%"),
-                ~Tweet.source_query.like("nitter:#%"),
+                or_(
+                    and_(
+                        Tweet.source_query.like("nitter:%"),
+                        ~Tweet.source_query.like("nitter:#%"),
+                    ),
+                    Tweet.source_query.like("bluesky:%"),
+                ),
             )
         elif source == "hashtags":
             query = query.where(Tweet.source_query.like("nitter:#%"))
+        elif source == "reddit":
+            query = query.where(Tweet.source_query.like("reddit:%"))
+        elif source == "bluesky":
+            query = query.where(Tweet.source_query.like("bluesky:%"))
         if author:
             query = query.where(Tweet.author_username.ilike(author))
         if hashtag:

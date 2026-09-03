@@ -271,7 +271,7 @@ async def get_tweets(
     nepal_relevance: Optional[str] = Query(default=None),
     category: Optional[str] = Query(default=None),
     relevant_only: bool = Query(default=False),
-    source: Optional[str] = Query(default=None, pattern="^(accounts|hashtags)$"),
+    source: Optional[str] = Query(default=None, pattern="^(accounts|hashtags|reddit|bluesky)$"),
     author: Optional[str] = Query(default=None),
     hashtag: Optional[str] = Query(default=None),
     severity: Optional[str] = Query(default=None, pattern="^(critical|high|medium|low)$"),

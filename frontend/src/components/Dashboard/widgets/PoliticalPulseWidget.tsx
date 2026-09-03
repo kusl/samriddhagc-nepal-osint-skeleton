@@ -55,7 +55,7 @@ export const PoliticalPulseWidget = memo(function PoliticalPulseWidget() {
 
     const grouped = new Map<string, typeof data.tweets>();
     for (const tweet of data.tweets) {
-      const username = tweet.source_query?.replace('nitter:', '') || tweet.author_username || 'unknown';
+      const username = tweet.source_query?.replace(/^(nitter|bluesky):/, '') || tweet.author_username || 'unknown';
       if (!grouped.has(username)) grouped.set(username, []);
       grouped.get(username)!.push(tweet);
     }

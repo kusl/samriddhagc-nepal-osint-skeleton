@@ -46,7 +46,7 @@ export function useTweets(params: {
   nepal_relevance?: string;
   category?: string;
   relevant_only?: boolean;
-  source?: 'accounts' | 'hashtags' | 'reddit';
+  source?: 'accounts' | 'hashtags' | 'reddit' | 'bluesky';
   author?: string;
   hashtag?: string;
   severity?: 'critical' | 'high' | 'medium' | 'low';

@@ -14,6 +14,7 @@ from app.api.v1 import (
     announcements, market, infrastructure, seismic, curfew, debt_clock, economy,
     twitter, elections, energy, auth,
     dashboard,
+    source_health,
     govt_decisions,
     cabinet_actions,
     # Public feed endpoints (consumer accounts)
@@ -103,6 +104,7 @@ dev_auth = [Depends(require_dev)]
 # Consumer-safe (JWT required)
 # ============================================================
 router.include_router(stories.router, dependencies=any_auth)
+router.include_router(source_health.router, dependencies=dev_auth)
 router.include_router(analytics.router, dependencies=any_auth)
 router.include_router(disasters.router, dependencies=any_auth)
 router.include_router(disaster_alerts.router, dependencies=any_auth)

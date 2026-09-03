@@ -22,6 +22,8 @@ from app.services.river_service import RiverMonitoringService
 from app.services.weather_service import WeatherService
 from app.services.announcement_service import AnnouncementService
 from app.services.twitter_service import TwitterService
+from app.services.bluesky_service import BlueskyService
+from app.services.source_health_service import SourceHealthService
 from app.services.nitter_service import NitterService
 from app.services.reddit_service import RedditService
 from app.services.market_service import MarketService
@@ -36,7 +38,15 @@ from app.ingestion.rss_fetcher import FetchedArticle
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-scheduler = AsyncIOScheduler()
+scheduler = AsyncIOScheduler(
+    job_defaults={
+        # Never run two copies of the same job, and collapse a backlog of missed
+        # runs into one — a slow cycle used to stack jobs and drain the DB pool.
+        "max_instances": 1,
+        "coalesce": True,
+        "misfire_grace_time": 300,
+    }
+)
 
 # Task intervals in seconds
 CLUSTERING_INTERVAL = 7200      # 2 hours — keeps duplicate cards from lingering on the live site
@@ -71,7 +81,9 @@ ENTITY_PATTERN_REFRESH_INTERVAL = 86400  # 24 hours (rebuild Aho-Corasick automa
 ELECTION_SYNC_INTERVAL = 86400  # 24 hours (nightly unified candidate sync)
 HAIKU_REVIEW_INTERVAL = 7200    # 2 hours (batch review borderline stories)
 REDDIT_POLL_INTERVAL = 7200     # 2 hours (Reddit public JSON API scraping)
-NITTER_ACCOUNTS_INTERVAL = 900  # 15 minutes (Nitter account timelines)
+BLUESKY_POLL_INTERVAL = 900     # 15 minutes (Bluesky account timelines)
+SOURCE_HEALTH_INTERVAL = 21600  # 6 hours (are configured feeds delivering?)
+NITTER_ACCOUNTS_INTERVAL = 900  # 15 minutes (Nitter account timelines — RETIRED)
 NITTER_HASHTAGS_INTERVAL = 1800 # 30 minutes (Nitter hashtag searches)
 PROVINCE_ANOMALY_INTERVAL = 43200  # 12 hours (Province Anomaly Agent)
 AVIATION_POLL_INTERVAL = 60       # 1 minute (ADS-B aircraft positions)
@@ -609,6 +621,58 @@ async def poll_nitter_searches():
 
     except Exception as e:
         logger.exception(f"Error polling Nitter searches: {e}")
+
+
+async def check_source_health():
+    """Report which configured sources have stopped delivering (every 6 hours).
+
+    Exists because the Nitter outage went unnoticed for weeks. Logs at WARNING so
+    a dead feed shows up in the same place operators already look.
+    """
+    try:
+        async with AsyncSessionLocal() as db:
+            report = await SourceHealthService(db).get_report()
+            summary = report["summary"]
+            logger.info(
+                f"Source health: {summary['healthy']}/{summary['total']} OK "
+                f"({summary['health_pct']}%), {summary['stale']} stale, "
+                f"{summary['never']} never delivered"
+            )
+            for problem in report["problems"][:20]:
+                logger.warning(
+                    f"SOURCE {problem['status']}: {problem['kind']}/{problem['source_id']} "
+                    f"— {problem['detail'] or 'no data'}"
+                )
+    except Exception as e:
+        logger.exception(f"Error checking source health: {e}")
+
+
+async def poll_bluesky():
+    """Scrape Bluesky account timelines (every 15 min).
+
+    Replaces the Nitter jobs below: Nitter has had no working instance since the
+    August 2026 takedown, while Bluesky's public AppView needs no key and is not
+    IP-blocked, so unlike Nitter this one can run on the VPS.
+    """
+    try:
+        async with AsyncSessionLocal() as db:
+            service = BlueskyService(db)
+            logger.info("Scraping Bluesky account timelines...")
+            result = await service.scrape_all_accounts()
+
+            scraped = result.get("accounts_scraped", 0)
+            fetched = result.get("posts_fetched", 0)
+            new = result.get("new_posts", 0)
+            errors = result.get("errors", [])
+
+            logger.info(
+                f"Bluesky: {scraped} accounts scraped, {fetched} posts fetched, {new} new"
+            )
+            if errors:
+                logger.warning(f"Bluesky errors: {errors}")
+
+    except Exception as e:
+        logger.exception(f"Error polling Bluesky: {e}")
 
 
 async def poll_reddit():
@@ -1787,10 +1851,32 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # ── Nitter scraper: DISABLED on VPS ──
-    # Nitter instances block VPS/datacenter IPs (403 Forbidden).
-    # Runs LOCALLY via cron: run_agents.sh nitter (every 30 min).
-    # Uses SSH tunnels for direct DB write.
+    # Bluesky scraper every 15 minutes (public AT Protocol AppView, no auth)
+    # Source health audit every 6 hours — surfaces feeds that stopped delivering
+    scheduler.add_job(
+        check_source_health,
+        trigger=IntervalTrigger(seconds=SOURCE_HEALTH_INTERVAL),
+        id="check_source_health",
+        name="Source Health Audit",
+        replace_existing=True,
+        next_run_time=now,
+    )
+
+    scheduler.add_job(
+        poll_bluesky,
+        trigger=IntervalTrigger(seconds=BLUESKY_POLL_INTERVAL),
+        id="poll_bluesky",
+        name="Scrape Bluesky",
+        replace_existing=True,
+        next_run_time=now,
+    )
+
+    # ── Nitter scraper: RETIRED, not merely disabled ──
+    # X Corp. served cease-and-desist notices on 2026-08-24 demanding takedown of
+    # the Nitter instances and the upstream project. All 15 known instances were
+    # probed on 2026-09-02: every one dead, Cloudflare-gated, or serving a
+    # shutdown notice. Do not re-enable expecting data — poll_bluesky above is
+    # the live replacement. Kept in case the network ever returns.
     #
     # scheduler.add_job(
     #     poll_nitter_accounts,

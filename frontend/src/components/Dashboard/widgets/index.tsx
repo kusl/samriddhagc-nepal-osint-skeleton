@@ -224,7 +224,7 @@ export function BriefingWidget() {
 }
 
 type SocialCategory = 'all' | 'political' | 'economic' | 'security' | 'disaster' | 'social';
-type SocialSource = 'all' | 'accounts' | 'hashtags' | 'reddit';
+type SocialSource = 'all' | 'accounts' | 'hashtags' | 'reddit' | 'bluesky';
 type SocialHours = 24 | 72 | 168;
 
 const CATEGORY_OPTIONS: { key: SocialCategory; label: string }[] = [
@@ -240,6 +240,7 @@ const SOURCE_OPTIONS: { key: SocialSource; label: string; icon: React.ReactNode 
   { key: 'all', label: 'All', icon: <MessageSquare size={10} /> },
   { key: 'accounts', label: 'Accounts', icon: <UserCheck size={10} /> },
   { key: 'hashtags', label: 'Hashtags', icon: <Hash size={10} /> },
+  { key: 'bluesky', label: 'Bluesky', icon: <UserCheck size={10} /> },
   { key: 'reddit', label: 'Reddit', icon: <MessageSquare size={10} /> },
 ];
 
@@ -313,6 +314,7 @@ export function SocialWidget() {
     if (!sq) return null;
     if (sq.startsWith('nitter:#')) return `#${sq.slice(8)}`;
     if (sq.startsWith('nitter:')) return `@${sq.slice(7)}`;
+    if (sq.startsWith('bluesky:')) return `@${sq.slice(8).replace(/\.bsky\.social$/, '')}`;
     if (sq.startsWith('reddit:r/')) return `r/${sq.slice(9)}`;
     if (sq.startsWith('reddit:search:')) return `r/search`;
     if (sq.startsWith('reddit:')) return sq.slice(7);

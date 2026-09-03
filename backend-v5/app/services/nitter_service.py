@@ -69,12 +69,24 @@ class NitterService:
             delay_between_requests=self._nitter_config.get("delay_between_requests", 2.0),
         )
 
+    @property
+    def enabled(self) -> bool:
+        """Whether Nitter scraping is switched on in sources.yaml.
+
+        Defaults to False: the Nitter network was taken down in August 2026 and
+        no instance has served a timeline since, so the safe default is off.
+        """
+        return bool(self._nitter_config.get("enabled", False))
+
     async def scrape_all_accounts(self) -> dict:
         """Scrape all configured Nitter accounts.
 
         Returns:
             Stats dict with accounts_scraped, tweets_fetched, new_tweets, errors.
         """
+        if not self.enabled:
+            logger.info("Nitter is disabled (retired network), skipping account scrape")
+            return {"accounts_scraped": 0, "tweets_fetched": 0, "new_tweets": 0, "errors": []}
         if not self._accounts:
             logger.debug("No nitter accounts configured, skipping")
             return {"accounts_scraped": 0, "tweets_fetched": 0, "new_tweets": 0, "errors": []}
@@ -123,6 +135,9 @@ class NitterService:
         Returns:
             Stats dict with hashtags_scraped, tweets_fetched, new_tweets, errors.
         """
+        if not self.enabled:
+            logger.info("Nitter is disabled (retired network), skipping hashtag scrape")
+            return {"hashtags_scraped": 0, "tweets_fetched": 0, "new_tweets": 0, "errors": []}
         if not self._hashtags:
             logger.debug("No nitter hashtags configured, skipping")
             return {"hashtags_scraped": 0, "tweets_fetched": 0, "new_tweets": 0, "errors": []}
@@ -171,6 +186,9 @@ class NitterService:
         Returns:
             Stats dict with searches_scraped, tweets_fetched, new_tweets, errors.
         """
+        if not self.enabled:
+            logger.info("Nitter is disabled (retired network), skipping search scrape")
+            return {"searches_scraped": 0, "tweets_fetched": 0, "new_tweets": 0, "errors": []}
         if not self._searches:
             logger.debug("No nitter text searches configured, skipping")
             return {"searches_scraped": 0, "tweets_fetched": 0, "new_tweets": 0, "errors": []}

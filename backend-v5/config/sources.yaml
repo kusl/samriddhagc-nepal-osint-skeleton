@@ -8,6 +8,7 @@ sources:
   poll_interval_mins: 15
 - id: himalayan
   name: The Himalayan Times
+  aliases: [himalayan_times]   # himalayan_scraper.py writes this id
   url: https://www.thehimalayantimes.com/
   category: news
   language: en
@@ -16,6 +17,7 @@ sources:
   scrape_method: html
 - id: republica
   name: My Republica
+  aliases: [myrepublica]   # republica_scraper.py writes this id
   url: https://myrepublica.nagariknetwork.com/
   category: news
   language: en
@@ -52,6 +54,7 @@ sources:
   poll_interval_mins: 15
 - id: ekantipur
   name: eKantipur
+  aliases: [ekantipur_national]   # ekantipur_scraper.py writes this id
   url: https://ekantipur.com/
   category: news
   language: ne
@@ -524,12 +527,95 @@ twitter_accounts:
   tier: pro
   type: organization
 
+# ==================== Bluesky Scraping Config ====================
+# Keyless replacement for the retired Nitter network (see nitter_config below).
+# Uses the public AT Protocol AppView — no API key, no account, no auth.
+# Note: app.bsky.feed.searchPosts is 403 on the public AppView, so collection is
+# per-account (getAuthorFeed) and discovery is via searchActors.
+bluesky_config:
+  enabled: true
+  request_timeout: 30
+  delay_between_requests: 1.0
+  max_pages: 2
+  page_limit: 50
+
+# Verified 2026-09-02 by sweeping searchActors and keeping only accounts with a
+# Nepal signal in their identity text that had actually posted recently.
+bluesky_accounts:
+  # ── Nepali news outlets (active daily) ──
+  - handle: nepalreadout.com
+    name: Nepal Readout
+    category: news
+  - handle: breaknlinksnp.bsky.social
+    name: Breaknlinks Nepali
+    category: news
+  - handle: nbsnewsnepali.bsky.social
+    name: NBS News Nepali
+    category: news
+
+  # ── Journalists ──
+  - handle: damakant.bsky.social
+    name: Damakant Jayshi (Nieman Fellow)
+    category: journalist
+  - handle: bhimabish.bsky.social
+    name: Bhim Adhikari
+    category: journalist
+  - handle: neelima.bsky.social
+    name: Neelima Vallangi (Himalaya climate)
+    category: journalist
+  - handle: mikaness.bsky.social
+    name: mikaness (Oslo/Kathmandu)
+    category: journalist
+
+  # ── Civil society, research & health ──
+  - handle: manjushreethapa.bsky.social
+    name: Manjushree Thapa
+    category: civil_society
+  - handle: manjeetdhakal.bsky.social
+    name: Manjeet Dhakal (climate policy)
+    category: research
+  - handle: bnmtnepal.bsky.social
+    name: Birat Nepal Medical Trust
+    category: health
+  - handle: openknowledgenp.bsky.social
+    name: Open Knowledge Nepal
+    category: civil_society
+  - handle: nepalfactcheck.bsky.social
+    name: Nepal Fact Check (IFCN)
+    category: factcheck
+  - handle: cmrnepal.org.np
+    name: Center for Media Research Nepal
+    category: civil_society
+
+  # Available but deliberately NOT enabled — high volume, low intel value:
+  #   nepaliwikipedia.bsky.social  (Nepali Wikipedia recent-changes bot, ~30/day)
+  #   nepalidigits.bsky.social     (digits->words bot)
+
+# Terms used by discover_accounts() to surface NEW candidate handles.
+# Read-only: candidates are reported for review, never auto-ingested.
+bluesky_discovery:
+  - term: nepal
+  - term: nepali
+  - term: kathmandu
+  - term: nepal news
+  - term: "नेपाल"
+  - term: pokhara
+
 # ==================== Nitter Scraping Config ====================
+# ⚠️ RETIRED — DO NOT EXPECT THIS TO WORK.
+# X Corp. served cease-and-desist notices on 2026-08-24 demanding takedown of the
+# Nitter instances and the upstream project. Probed all 15 known instances on
+# 2026-09-02: every one was dead, Cloudflare-Turnstile gated, or serving a
+# shutdown notice. Zero returned tweets. The scheduler jobs are already disabled.
+# Kept only so the code path survives if the network ever comes back; Bluesky
+# (above) and Reddit are the live social sources.
 nitter_config:
+  enabled: false
   instances:
-    - url: https://nitter.poast.org
+    # All confirmed dead 2026-09-02 — retained as documentation of what was tried.
+    - url: https://nitter.poast.org       # DNS gone
       priority: 1
-    - url: https://nitter.privacydev.net
+    - url: https://nitter.privacydev.net  # connection refused
       priority: 2
   request_timeout: 30
   delay_between_requests: 2.0

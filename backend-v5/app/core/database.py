@@ -10,10 +10,30 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-# Worker process gets a smaller pool — it only runs scheduled tasks.
+def _env_int(name: str, default: int) -> int:
+    """Read a positive int from the environment, falling back on anything odd."""
+    try:
+        value = int(os.environ.get(name, "").strip())
+        return value if value > 0 else default
+    except (TypeError, ValueError):
+        return default
+
+
+# The worker runs 45 scheduled jobs on one AsyncIOScheduler, so several can hold
+# a session at the same time. It used to get a *smaller* pool than the API
+# (3 + 2 overflow), which it exhausted routinely:
+#   "QueuePool limit of size 3 overflow 2 reached, connection timed out"
+# Postgres allows 100 connections and typical usage sits near 14, so the cap was
+# arbitrary rather than protective. Overridable via env for tuning without a
+# rebuild. Note this is NOT the election-day leak fix — that lives in get_db()
+# below, which still closes every transaction.
 _is_scheduler = os.environ.get("RUN_SCHEDULER", "false").lower() == "true"
-_pool_size = 3 if _is_scheduler else 5
-_max_overflow = 2 if _is_scheduler else 10
+if _is_scheduler:
+    _pool_size = _env_int("DB_POOL_SIZE", 10)
+    _max_overflow = _env_int("DB_MAX_OVERFLOW", 10)
+else:
+    _pool_size = _env_int("DB_POOL_SIZE", 5)
+    _max_overflow = _env_int("DB_MAX_OVERFLOW", 10)
 
 engine = create_async_engine(
     settings.database_url,
